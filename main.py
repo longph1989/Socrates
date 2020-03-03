@@ -7,7 +7,7 @@ from scipy.optimize import Bounds
 
 
 def get_bounds(spec):
-    size = spec['size']
+    size = spec['input']
 
     if 'bounds' in spec:
         bnds = spec['bounds']
@@ -29,66 +29,64 @@ def get_bounds(spec):
     return Bounds(lw, up)
 
 
-def main():
-    with open('spec.json', 'r') as f:
-        spec = json.load(f)
-
-    shape = ast.literal_eval(spec['input'])
-    model = torch.load(spec['model'])
-
+def generate_adversarial_samples(spec):
+    size = spec['input']
     bounds = get_bounds(spec)
+
+    model = torch.load(spec['model'])
 
     if 'robustness' in spec:
         if spec['robustness'] == 'local':
             x0 = np.array(ast.literal_eval(" ".join(spec['origin'])))
-
-            if 'target' in spec:
-                x = x0.copy()
-
-                target = int(spec['target'])
-                args = (x0, shape, model, target)
-
-                transform(x, args, bounds)
-            else:
-                for i in range(spec['output']):
-                    x = x0.copy()
-
-                    target = i
-                    args = (x0, shape, model, target)
-
-                    transform(x, args, bounds)
         else:
-            x0 = np.random.rand(shape) * 2 - 1
+            x0 = np.random.rand(1, size) * 2 - 1
 
+        if 'distance' in spec:
+            distance = spec['distance']
+        else:
+            distance = 'll_2'
+
+        if 'target' in spec:
+            target = spec['target']
+            args = (x0, size, model, target, distance)
+
+            transform(args, bounds)
+        else:
             for i in range(spec['output']):
-                x = x0.copy()
-
                 target = i
-                args = (x0, shape, model, target)
+                args = (x0, size, model, target, distance)
 
-                transform(x, args, bounds)
+                transform(args, bounds)
     else:
         print('fuck you')
 
 
-def transform(x, args, bounds):
+def transform(args, bounds):
+    x = args[0].copy() # x0
+
     res = minimize(func, x, args=args, bounds=bounds)
 
     print("Global minimum x0 = {}, f(x0) = {}".format(res.x.shape, res.fun))
 
     with torch.no_grad():
-        shape = args[1]
-        model = args[2]
-        output = model(torch.from_numpy(res.x).view(shape))
+        size = args[1]  # size
+        model = args[2] # model
+
+        output = model(torch.from_numpy(res.x).view(1, size))
         print(output)
 
 
-def func(x, x0, shape, model, target):
-    # loss1 = np.sqrt(np.sum((x - x0) ** 2))
-    # loss1 = np.sum(x != x0)
-    loss1 = np.max(np.absolute(x - x0))
+def func(x, x0, size, model, target, distance):
+    if distance == 'll_0':
+        loss1 = np.sum(x != x0)
+    elif distance == 'll_2':
+        loss1 = np.sqrt(np.sum((x - x0) ** 2))
+    elif distance == 'll_i':
+        loss1 = np.max(np.absolute(x - x0))
+    else:
+        loss1 = 0
 
-    x_nn = torch.from_numpy(x).view(shape)
+    x_nn = torch.from_numpy(x).view(1, size)
 
     with torch.no_grad():
         output_x = model(x_nn)
@@ -101,6 +99,14 @@ def func(x, x0, shape, model, target):
     loss = loss1 + loss2
 
     return loss
+
+
+def main():
+    with open('spec.json', 'r') as f:
+        spec = json.load(f)
+
+    generate_adversarial_samples(spec)
+
 
 if __name__ == '__main__':
     main()

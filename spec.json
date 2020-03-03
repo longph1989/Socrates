@@ -1,6 +1,5 @@
 {
-  "input": "(1,784)",
-  "size": 784,
+  "input": 784,
   "output": 10,
   "model": "model.pt",
   "origin": [
@@ -104,5 +103,6 @@
         "-1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000]"
       ],
     "robustness": "local",
-    "target": "2"
+    "target": 2,
+    "distance": "ll_i"
 }
