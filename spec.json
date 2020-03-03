@@ -105,7 +105,7 @@
     "robustness": "local",
     "target": 2,
     "distance": "ll_i",
-    "constraints": [
+    "in_cons": [
       {
         "type": "ineq",
         "coef": "(1.2, -2.5, 3.0, 1.0)"

@@ -6,6 +6,61 @@ from scipy.optimize import minimize
 from scipy.optimize import Bounds
 
 
+def generate_adversarial_samples(spec):
+    if 'robustness' in spec:
+        generate_robustness(spec)
+    else:
+        generate_general(spec)
+
+
+def generate_robustness(spec):
+    size = spec['input']
+    bnds = get_bounds(spec)
+
+    model = torch.load(spec['model'])
+
+    if spec['robustness'] == 'local':
+        x0 = np.array(ast.literal_eval(" ".join(spec['origin'])))
+    else:
+        x0 = np.random.rand(size) * 2 - 1
+
+    if 'distance' in spec:
+        distance = spec['distance']
+    else:
+        distance = 'll_2'
+
+    if 'target' in spec:
+        target = spec['target']
+        args = (size, model, x0, target, distance)
+
+        optimize_robustness(args, bnds)
+    else:
+        for i in range(spec['output']):
+            target = i
+            args = (size, model, x0, target, distance)
+
+            optimize_robustness(args, bnds)
+
+
+def generate_general(spec):
+    size = spec['input']
+    bnds = get_bounds(spec)
+
+    model = torch.load(spec['model'])
+
+    in_cons = list()
+    for con in spec['in_cons']:
+        type = con['type']
+        coef = ast.literal_eval(con['coef'])
+        fun = get_constraints(coef)
+        in_cons.append({'type': type, 'fun': fun})
+
+    out_cons = spec['out_cons']
+
+    args = (size, model, out_cons)
+    optimize_general(args, bnds, in_cons)
+
+
 def get_bounds(spec):
     size = spec['input']
 
@@ -29,45 +84,7 @@ def get_bounds(spec):
     return Bounds(lw, up)
 
 
-def generate_adversarial_samples(spec):
-    size = spec['input']
-    bnds = get_bounds(spec)
-
-    model = torch.load(spec['model'])
-
-    if 'robustness' in spec:
-        if spec['robustness'] == 'local':
-            x0 = np.array(ast.literal_eval(" ".join(spec['origin'])))
-        else:
-            x0 = np.random.rand(1, size) * 2 - 1
-
-        if 'distance' in spec:
-            distance = spec['distance']
-        else:
-            distance = 'll_2'
-
-        if 'target' in spec:
-            target = spec['target']
-            args = (x0, size, model, target, distance)
-
-            transform(args, bnds)
-        else:
-            for i in range(spec['output']):
-                target = i
-                args = (x0, size, model, target, distance)
-
-                transform(args, bnds)
-    else:
-        cons = list()
-        for con in spec['constraints']:
-            type = con['type']
-            coef = ast.literal_eval(con['coef'])
-            fun = make_constraint(coef)
-            cons.append({'type': type, 'fun': fun})
-        transform(args, bnds, cons)
-
-
-def make_constraint(coef):
+def get_constraints(coef):
     def fun(x, coef=coef):
         sum = 0
         size = len(coef) - 1
@@ -78,22 +95,22 @@ def make_constraint(coef):
     return fun
 
 
-def transform(args, bnds, cons=list()):
-    x = args[0].copy() # x0
+def optimize_robustness(args, bnds, cons=list()):
+    size = args[0]     # size
+    model = args[1]    # model
 
-    res = minimize(func, x, args=args, bounds=bnds, constraints=cons)
+    x = args[2].copy() # x0
+
+    res = minimize(func_robustness, x, args=args, bounds=bnds, constraints=cons)
 
     print("Global minimum x0 = {}, f(x0) = {}".format(res.x.shape, res.fun))
 
     with torch.no_grad():
-        size = args[1]  # size
-        model = args[2] # model
-
         output = model(torch.from_numpy(res.x).view(1, size))
         print(output)
 
 
-def func(x, x0, size, model, target, distance):
+def func_robustness(x, size, model, x0, target, distance):
     if distance == 'll_0':
         loss1 = np.sum(x != x0)
     elif distance == 'll_2':
@@ -114,6 +131,49 @@ def func(x, x0, size, model, target, distance):
     loss2 = 0 if target_score >= max_score else max_score - target_score
 
     loss = loss1 + loss2
+
+    return loss
+
+
+def optimize_general(args, bnds, cons):
+    size = args[0]  # size
+    model = args[1] # model
+
+    x = np.zeros(size)
+
+    res = minimize(func_general, x, args=args, bounds=bnds, constraints=cons)
+
+    print("Global minimum x0 = {}, f(x0) = {}".format(res.x.shape, res.fun))
+
+    with torch.no_grad():
+        output = model(torch.from_numpy(res.x).view(1, size))
+        print(output)
+
+
+def func_general(x, size, model, cons):
+    x_nn = torch.from_numpy(x).view(1, size)
+
+    with torch.no_grad():
+        output_x = model(x_nn)
+
+    size = len(output_x[0])
+    loss = 0
+
+    for con in cons:
+        type = con['type']
+        coef = ast.literal_eval(con['coef'])
+
+        sum = 0
+        for i in range(size):
+            sum += coef[i] * output_x[0][i]
+        sum +=coef[size]
+
+        if type == 'eq':
+            loss_i = 0 if sum == 0 else abs(sum)
+        elif type == 'ineq':
+            loss_i = 0 if sum > 0 else abs(sum)
+
+        loss = loss + loss_i
 
     return loss
 
