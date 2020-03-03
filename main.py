@@ -31,7 +31,7 @@ def get_bounds(spec):
 
 def generate_adversarial_samples(spec):
     size = spec['input']
-    bounds = get_bounds(spec)
+    bnds = get_bounds(spec)
 
     model = torch.load(spec['model'])
 
@@ -50,21 +50,38 @@ def generate_adversarial_samples(spec):
             target = spec['target']
             args = (x0, size, model, target, distance)
 
-            transform(args, bounds)
+            transform(args, bnds)
         else:
             for i in range(spec['output']):
                 target = i
                 args = (x0, size, model, target, distance)
 
-                transform(args, bounds)
+                transform(args, bnds)
     else:
-        print('fuck you')
+        cons = list()
+        for con in spec['constraints']:
+            type = con['type']
+            coef = ast.literal_eval(con['coef'])
+            fun = make_constraint(coef)
+            cons.append({'type': type, 'fun': fun})
+        transform(args, bnds, cons)
 
 
-def transform(args, bounds):
+def make_constraint(coef):
+    def fun(x, coef=coef):
+        sum = 0
+        size = len(coef) - 1
+        for i in range(size):
+            sum += coef[i] * x[i]
+        sum +=coef[size]
+        return sum
+    return fun
+
+
+def transform(args, bnds, cons=list()):
     x = args[0].copy() # x0
 
-    res = minimize(func, x, args=args, bounds=bounds)
+    res = minimize(func, x, args=args, bounds=bnds, constraints=cons)
 
     print("Global minimum x0 = {}, f(x0) = {}".format(res.x.shape, res.fun))
 
