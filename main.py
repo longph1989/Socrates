@@ -29,17 +29,25 @@ def generate_robustness(spec):
     else:
         distance = 'll_2'
 
+    cons = list()
+    if 'fairness' in spec:
+        for ind in ast.literal_eval(spec['fairness']):
+            type = 'eq'
+            val = x0[ind]
+            fun = get_fairness(ind, val)
+            cons.append({'type': type, 'fun': fun})
+
     if 'target' in spec:
         target = spec['target']
         args = (size, model, x0, target, distance)
 
-        optimize_robustness(args, bnds)
+        optimize_robustness(args, bnds, cons)
     else:
         for i in range(spec['output']):
             target = i
             args = (size, model, x0, target, distance)
 
-            optimize_robustness(args, bnds)
+            optimize_robustness(args, bnds, cons)
 
 
 def generate_general(spec):
@@ -84,6 +92,12 @@ def get_bounds(spec):
     return Bounds(lw, up)
 
 
+def get_fairness(ind, val):
+    def fun(x, ind=ind, val=val):
+        return x[ind] - val
+    return fun
+
+
 def get_constraints(coef):
     def fun(x, coef=coef):
         sum = 0
@@ -95,7 +109,7 @@ def get_constraints(coef):
     return fun
 
 
-def optimize_robustness(args, bnds, cons=list()):
+def optimize_robustness(args, bnds, cons):
     size = args[0]     # size
     model = args[1]    # model
 
