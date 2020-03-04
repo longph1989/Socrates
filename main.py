@@ -16,8 +16,7 @@ def generate_adversarial_samples(spec):
 def generate_robustness(spec):
     size = spec['input']
     bnds = get_bounds(spec)
-
-    model = torch.load(spec['model'])
+    model = get_model(spec)
 
     if spec['robustness'] == 'local':
         x0 = np.array(ast.literal_eval(" ".join(spec['origin'])))
@@ -54,8 +53,6 @@ def generate_general(spec):
     size = spec['input']
     bnds = get_bounds(spec)
 
-    model = torch.load(spec['model'])
-
     in_cons = list()
     for con in spec['in_cons']:
         type = con['type']
@@ -67,6 +64,46 @@ def generate_general(spec):
 
     args = (size, model, out_cons)
     optimize_general(args, bnds, in_cons)
+
+
+def get_model(spec):
+    if 'model' in spec:
+        model = torch.load(spec['model'])
+    else:
+        model = generate_model(spec)
+
+    return model
+
+
+def generate_model(spec):
+    def fun(x_nn):
+        x = x_nn.numpy()
+
+        ws = list()
+        bs = list()
+        fs = list()
+
+        steps = spec['steps']
+
+        for step in steps:
+            w = np.array(ast.literal_eval(step['weight']))
+            b = np.array(ast.literal_eval(step['bias']))
+            f = step['func']
+
+            ws.append(w)
+            bs.append(b)
+            fs.append(f)
+
+        for i in range(len(steps)):
+            res = np.matmul(x, ws[i]) + bs[i]
+            if fs[i] == 'relu':
+                res = np.maximum(0, res)
+            elif fs[i] == 'tanh':
+                res = np.tanh(res)
+
+        size = len(res[0])
+        return torch.from_numpy(res).view(1, size)
+    return fun
 
 
 def get_bounds(spec):
