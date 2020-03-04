@@ -70,15 +70,6 @@ def get_model(spec):
     if 'model' in spec:
         model = torch.load(spec['model'])
     else:
-        model = generate_model(spec)
-
-    return model
-
-
-def generate_model(spec):
-    def fun(x_nn):
-        x = x_nn.numpy()
-
         ws = list()
         bs = list()
         fs = list()
@@ -93,6 +84,17 @@ def generate_model(spec):
             ws.append(w)
             bs.append(b)
             fs.append(f)
+
+        model = generate_model(spec, ws, bs, fs)
+
+    return model
+
+
+def generate_model(spec, ws, bs, fs):
+    def fun(x_nn, spec=spec, ws=ws, bs=bs, fs=fs):
+        x = x_nn.numpy()
+
+        steps = spec['steps']
 
         for i in range(len(steps)):
             res = np.matmul(x, ws[i]) + bs[i]
