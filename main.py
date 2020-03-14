@@ -1,3 +1,4 @@
+import argparse
 import json
 import ast
 import numpy as np
@@ -17,13 +18,15 @@ def generate_robustness(spec):
     size = spec['in_size']
     shape = ast.literal_eval(spec['in_shape'])
 
-    lb, up = get_bounds(spec)
-    bnds = Bounds(lb, up)
+    lb, ub = get_bounds(spec)
+    bnds = Bounds(lb, ub)
     model = get_model(spec)
 
     if spec['robustness'] == 'local':
+        print('Local robustness\n')
         x0 = np.array(ast.literal_eval(" ".join(spec['origin'])))
     else:
+        print('Global robustness\n')
         x0 = np.random.rand(size) * 2 - 1
         for i in range(size):
             x0[i] = max(x0[i], lb[i])
@@ -46,11 +49,15 @@ def generate_robustness(spec):
         target = spec['target']
         args = (shape, model, x0, target, distance)
 
+        print('Target = {}\n'.format(target))
+
         optimize_robustness(args, bnds, cons)
     else:
         for i in range(spec['out_size']):
             target = i
             args = (shape, model, x0, target, distance)
+
+            print('Target = {}\n'.format(target))
 
             optimize_robustness(args, bnds, cons)
 
@@ -86,12 +93,15 @@ def get_model(spec):
         bs = list()
         fs = list()
 
-        steps = spec['steps']
+        layers = spec['layers']
 
-        for step in steps:
-            w = np.array(ast.literal_eval(step['weight']))
-            b = np.array(ast.literal_eval(step['bias']))
-            f = step['func']
+        for layer in layers:
+            wt = open(layer['weight'], 'r').readline()
+            bt = open(layer['bias'], 'r').readline()
+
+            w = np.transpose(np.array(ast.literal_eval(wt)))
+            b = np.expand_dims(np.array(ast.literal_eval(bt)), axis=0)
+            f = layer['func']
 
             ws.append(w)
             bs.append(b)
@@ -105,9 +115,10 @@ def get_model(spec):
 def generate_model(ws, bs, fs):
     def fun(x_nn, ws=ws, bs=bs, fs=fs):
         x = x_nn.numpy()
+        res = x
 
         for i in range(len(ws)):
-            res = np.matmul(x, ws[i]) + bs[i]
+            res = np.matmul(res, ws[i]) + bs[i]
             if fs[i] == 'relu':
                 res = np.maximum(0, res)
             elif fs[i] == 'tanh':
@@ -242,7 +253,14 @@ def func_general(x, shape, model, x0, cons):
 
 
 def main():
-    with open('spec.json', 'r') as f:
+    parser = argparse.ArgumentParser(description='nSolver')
+
+    parser.add_argument('--spec', type=str, default='spec.json',
+                        help='the specification input file')
+
+    args = parser.parse_args()
+
+    with open(args.spec, 'r') as f:
         spec = json.load(f)
 
     generate_adversarial_samples(spec)
