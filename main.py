@@ -73,11 +73,13 @@ def generate_general(spec):
     x0 = np.zeros(size)
 
     in_cons = list()
-    for con in spec['in_cons']:
-        type = con['type']
-        coef = ast.literal_eval(con['coef'])
-        fun = get_constraints(coef)
-        in_cons.append({'type': type, 'fun': fun})
+
+    if 'in_cons' in spec:
+        for con in spec['in_cons']:
+            type = con['type']
+            coef = ast.literal_eval(con['coef'])
+            fun = get_constraints(coef)
+            in_cons.append({'type': type, 'fun': fun})
 
     out_cons = spec['out_cons']
 
@@ -217,7 +219,7 @@ def optimize_general(args, bnds, cons):
 
     res = minimize(func_general, x, args=args, bounds=bnds, constraints=cons)
 
-    print("Global minimum x0 = {}, f(x0) = {}".format(res.x.shape, res.fun))
+    print("Global minimum x0 = {}, f(x0) = {}".format(res.x, res.fun))
 
     with torch.no_grad():
         output = model(torch.from_numpy(res.x).view(shape))
@@ -230,24 +232,45 @@ def func_general(x, shape, model, x0, cons):
     with torch.no_grad():
         output_x = model(x_nn)
 
-    size = len(output_x[0])
     loss = 0
 
     for con in cons:
         type = con['type']
-        coef = ast.literal_eval(con['coef'])
 
-        sum = 0
-        for i in range(size):
-            sum += coef[i] * output_x[0][i]
-        sum +=coef[size]
+        if type == 'max':
+            i = con['index']
+            m = torch.max(output_x).item()
+            loss_i = 0 if output_x[0][i] == m else m - output_x[0][i]
+        elif type == 'nmax':
+            i = con['index']
+            m = torch.max(output_x).item()
+            loss_i = 0 if output_x[0][i] < m else 1
+        elif type == 'min':
+            i = con['index']
+            m = torch.min(output_x).item()
+            loss_i = 0 if output_x[0][i] == m else output_x[0][i] - m
+        elif type == 'nmin':
+            i = con['index']
+            m = torch.min(output_x).item()
+            loss_i = 0 if output_x[0][i] > m else 1
+        else:
+            size = len(output_x[0])
+            coef = ast.literal_eval(con['coef'])
 
-        if type == 'eq':
-            loss_i = 0 if sum == 0 else abs(sum)
-        elif type == 'ineq':
-            loss_i = 0 if sum > 0 else abs(sum)
+            sum = 0
+            for i in range(size):
+                sum += coef[i] * output_x[0][i]
+            sum +=coef[size]
+
+            if type == 'eq':
+                loss_i = 0 if sum == 0 else abs(sum)
+            elif type == 'ineq':
+                loss_i = 0 if sum > 0 else abs(sum)
 
         loss += loss_i
+
+    print('output_x = {}'.format(output_x))
+    print('loss = {}'.format(loss))
 
     return loss
 
