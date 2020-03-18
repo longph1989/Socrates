@@ -24,13 +24,19 @@ def generate_robustness(spec):
 
     if spec['robustness'] == 'local':
         print('Local robustness\n')
-        x0 = np.array(ast.literal_eval(" ".join(spec['origin'])))
+        x0t = open(spec['x0'], 'r').readline()
+        x0 = np.array(ast.literal_eval(x0t))
     else:
         print('Global robustness\n')
         x0 = np.random.rand(size) * 2 - 1
         for i in range(size):
             x0[i] = max(x0[i], lb[i])
             x0[i] = min(x0[i], ub[i])
+
+    h0 = None
+    if 'h0' in spec:
+        h0t = open(spec['h0'], 'r').readline()
+        h0 = np.array(ast.literal_eval(h0t))
 
     if 'distance' in spec:
         distance = spec['distance']
@@ -47,7 +53,7 @@ def generate_robustness(spec):
 
     if 'target' in spec:
         target = spec['target']
-        args = (shape, model, x0, target, distance)
+        args = (shape, model, x0, target, distance, h0)
 
         print('Target = {}\n'.format(target))
 
@@ -55,7 +61,7 @@ def generate_robustness(spec):
     else:
         for i in range(spec['out_size']):
             target = i
-            args = (shape, model, x0, target, distance)
+            args = (shape, model, x0, target, distance, h0)
 
             print('Target = {}\n'.format(target))
 
@@ -72,6 +78,11 @@ def generate_general(spec):
 
     x0 = np.zeros(size)
 
+    h0 = None
+    if 'h0' in spec:
+        h0t = open(spec['h0'], 'r').readline()
+        h0 = np.array(ast.literal_eval(h0t))
+
     in_cons = list()
 
     if 'in_cons' in spec:
@@ -83,7 +94,7 @@ def generate_general(spec):
 
     out_cons = spec['out_cons']
 
-    args = (shape, model, x0, out_cons)
+    args = (shape, model, x0, out_cons, h0)
     optimize_general(args, bnds, in_cons)
 
 
@@ -186,7 +197,7 @@ def optimize_robustness(args, bnds, cons):
         print(output)
 
 
-def func_robustness(x, shape, model, x0, target, distance):
+def func_robustness(x, shape, model, x0, target, distance, h0):
     if distance == 'll_0':
         loss1 = np.sum(x != x0)
     elif distance == 'll_2':
@@ -196,10 +207,18 @@ def func_robustness(x, shape, model, x0, target, distance):
     else:
         loss1 = 0
 
-    x_nn = torch.from_numpy(x).view(shape)
-
     with torch.no_grad():
-        output_x = model(x_nn)
+        if shape[0] == 1:
+            x_nn = torch.from_numpy(x).view(shape)
+            output_x = model(x_nn)
+        else:
+            shape_h = [1,size(h0)]
+            h = torch.from_numpy(h0).view(shape_h)
+            shape_x = [1,*shape[1:]]
+            size_x = shape[1]
+            for i in range(shape[0]):
+                x_nn = torch.from_numpy(x[size_x * i : size_x * (i + 1)]).view(shape_x)
+                output_x, h = model(x_nn, h)
 
     target_score = output_x[0][target]
     max_score = torch.max(output_x)
@@ -226,11 +245,19 @@ def optimize_general(args, bnds, cons):
         print(output)
 
 
-def func_general(x, shape, model, x0, cons):
-    x_nn = torch.from_numpy(x).view(shape)
-
+def func_general(x, shape, model, x0, cons, h0):
     with torch.no_grad():
-        output_x = model(x_nn)
+        if shape[0] == 1:
+            x_nn = torch.from_numpy(x).view(shape)
+            output_x = model(x_nn)
+        else:
+            shape_h = [1,size(h0)]
+            h = torch.from_numpy(h0).view(shape_h)
+            shape_x = [1,*shape[1:]]
+            size_x = shape[1]
+            for i in range(shape[0]):
+                x_nn = torch.from_numpy(x[size_x * i : size_x * (i + 1)]).view(shape_x)
+                output_x, h = model(x_nn, h)
 
     loss = 0
 
