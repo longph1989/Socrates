@@ -51,6 +51,10 @@ def generate_robustness(spec):
             fun = get_fairness(ind, val)
             cons.append({'type': type, 'fun': fun})
 
+    print('x0 = {}'.format(x0))
+    output_x0 = apply_model(model, x0, shape, h0)
+    print('Original output = {}'.format(output_x0))
+
     if 'target' in spec:
         target = spec['target']
         args = (shape, model, x0, target, distance, h0)
@@ -82,6 +86,10 @@ def generate_general(spec):
     if 'h0' in spec:
         h0t = open(spec['h0'], 'r').readline()
         h0 = np.array(ast.literal_eval(h0t))
+
+    print('x0 = {}'.format(x0))
+    output_x0 = apply_model(model, x0, shape, h0)
+    print('Original output = {}'.format(output_x0))
 
     in_cons = list()
 
@@ -144,6 +152,9 @@ def generate_model(ws, bs, fs):
 
 def get_bounds(spec):
     size = spec['in_size']
+    len = ast.literal_eval(spec['in_shape'])[0]
+
+    size = size * len
 
     if 'bounds' in spec:
         bnds = spec['bounds']
@@ -182,19 +193,36 @@ def get_constraints(coef):
     return fun
 
 
+def apply_model(model, x, shape, h0):
+    with torch.no_grad():
+        if shape[0] == 1:
+            x_nn = torch.from_numpy(x).view(shape)
+            output_x = model(x_nn)
+        else:
+            shape_h = [1,h0.size]
+            h = torch.from_numpy(h0).view(shape_h)
+            shape_x = [1,*shape[1:]]
+            size_x = shape[1]
+            for i in range(shape[0]):
+                x_nn = torch.from_numpy(x[size_x * i : size_x * (i + 1)]).view(shape_x)
+                output_x, h = model(x_nn, h)
+    return output_x
+
+
+
 def optimize_robustness(args, bnds, cons):
     shape = args[0]    # shape
     model = args[1]    # model
 
     x = args[2].copy() # x0
+    h0 = args[-1]
 
     res = minimize(func_robustness, x, args=args, bounds=bnds, constraints=cons)
 
-    print("Global minimum x0 = {}, f(x0) = {}".format(res.x.shape, res.fun))
+    print('Global minimum x0 = {}, f(x0) = {}'.format(res.x, res.fun))
 
-    with torch.no_grad():
-        output = model(torch.from_numpy(res.x).view(shape))
-        print(output)
+    output_x = apply_model(model, res.x, shape, h0)
+    print(output_x)
 
 
 def func_robustness(x, shape, model, x0, target, distance, h0):
@@ -207,18 +235,7 @@ def func_robustness(x, shape, model, x0, target, distance, h0):
     else:
         loss1 = 0
 
-    with torch.no_grad():
-        if shape[0] == 1:
-            x_nn = torch.from_numpy(x).view(shape)
-            output_x = model(x_nn)
-        else:
-            shape_h = [1,size(h0)]
-            h = torch.from_numpy(h0).view(shape_h)
-            shape_x = [1,*shape[1:]]
-            size_x = shape[1]
-            for i in range(shape[0]):
-                x_nn = torch.from_numpy(x[size_x * i : size_x * (i + 1)]).view(shape_x)
-                output_x, h = model(x_nn, h)
+    output_x = apply_model(model, x, shape, h0)
 
     target_score = output_x[0][target]
     max_score = torch.max(output_x)
@@ -235,29 +252,18 @@ def optimize_general(args, bnds, cons):
     model = args[1] # model
 
     x = args[2]     # x0, no need to copy
+    h0 = args[-1]
 
     res = minimize(func_general, x, args=args, bounds=bnds, constraints=cons)
 
-    print("Global minimum x0 = {}, f(x0) = {}".format(res.x, res.fun))
+    print('Global minimum x0 = {}, f(x0) = {}'.format(res.x, res.fun))
 
-    with torch.no_grad():
-        output = model(torch.from_numpy(res.x).view(shape))
-        print(output)
+    output_x = apply_model(model, res.x, shape, h0)
+    print(output_x)
 
 
 def func_general(x, shape, model, x0, cons, h0):
-    with torch.no_grad():
-        if shape[0] == 1:
-            x_nn = torch.from_numpy(x).view(shape)
-            output_x = model(x_nn)
-        else:
-            shape_h = [1,size(h0)]
-            h = torch.from_numpy(h0).view(shape_h)
-            shape_x = [1,*shape[1:]]
-            size_x = shape[1]
-            for i in range(shape[0]):
-                x_nn = torch.from_numpy(x[size_x * i : size_x * (i + 1)]).view(shape_x)
-                output_x, h = model(x_nn, h)
+    output_x = apply_model(model, x, shape, h0)
 
     loss = 0
 
@@ -295,9 +301,6 @@ def func_general(x, shape, model, x0, cons, h0):
                 loss_i = 0 if sum > 0 else abs(sum)
 
         loss += loss_i
-
-    print('output_x = {}'.format(output_x))
-    print('loss = {}'.format(loss))
 
     return loss
 
