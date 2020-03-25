@@ -41,7 +41,7 @@ def generate_robustness(spec):
     if 'distance' in spec:
         distance = spec['distance']
     else:
-        distance = 'll_2'
+        distance = 'll_i'
 
     cons = list()
     if 'fairness' in spec:
@@ -209,23 +209,54 @@ def apply_model(model, x, shape, h0):
     return output_x
 
 
-
 def optimize_robustness(args, bnds, cons):
     shape = args[0]    # shape
     model = args[1]    # model
 
-    x = args[2].copy() # x0
-    h0 = args[-1]
+    target = args[3]   # target
 
-    res = minimize(func_robustness, x, args=args, bounds=bnds, constraints=cons)
+    cmin = 1
+    cmax = 100
 
-    print('Global minimum x0 = {}, f(x0) = {}'.format(res.x, res.fun))
+    best_x = []
+    best_dist = 1e9
 
-    output_x = apply_model(model, res.x, shape, h0)
-    print(output_x)
+    while True:
+        if cmin >= cmax: break
+
+        c = int((cmin + cmax) / 2)
+        print('c = {}'.format(c))
+
+        x = args[2]    # x0
+        h0 = args[-1]
+
+        args_c = (*args, c)
+
+        res = minimize(func_robustness, x, args=args_c, bounds=bnds, constraints=cons)
+
+        print('Global minimum x0 = {}, f(x0) = {}'.format(res.x, res.fun))
+
+        output_x = apply_model(model, res.x, shape, h0)
+        print('Output = {}'.format(output_x))
+
+        max_label = output_x.argmax(dim=1, keepdim=True)[0][0]
+
+        if max_label == target:
+            if best_dist > res.fun:
+                best_x = res.x
+                best_dist = res.fun
+            cmax = c - 1
+        else:
+            cmin = c + 1
+
+    print("Best distance = {}".format(best_dist))
+    print("Best x = {}".format(best_x))
+
+    output_x = apply_model(model, best_x, shape, h0)
+    print('Output = {}'.format(output_x))
 
 
-def func_robustness(x, shape, model, x0, target, distance, h0):
+def func_robustness(x, shape, model, x0, target, distance, h0, c):
     if distance == 'll_0':
         loss1 = np.sum(x != x0)
     elif distance == 'll_2':
@@ -242,7 +273,7 @@ def func_robustness(x, shape, model, x0, target, distance, h0):
 
     loss2 = 0 if target_score >= max_score else max_score - target_score
 
-    loss = loss1 + loss2
+    loss = loss1 + c * loss2
 
     return loss
 
@@ -259,7 +290,7 @@ def optimize_general(args, bnds, cons):
     print('Global minimum x0 = {}, f(x0) = {}'.format(res.x, res.fun))
 
     output_x = apply_model(model, res.x, shape, h0)
-    print(output_x)
+    print('Output = {}'.format(output_x))
 
 
 def func_general(x, shape, model, x0, cons, h0):
@@ -306,6 +337,9 @@ def func_general(x, shape, model, x0, cons, h0):
 
 
 def main():
+    torch.set_printoptions(threshold=20)
+    np.set_printoptions(threshold=20)
+
     parser = argparse.ArgumentParser(description='nSolver')
 
     parser.add_argument('--spec', type=str, default='spec.json',
