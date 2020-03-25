@@ -61,7 +61,10 @@ def generate_robustness(spec):
 
         print('Target = {}\n'.format(target))
 
-        optimize_robustness(args, bnds, cons)
+        x = optimize_robustness(args, bnds, cons)
+        x = post_process(x, spec)
+
+        print('Final x = {}'.format(x))
     else:
         for i in range(spec['out_size']):
             target = i
@@ -69,7 +72,10 @@ def generate_robustness(spec):
 
             print('Target = {}\n'.format(target))
 
-            optimize_robustness(args, bnds, cons)
+            x = optimize_robustness(args, bnds, cons)
+            x = post_process(x, spec)
+
+            print('Final x = {}'.format(x))
 
 
 def generate_general(spec):
@@ -103,7 +109,26 @@ def generate_general(spec):
     out_cons = spec['out_cons']
 
     args = (shape, model, x0, out_cons, h0)
-    optimize_general(args, bnds, in_cons)
+    x = optimize_general(args, bnds, in_cons)
+    x = post_process(x, spec)
+
+    print('Final x = {}'.format(x))
+
+
+def post_process(x, spec):
+    if 'rounding' in spec:
+        for i in ast.literal_eval(spec['rounding']):
+            x[i] = round(x[i])
+
+    if 'one-hot' in spec:
+        rs = spec['one-hot']
+        for r in rs:
+            r = ast.literal_eval(r)
+            amax = np.argmax(x[r[0]:r[1]]) + r[0]
+            x[r[0]:r[1]] = 0
+            x[amax] = 1
+
+    return x
 
 
 def get_model(spec):
@@ -255,6 +280,8 @@ def optimize_robustness(args, bnds, cons):
     output_x = apply_model(model, best_x, shape, h0)
     print('Output = {}'.format(output_x))
 
+    return best_x
+
 
 def func_robustness(x, shape, model, x0, target, distance, h0, c):
     if distance == 'll_0':
@@ -291,6 +318,8 @@ def optimize_general(args, bnds, cons):
 
     output_x = apply_model(model, res.x, shape, h0)
     print('Output = {}'.format(output_x))
+
+    return res.x
 
 
 def func_general(x, shape, model, x0, cons, h0):
