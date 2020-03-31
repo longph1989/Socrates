@@ -43,6 +43,8 @@ def generate_robustness(spec):
     else:
         distance = 'll_i'
 
+    print('Using', distance)
+
     cons = list()
     if 'fairness' in spec:
         for ind in ast.literal_eval(spec['fairness']):
@@ -51,31 +53,55 @@ def generate_robustness(spec):
             fun = get_fairness(ind, val)
             cons.append({'type': type, 'fun': fun})
 
-    print('x0 = {}'.format(x0))
+    print('x0 = {}'.format(x0.tolist()))
+
     output_x0 = apply_model(model, x0, shape, h0)
     print('Original output = {}'.format(output_x0))
+
+    _, label_x0 = torch.max(output_x0, 1)
+    label_x0 = label_x0.item()
+    print('Original label = {}'.format(label_x0))
+
+    # outfile = open('data.csv', 'w')
+    #
+    # s = str(label_x0)
+    # s = s + ',' + ','.join(((x0 + 1) / 2 * 255).astype(int).astype(str).tolist()) + '\n'
+    # outfile.write(s)
 
     if 'target' in spec:
         target = spec['target']
         args = (shape, model, x0, target, distance, h0)
 
-        print('Target = {}\n'.format(target))
+        print('\nTarget = {}'.format(target))
 
-        x = optimize_robustness(args, bnds, cons)
-        x = post_process(x, spec)
+        if target != label_x0:
+            x = optimize_robustness(args, bnds, cons)
+            x = post_process(x, spec)
 
-        print('Final x = {}'.format(x))
+            print('Final x = {}'.format(x.tolist()))
+
+            # s = str(target)
+            # s = s + ',' + ','.join((x * 255).astype(int).astype(str).tolist()) + '\n'
+            # outfile.write(s)
     else:
         for i in range(spec['out_size']):
             target = i
             args = (shape, model, x0, target, distance, h0)
 
-            print('Target = {}\n'.format(target))
+            print('\nTarget = {}'.format(target))
 
-            x = optimize_robustness(args, bnds, cons)
-            x = post_process(x, spec)
+            if target != label_x0:
+                x = optimize_robustness(args, bnds, cons)
+                x = post_process(x, spec)
 
-            print('Final x = {}'.format(x))
+                print('Final x = {}'.format(x.tolist()))
+
+                # s = str(target)
+                # s = s + ',' + ','.join(((x + 1) / 2 * 255).astype(int).astype(str).tolist()) + '\n'
+                # outfile.write(s)
+
+    # outfile.flush()
+    # outfile.close()
 
 
 def generate_general(spec):
@@ -86,6 +112,8 @@ def generate_general(spec):
     bnds = Bounds(lb, ub)
     model = get_model(spec)
 
+    print('General linear constraints\n')
+
     x0 = np.zeros(size)
 
     h0 = None
@@ -93,9 +121,9 @@ def generate_general(spec):
         h0t = open(spec['h0'], 'r').readline()
         h0 = np.array(ast.literal_eval(h0t))
 
-    print('x0 = {}'.format(x0))
+    print('x0 = {}'.format(x0.tolist()))
     output_x0 = apply_model(model, x0, shape, h0)
-    print('Original output = {}'.format(output_x0))
+    print('Original output = {}\n'.format(output_x0))
 
     in_cons = list()
 
@@ -112,15 +140,20 @@ def generate_general(spec):
     x = optimize_general(args, bnds, in_cons)
     x = post_process(x, spec)
 
-    print('Final x = {}'.format(x))
+    print('Final x = {}'.format(x.tolist()))
 
 
 def post_process(x, spec):
+    if x = []:
+        return x
+
     if 'rounding' in spec:
+        print('Rounding x')
         for i in ast.literal_eval(spec['rounding']):
             x[i] = round(x[i])
 
     if 'one-hot' in spec:
+        print('One-hot encoding x')
         rs = spec['one-hot']
         for r in rs:
             r = ast.literal_eval(r)
@@ -259,7 +292,7 @@ def optimize_robustness(args, bnds, cons):
 
         res = minimize(func_robustness, x, args=args_c, bounds=bnds, constraints=cons)
 
-        print('Global minimum x0 = {}, f(x0) = {}'.format(res.x, res.fun))
+        print('Global minimum f(x) = {}'.format(res.fun))
 
         output_x = apply_model(model, res.x, shape, h0)
         print('Output = {}'.format(output_x))
@@ -274,11 +307,13 @@ def optimize_robustness(args, bnds, cons):
         else:
             cmin = c + 1
 
-    print("Best distance = {}".format(best_dist))
-    print("Best x = {}".format(best_x))
+    print('Best distance = {}'.format(best_dist))
 
-    output_x = apply_model(model, best_x, shape, h0)
-    print('Output = {}'.format(output_x))
+    if best_x != []:
+        output_x = apply_model(model, best_x, shape, h0)
+        print('Output = {}'.format(output_x))
+    else:
+        print('Failed to find x!')
 
     return best_x
 
@@ -289,7 +324,7 @@ def func_robustness(x, shape, model, x0, target, distance, h0, c):
     elif distance == 'll_2':
         loss1 = np.sqrt(np.sum((x - x0) ** 2))
     elif distance == 'll_i':
-        loss1 = np.max(np.absolute(x - x0))
+        loss1 = np.sum(np.abs(x - x0))
     else:
         loss1 = 0
 
@@ -314,7 +349,12 @@ def optimize_general(args, bnds, cons):
 
     res = minimize(func_general, x, args=args, bounds=bnds, constraints=cons)
 
-    print('Global minimum x0 = {}, f(x0) = {}'.format(res.x, res.fun))
+    print('Global minimum f(x0) = {}'.format(res.fun))
+
+    if res.fun <= 1e-6:
+        print('SAT!')
+    else:
+        print('Unknown!')
 
     output_x = apply_model(model, res.x, shape, h0)
     print('Output = {}'.format(output_x))
