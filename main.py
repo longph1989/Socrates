@@ -144,7 +144,7 @@ def generate_general(spec):
 
 
 def post_process(x, spec):
-    if x = []:
+    if x == []:
         return x
 
     if 'rounding' in spec:
