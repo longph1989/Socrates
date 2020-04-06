@@ -1,10 +1,13 @@
 import argparse
+import types
 import json
 import ast
-import numpy as np
+import autograd.numpy as np
 import torch
+
 from scipy.optimize import minimize
 from scipy.optimize import Bounds
+from autograd import grad
 
 
 def generate_adversarial_samples(spec):
@@ -58,8 +61,9 @@ def generate_robustness(spec):
     output_x0 = apply_model(model, x0, shape, h0)
     print('Original output = {}'.format(output_x0))
 
-    _, label_x0 = torch.max(output_x0, 1)
-    label_x0 = label_x0.item()
+    # _, label_x0 = torch.max(output_x0, 1)
+    # label_x0 = label_x0.item()
+    label_x0 = np.argmax(output_x0, axis=1)
     print('Original label = {}'.format(label_x0))
 
     # outfile = open('data.csv', 'w')
@@ -144,7 +148,7 @@ def generate_general(spec):
 
 
 def post_process(x, spec):
-    if x == []:
+    if len(x) == 0:
         return x
 
     if 'rounding' in spec:
@@ -167,6 +171,10 @@ def post_process(x, spec):
 def get_model(spec):
     if 'model' in spec:
         model = torch.load(spec['model'])
+        for p in model.parameters():
+            print(p.shape)
+            print(p.data)
+        input()
     else:
         ws = list()
         bs = list()
@@ -193,8 +201,10 @@ def get_model(spec):
 
 def generate_model(ws, bs, fs):
     def fun(x_nn, ws=ws, bs=bs, fs=fs):
-        x = x_nn.numpy()
-        res = x
+        # x = x_nn.numpy()
+        # res = x
+
+        res = x_nn
 
         for i in range(len(ws)):
             res = np.matmul(res, ws[i]) + bs[i]
@@ -203,8 +213,10 @@ def generate_model(ws, bs, fs):
             elif fs[i] == 'tanh':
                 res = np.tanh(res)
 
-        size = len(res[0])
-        return torch.from_numpy(res).view(1, size)
+        return res
+
+        # size = len(res[0])
+        # return torch.from_numpy(res).view(1, size)
     return fun
 
 
@@ -254,8 +266,9 @@ def get_constraints(coef):
 def apply_model(model, x, shape, h0):
     with torch.no_grad():
         if shape[0] == 1:
-            x_nn = torch.from_numpy(x).view(shape)
-            output_x = model(x_nn)
+            # x_nn = torch.from_numpy(x).view(shape)
+            # output_x = model(x_nn)
+            output_x = model(x)
         else:
             shape_h = [1,h0.size]
             h = torch.from_numpy(h0).view(shape_h)
@@ -276,8 +289,17 @@ def optimize_robustness(args, bnds, cons):
     cmin = 1
     cmax = 100
 
-    best_x = []
+    best_x = np.empty(0)
     best_dist = 1e9
+
+    if isinstance(model, types.FunctionType):
+        print('Model is a function. Jac is a function.')
+        jac = grad(func_robustness)
+        # jac = None
+    else:
+        print('Model is a pytorch network. Jac is a function.')
+        jac = grad(func_robustness)
+        # jac = None
 
     while True:
         if cmin >= cmax: break
@@ -290,14 +312,15 @@ def optimize_robustness(args, bnds, cons):
 
         args_c = (*args, c)
 
-        res = minimize(func_robustness, x, args=args_c, bounds=bnds, constraints=cons)
+        res = minimize(func_robustness, x, args=args_c, jac=jac, bounds=bnds, constraints=cons)
 
         print('Global minimum f(x) = {}'.format(res.fun))
 
         output_x = apply_model(model, res.x, shape, h0)
         print('Output = {}'.format(output_x))
 
-        max_label = output_x.argmax(dim=1, keepdim=True)[0][0]
+        # max_label = output_x.argmax(dim=1, keepdim=True)[0][0]
+        max_label = np.argmax(output_x, axis=1)
 
         if max_label == target:
             if best_dist > res.fun:
@@ -309,7 +332,7 @@ def optimize_robustness(args, bnds, cons):
 
     print('Best distance = {}'.format(best_dist))
 
-    if best_x != []:
+    if len(best_x) != 0:
         output_x = apply_model(model, best_x, shape, h0)
         print('Output = {}'.format(output_x))
     else:
@@ -330,8 +353,11 @@ def func_robustness(x, shape, model, x0, target, distance, h0, c):
 
     output_x = apply_model(model, x, shape, h0)
 
+    # target_score = output_x[0][target]
+    # max_score = torch.max(output_x)
+
     target_score = output_x[0][target]
-    max_score = torch.max(output_x)
+    max_score = np.max(output_x)
 
     loss2 = 0 if target_score >= max_score else max_score - target_score
 
