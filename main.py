@@ -4,10 +4,12 @@ import json
 import ast
 import autograd.numpy as np
 import torch
+import lib
 
 from scipy.optimize import minimize
 from scipy.optimize import Bounds
 from autograd import grad
+from functools import partial
 
 
 def generate_adversarial_samples(spec):
@@ -32,9 +34,8 @@ def generate_robustness(spec):
     else:
         print('Global robustness\n')
         x0 = np.random.rand(size) * 2 - 1
-        for i in range(size):
-            x0[i] = max(x0[i], lb[i])
-            x0[i] = min(x0[i], ub[i])
+        x0 = np.maximum(x0, lb)
+        x0 = np.minimum(x0, ub)
 
     h0 = None
     if 'h0' in spec:
@@ -61,8 +62,6 @@ def generate_robustness(spec):
     output_x0 = apply_model(model, x0, shape, h0)
     print('Original output = {}'.format(output_x0))
 
-    # _, label_x0 = torch.max(output_x0, 1)
-    # label_x0 = label_x0.item()
     label_x0 = np.argmax(output_x0, axis=1)
     print('Original label = {}'.format(label_x0))
 
@@ -171,60 +170,44 @@ def post_process(x, spec):
 def get_model(spec):
     if 'model' in spec:
         model = torch.load(spec['model'])
-        for p in model.parameters():
-            print(p.shape)
-            print(p.data)
-        input()
     else:
-        ws = list()
-        bs = list()
-        fs = list()
-
         layers = spec['layers']
+        ls = list()
 
         for layer in layers:
-            wt = open(layer['weight'], 'r').readline()
-            bt = open(layer['bias'], 'r').readline()
+            if layer['type'] == 'linear':
+                wt = open(layer['weight'], 'r').readline()
+                bt = open(layer['bias'], 'r').readline()
 
-            w = np.transpose(np.array(ast.literal_eval(wt)))
-            b = np.expand_dims(np.array(ast.literal_eval(bt)), axis=0)
-            f = layer['func']
+                w = np.transpose(np.array(ast.literal_eval(wt)))
+                b = np.expand_dims(np.array(ast.literal_eval(bt)), axis=0)
 
-            ws.append(w)
-            bs.append(b)
-            fs.append(f)
+                ls.append(partial(lib.linear, w=w, b=b))
+            elif layer['type'] == 'function':
+                f = layer['func']
+                if f == 'relu':
+                    ls.append(partial(np.maximum, 0))
+                elif f == 'tanh':
+                    ls.append(partial(np.tanh))
 
-        model = generate_model(ws, bs, fs)
+        model = generate_model(ls)
 
     return model
 
 
-def generate_model(ws, bs, fs):
-    def fun(x_nn, ws=ws, bs=bs, fs=fs):
-        # x = x_nn.numpy()
-        # res = x
+def generate_model(ls):
+    def fun(x, ls=ls):
+        res = x
 
-        res = x_nn
-
-        for i in range(len(ws)):
-            res = np.matmul(res, ws[i]) + bs[i]
-            if fs[i] == 'relu':
-                res = np.maximum(0, res)
-            elif fs[i] == 'tanh':
-                res = np.tanh(res)
+        for l in ls:
+            res = l(res)
 
         return res
-
-        # size = len(res[0])
-        # return torch.from_numpy(res).view(1, size)
     return fun
 
 
 def get_bounds(spec):
     size = spec['in_size']
-    len = ast.literal_eval(spec['in_shape'])[0]
-
-    size = size * len
 
     if 'bounds' in spec:
         bnds = spec['bounds']
@@ -263,20 +246,51 @@ def get_constraints(coef):
     return fun
 
 
-def apply_model(model, x, shape, h0):
+def apply_model(model, x, shape, h):
+    if isinstance(model, types.FunctionType):
+        return apply_model_func(model, x, shape, h)
+    else:
+        return apply_model_pytorch(model, x, shape, h)
+
+
+def apply_model_func(model, x, shape, h):
+    if shape[0] == 1:
+        x = x.reshape(shape)
+        output_x = model(x)
+    else:
+        shape_x = [1,*shape[1:]]
+        size_x = np.prod(shape[1:])
+
+        shape_h = [1,h.size]
+        h = h.reshape(shape_h)
+
+        for i in range(shape[0]):
+            xi = x[size_x * i : size_x * (i + 1)].reshape(shape_x)
+            output_x, h = model(xi, h)
+
+    return output_x
+
+
+def apply_model_pytorch(model, x, shape, h):
     with torch.no_grad():
         if shape[0] == 1:
-            # x_nn = torch.from_numpy(x).view(shape)
-            # output_x = model(x_nn)
+            x = torch.from_numpy(x).view(shape)
             output_x = model(x)
         else:
-            shape_h = [1,h0.size]
-            h = torch.from_numpy(h0).view(shape_h)
+            x = torch.from_numpy(x)
+            h = torch.from_numpy(h)
+
             shape_x = [1,*shape[1:]]
-            size_x = shape[1]
+            size_x = np.prod(shape[1:])
+
+            shape_h = [1,h.size()[0]]
+            h = h.view(shape_h)
+
             for i in range(shape[0]):
-                x_nn = torch.from_numpy(x[size_x * i : size_x * (i + 1)]).view(shape_x)
-                output_x, h = model(x_nn, h)
+                xi = x[size_x * i : size_x * (i + 1)].view(shape_x)
+                output_x, h = model(xi, h)
+
+    output_x = output_x.numpy()
     return output_x
 
 
@@ -295,11 +309,9 @@ def optimize_robustness(args, bnds, cons):
     if isinstance(model, types.FunctionType):
         print('Model is a function. Jac is a function.')
         jac = grad(func_robustness)
-        # jac = None
     else:
-        print('Model is a pytorch network. Jac is a function.')
-        jac = grad(func_robustness)
-        # jac = None
+        print('Model is a pytorch network. Jac is None.')
+        jac = None
 
     while True:
         if cmin >= cmax: break
@@ -319,7 +331,6 @@ def optimize_robustness(args, bnds, cons):
         output_x = apply_model(model, res.x, shape, h0)
         print('Output = {}'.format(output_x))
 
-        # max_label = output_x.argmax(dim=1, keepdim=True)[0][0]
         max_label = np.argmax(output_x, axis=1)
 
         if max_label == target:
@@ -352,14 +363,12 @@ def func_robustness(x, shape, model, x0, target, distance, h0, c):
         loss1 = 0
 
     output_x = apply_model(model, x, shape, h0)
-
-    # target_score = output_x[0][target]
-    # max_score = torch.max(output_x)
-
     target_score = output_x[0][target]
+
+    output_x = output_x - np.eye(output_x[0].size)[target] * 1e6
     max_score = np.max(output_x)
 
-    loss2 = 0 if target_score >= max_score else max_score - target_score
+    loss2 = 0 if target_score > max_score else max_score - target_score + 1e-3
 
     loss = loss1 + c * loss2
 
@@ -398,19 +407,19 @@ def func_general(x, shape, model, x0, cons, h0):
 
         if type == 'max':
             i = con['index']
-            m = torch.max(output_x).item()
+            m = np.max(output_x).item()
             loss_i = 0 if output_x[0][i] == m else m - output_x[0][i]
         elif type == 'nmax':
             i = con['index']
-            m = torch.max(output_x).item()
+            m = np.max(output_x).item()
             loss_i = 0 if output_x[0][i] < m else 1
         elif type == 'min':
             i = con['index']
-            m = torch.min(output_x).item()
+            m = np.min(output_x).item()
             loss_i = 0 if output_x[0][i] == m else output_x[0][i] - m
         elif type == 'nmin':
             i = con['index']
-            m = torch.min(output_x).item()
+            m = np.min(output_x).item()
             loss_i = 0 if output_x[0][i] > m else 1
         else:
             size = len(output_x[0])
