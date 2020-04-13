@@ -176,13 +176,158 @@ def get_model(spec):
 
         for layer in layers:
             if layer['type'] == 'linear':
-                wt = open(layer['weight'], 'r').readline()
+                wt = open(layer['weights'], 'r').readline()
                 bt = open(layer['bias'], 'r').readline()
 
-                w = np.array(ast.literal_eval(wt))
-                b = np.array(ast.literal_eval(bt))
+                weights = np.array(ast.literal_eval(wt))
+                bias = np.array(ast.literal_eval(bt))
 
-                l = lib.Linear(w, b)
+                l = lib.Linear(weights, bias)
+
+                ls.append(partial(l.apply))
+            elif layer['type'] == 'conv1d' or layer['type'] == 'conv2d'
+                or layer['type'] == 'conv3d':
+                ft = open(layer['filters'], 'r').readline()
+                bt = open(layer['bias'], 'r').readline()
+
+                filters = np.array(ast.literal_eval(ft))
+                bias = np.array(ast.literal_eval(bt))
+
+                stride = layer['stride']
+                padding = layer['padding']
+
+                if layer['type'] == 'conv1d':
+                    l = lib.Conv1d(filters, bias, stride, padding)
+                elif layer['type'] == 'conv2d':
+                    l = lib.Conv2d(filters, bias, stride, padding)
+                elif layer['type'] == 'conv3d':
+                    l = lib.Conv3d(filters, bias, stride, padding)
+
+                ls.append(partial(l.apply))
+            elif layer['type'] == 'maxpool1d' or layer['type'] == 'maxpool2d'
+                or layer['type'] == 'maxpool3d':
+                kt = open(layer['kernel'], 'r').readline()
+
+                kernel = np.array(ast.literal_eval(kt))
+
+                stride = layer['stride']
+                padding = layer['padding']
+
+                if layer['type'] == 'maxpool1d':
+                    l = lib.MaxPool1d(kernel, stride, padding)
+                elif layer['type'] == 'maxpool2d':
+                    l = lib.MaxPool2d(kernel, stride, padding)
+                elif layer['type'] == 'maxpool3d':
+                    l = lib.MaxPool3d(kernel, stride, padding)
+
+                ls.append(partial(l.apply))
+            elif layer['type'] == 'relurnn' or layer['type'] == 'tanhrnn':
+                wiht = open(layer['weights_ih'], 'r').readline()
+                whht = open(layer['weights_hh'], 'r').readline()
+                biht = open(layer['bias_ih'], 'r').readline()
+                bhht = open(layer['bias_hh'], 'r').readline()
+                h0t = open(layer['h0'], 'r').readline()
+
+                weights_ih = np.array(ast.literal_eval(wiht))
+                weights_hh = np.array(ast.literal_eval(whht))
+                bias_ih = np.array(ast.literal_eval(biht))
+                bias_hh = np.array(ast.literal_eval(bhht))
+                h0 = np.array(ast.literal_eval(h0t))
+
+                if layer['type'] == 'relurnn':
+                    l = lib.ReluRNN(weights_ih, weights_hh, bias_ih, bias_hh, h0)
+                elif layer['type'] == 'tanhrnn':
+                    l = lib.TanhRNN(weights_ih, weights_hh, bias_ih, bias_hh, h0)
+
+                ls.append(partial(l.apply))
+            elif layer['type'] == 'lstm':
+                wiit = open(layer['weights_ii'], 'r').readline()
+                wift = open(layer['weights_if'], 'r').readline()
+                wigt = open(layer['weights_ig'], 'r').readline()
+                witt = open(layer['weights_it'], 'r').readline()
+                whit = open(layer['weights_hi'], 'r').readline()
+                whft = open(layer['weights_hf'], 'r').readline()
+                whgt = open(layer['weights_hg'], 'r').readline()
+                whtt = open(layer['weights_ht'], 'r').readline()
+
+                biit = open(layer['bias_ii'], 'r').readline()
+                bift = open(layer['bias_if'], 'r').readline()
+                bigt = open(layer['bias_ig'], 'r').readline()
+                bitt = open(layer['bias_it'], 'r').readline()
+                bhit = open(layer['bias_hi'], 'r').readline()
+                bhft = open(layer['bias_hf'], 'r').readline()
+                bhgt = open(layer['bias_hg'], 'r').readline()
+                bhtt = open(layer['bias_ht'], 'r').readline()
+
+                h0t = open(layer['h0'], 'r').readline()
+                c0t = open(layer['c0'], 'r').readline()
+
+                weights_ii = np.array(ast.literal_eval(wiit))
+                weights_if = np.array(ast.literal_eval(wift))
+                weights_ig = np.array(ast.literal_eval(wigt))
+                weights_it = np.array(ast.literal_eval(witt))
+                weights_hi = np.array(ast.literal_eval(whit))
+                weights_hf = np.array(ast.literal_eval(whft))
+                weights_hg = np.array(ast.literal_eval(whgt))
+                weights_ht = np.array(ast.literal_eval(whtt))
+
+                bias_ii = np.array(ast.literal_eval(biit))
+                bias_if = np.array(ast.literal_eval(bift))
+                bias_ig = np.array(ast.literal_eval(bigt))
+                bias_it = np.array(ast.literal_eval(bitt))
+                bias_hi = np.array(ast.literal_eval(bhit))
+                bias_hf = np.array(ast.literal_eval(bhft))
+                bias_hg = np.array(ast.literal_eval(bhgt))
+                bias_ht = np.array(ast.literal_eval(bhtt))
+
+                h0 = np.array(ast.literal_eval(h0t))
+                c0 = np.array(ast.literal_eval(c0t))
+
+                l = lib.LSTM(weights_ii, weights_if, weights_ig, weights_it,
+                    weights_hi, weights_hf, weights_hg, weights_ht,
+                    bias_ii, bias_if, bias_ig, bias_it,
+                    bias_hi, bias_hf, bias_hg, bias_ht
+                    h0, c0)
+
+                ls.append(partial(l.apply))
+            elif layer['type'] == 'gru':
+                wirt = open(layer['weights_ir'], 'r').readline()
+                wizt = open(layer['weights_iz'], 'r').readline()
+                wint = open(layer['weights_in'], 'r').readline()
+                whrt = open(layer['weights_hr'], 'r').readline()
+                whzt = open(layer['weights_hz'], 'r').readline()
+                whnt = open(layer['weights_hn'], 'r').readline()
+
+                birt = open(layer['bias_ir'], 'r').readline()
+                bizt = open(layer['bias_iz'], 'r').readline()
+                bint = open(layer['bias_in'], 'r').readline()
+                bhrt = open(layer['bias_hr'], 'r').readline()
+                bhzt = open(layer['bias_hz'], 'r').readline()
+                bhnt = open(layer['bias_hn'], 'r').readline()
+
+                h0t = open(layer['h0'], 'r').readline()
+
+                weights_ir = np.array(ast.literal_eval(wirt))
+                weights_iz = np.array(ast.literal_eval(wizt))
+                weights_in = np.array(ast.literal_eval(wint))
+                weights_hr = np.array(ast.literal_eval(whrt))
+                weights_hz = np.array(ast.literal_eval(whzt))
+                weights_hn = np.array(ast.literal_eval(whnt))
+
+                bias_ir = np.array(ast.literal_eval(birt))
+                bias_iz = np.array(ast.literal_eval(bizt))
+                bias_in = np.array(ast.literal_eval(bint))
+                bias_hr = np.array(ast.literal_eval(bhrt))
+                bias_hz = np.array(ast.literal_eval(bhzt))
+                bias_hn = np.array(ast.literal_eval(bhnt))
+
+                h0 = np.array(ast.literal_eval(h0t))
+
+                l = lib.GRU(weights_ir, weights_iz, weights_in
+                    weights_hr, weights_hz, weights_hn,
+                    bias_ir, bias_iz, bias_in,
+                    bias_hr, bias_hz, bias_hn,
+                    h0)
 
                 ls.append(partial(l.apply))
             elif layer['type'] == 'function':
