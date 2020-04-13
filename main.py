@@ -408,12 +408,13 @@ def apply_model_func(model, x, shape, h):
         shape_x = [1,*shape[1:]]
         size_x = np.prod(shape[1:])
 
-        shape_h = [1,h.size]
-        h = h.reshape(shape_h)
+        # shape_h = [1,h.size]
+        # h = h.reshape(shape_h)
 
         for i in range(shape[0]):
             xi = x[size_x * i : size_x * (i + 1)].reshape(shape_x)
-            output_x, h = model(xi, h)
+            # output_x, h = model(xi, h)
+            output_x = model(xi)
 
     return output_x
 

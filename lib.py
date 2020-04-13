@@ -15,60 +15,39 @@ x @ w + b = (1, 20)
 '''
 class Linear:
     def __init__(self, weights, bias):
-        self.weights = weights
-        self.bias = bias
+        self.w = np.tranpose(weights)
+        self.b = bias.reshape(-1, bias.size)
 
     def apply(self, x):
-        w = np.tranpose(self.weights)
-        b = self.bias.reshape(-1, self.bias.size)
+        return x @ self.w + self.b
 
-        return x @ w + b
 
-'''
-This is only 1 layer. The extension to multi layers should be easy.
-'''
 class ReluRNN:
     def __init__(self, weights_ih, weights_hh, bias_ih, bias_hh, h0):
-        self.weights_ih = weights_ih
-        self.weights_hh = weights_hh
-        self.bias_ih = bias_ih
-        self.bias_hh = bias_hh
-        self.h0 = h0
+        self.w_ih = np.transpose(weights_ih)
+        self.w_hh = np.transpose(weights_hh)
+        self.b_ih = bias_ih.reshape(-1, bias_ih.size)
+        self.b_hh = bias_hh.reshape(-1, bias_hh.size)
+        self.h_t = h0
 
     def apply(self, x):
-        w_ih = np.transpose(self.weights_ih)
-        w_hh = np.transpose(self.weights_hh)
-        b_ih = self.bias_ih.reshape(-1, self.bias_ih.size)
-        b_hh = self.bias_hh.reshape(-1, self.bias_hh.size)
-        h_t = self.h0
+        self.h_t = relu(x @ self.w_ih + self.b_ih + self.h_t @ self.w_hh + self.b_hh)
 
-        for t in range(x[1]):
-            x_t = x[0][t].reshape(1, -1)
-            h_t = relu(x_t @ w_ih + b_ih + h_t @ w_hh + b_hh)
-
-        return h_t
+        return self.h_t
 
 
 class TanhRNN:
     def __init__(self, weights_ih, weights_hh, bias_ih, bias_hh, h0):
-        self.weights_ih = weights_ih
-        self.weights_hh = weights_hh
-        self.bias_ih = bias_ih
-        self.bias_hh = bias_hh
-        self.h0 = h0
+        self.w_ih = np.transpose(weights_ih)
+        self.w_hh = np.transpose(weights_hh)
+        self.b_ih = bias_ih.reshape(-1, bias_ih.size)
+        self.b_hh = bias_hh.reshape(-1, bias_hh.size)
+        self.h_t = h0
 
     def apply(self, x):
-        w_ih = np.transpose(self.weights_ih)
-        w_hh = np.transpose(self.weights_hh)
-        b_ih = self.bias_ih.reshape(-1, self.bias_ih.size)
-        b_hh = self.bias_hh.reshape(-1, self.bias_hh.size)
-        h_t = self.h0
+        self.h_t = tanh(x @ self.w_ih + self.b_ih + self.h_t @ self.w_hh + self.b_hh)
 
-        for t in range(x[1]):
-            x_t = x[0][t].reshape(1, -1)
-            h_t = np.tanh(x_t @ w_ih + b_ih + h_t @ w_hh + b_hh)
-
-        return h_t
+        return self.h_t
 
 
 class LSTM:
@@ -77,55 +56,36 @@ class LSTM:
                 bias_ii, bias_if, bias_ig, bias_it,
                 bias_hi, bias_hf, bias_hg, bias_ht,
                 h0, c0):
-        self.weights_ii = weights_ii
-        self.weights_if = weights_if
-        self.weights_ig = weights_ig
-        self.weights_it = weights_it
-        self.weights_hi = weights_hi
-        self.weights_hf = weights_hf
-        self.weights_hg = weights_hg
-        self.weights_ht = weights_ht
-        self.bias_ii = bias_ii
-        self.bias_if = bias_if
-        self.bias_ig = bias_ig
-        self.bias_it = bias_it
-        self.bias_hi = bias_hi
-        self.bias_hf = bias_hf
-        self.bias_hg = bias_hg
-        self.bias_ht = bias_ht
-        self.h0 = h0
-        self.c0 = c0
+        self.w_ii = np.transpose(weights_ii)
+        self.w_if = np.transpose(weights_if)
+        self.w_ig = np.transpose(weights_ig)
+        self.w_it = np.transpose(weights_it)
+        self.w_hi = np.transpose(weights_hi)
+        self.w_hf = np.transpose(weights_hf)
+        self.w_hg = np.transpose(weights_hg)
+        self.w_ht = np.transpose(weights_ht)
+
+        self.b_ii = bias_ii.reshape(-1, bias_ii.size)
+        self.b_if = bias_if.reshape(-1, bias_if.size)
+        self.b_ig = bias_ig.reshape(-1, bias_ig.size)
+        self.b_it = bias_it.reshape(-1, bias_it.size)
+        self.b_hi = bias_hi.reshape(-1, bias_hi.size)
+        self.b_hf = bias_hf.reshape(-1, bias_hf.size)
+        self.b_hg = bias_hg.reshape(-1, bias_hg.size)
+        self.b_ht = bias_ht.reshape(-1, bias_ht.size)
+
+        self.h_t = h0
+        self.c_t = c0
 
     def apply(self, x):
-        w_ii = np.transpose(self.weights_ii)
-        w_if = np.transpose(self.weights_if)
-        w_ig = np.transpose(self.weights_ig)
-        w_it = np.transpose(self.weights_it)
-        w_hi = np.transpose(self.weights_hi)
-        w_hf = np.transpose(self.weights_hf)
-        w_hg = np.transpose(self.weights_hg)
-        w_ht = np.transpose(self.weights_ht)
-        b_ii = self.bias_ii.reshape(-1, self.bias_ii.size)
-        b_if = self.bias_if.reshape(-1, self.bias_if.size)
-        b_ig = self.bias_ig.reshape(-1, self.bias_ig.size)
-        b_it = self.bias_it.reshape(-1, self.bias_it.size)
-        b_hi = self.bias_hi.reshape(-1, self.bias_hi.size)
-        b_hf = self.bias_hf.reshape(-1, self.bias_hf.size)
-        b_hg = self.bias_hg.reshape(-1, self.bias_hg.size)
-        b_ht = self.bias_ht.reshape(-1, self.bias_ht.size)
-        h_t = self.h0
-        c_t = self.c0
+        i_t = sigmoid(x @ self.w_ii + self.b_ii + self.h_t @ self.w_hi + self.b_hi)
+        f_t = sigmoid(x @ self.w_if + self.b_if + self.h_t @ self.w_hf + self.b_hf)
+        g_t = np.tanh(x @ self.w_ig + self.b_ig + self.h_t @ self.w_hg + self.b_hg)
+        o_t = sigmoid(x @ self.w_io + self.b_io + self.h_t @ self.w_ho + self.b_ho)
+        self.c_t = f_t * self.c_t + i_t * g_t
+        self.h_t = o_t * np.tanh(self.c_t)
 
-        for t in range(x[1]):
-            x_t = x[0][t].reshape(1, -1)
-            i_t = sigmoid(x_t @ w_ii + b_ii + h_t @ w_hi + b_hi)
-            f_t = sigmoid(x_t @ w_if + b_if + h_t @ w_hf + b_hf)
-            g_t = np.tanh(x_t @ w_ig + b_ig + h_t @ w_hg + b_hg)
-            o_t = sigmoid(x_t @ w_io + b_io + h_t @ w_ho + b_ho)
-            c_t = f_t * c_t + i_t * g_t
-            h_t = o_t * np.tanh(c_t)
-
-        return h_t
+        return self.h_t
 
 
 class GRU:
@@ -134,43 +94,29 @@ class GRU:
                 bias_ir, bias_iz, bias_in,
                 bias_hr, bias_hz, bias_hn,
                 h0):
-        self.weights_ir = weights_ir
-        self.weights_iz = weights_iz
-        self.weights_in = weights_in
-        self.weights_hr = weights_hr
-        self.weights_hz = weights_hz
-        self.weights_hn = weights_hn
-        self.bias_ir = bias_ir
-        self.bias_iz = bias_iz
-        self.bias_in = bias_in
-        self.bias_hr = bias_hr
-        self.bias_hz = bias_hz
-        self.bias_hn = bias_hn
-        self.h0 = h0
+        self.w_ir = np.transpose(weights_ir)
+        self.w_iz = np.transpose(weights_iz)
+        self.w_in = np.transpose(weights_in)
+        self.w_hr = np.transpose(weights_hr)
+        self.w_hz = np.transpose(weights_hz)
+        self.w_hn = np.transpose(weights_hn)
+
+        self.b_ir = bias_ir.reshape(-1, bias_ir.size)
+        self.b_iz = bias_iz.reshape(-1, bias_iz.size)
+        self.b_in = bias_in.reshape(-1, bias_in.size)
+        self.b_hr = bias_hr.reshape(-1, bias_hr.size)
+        self.b_hz = bias_hz.reshape(-1, bias_hz.size)
+        self.b_hn = bias_hn.reshape(-1, bias_hn.size)
+
+        self.h_t = h0
 
     def apply(self, x):
-        w_ir = np.transpose(self.weights_ir)
-        w_iz = np.transpose(self.weights_iz)
-        w_in = np.transpose(self.weights_in)
-        w_hr = np.transpose(self.weights_hr)
-        w_hz = np.transpose(self.weights_hz)
-        w_hn = np.transpose(self.weights_hn)
-        b_ir = self.bias_ir.reshape(-1, self.bias_ir.size)
-        b_iz = self.bias_iz.reshape(-1, self.bias_iz.size)
-        b_in = self.bias_in.reshape(-1, self.bias_in.size)
-        b_hr = self.bias_hr.reshape(-1, self.bias_hr.size)
-        b_hz = self.bias_hz.reshape(-1, self.bias_hz.size)
-        b_hn = self.bias_hn.reshape(-1, self.bias_hn.size)
-        h_t = self.h0
+        r_t = sigmoid(x @ self.w_ir + self.b_ir + self.h_t @ self.w_hr + self.b_hr)
+        z_t = sigmoid(x @ self.w_iz + self.b_iz + self.h_t @ self.w_hz + self.b_hz)
+        n_t = np.tanh(x @ self.w_in + self.b_in + r_t * (self.h_t @ self.w_hn + self.b_hn))
+        self.h_t = (1 - z_t) * n_t + z_t * self.h_t
 
-        for t in range(x[1]):
-            x_t = x[0][t].reshape(1, -1)
-            r_t = sigmoid(x_t @ w_ir + b_ir + h_t @ w_hr + b_hr)
-            z_t = sigmoid(x_t @ w_iz + b_iz + h_t @ w_hz + b_hz)
-            n_t = np.tanh(x_t @ w_in + b_in + r_t * (h_t @ w_hn + b_hn))
-            h_t = (1 - z_t) * n_t + z_t * h_t
-
-        return h_t
+        return self.h_t
 
 
 class Conv1d:
