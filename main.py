@@ -179,10 +179,12 @@ def get_model(spec):
                 wt = open(layer['weight'], 'r').readline()
                 bt = open(layer['bias'], 'r').readline()
 
-                w = np.transpose(np.array(ast.literal_eval(wt)))
-                b = np.expand_dims(np.array(ast.literal_eval(bt)), axis=0)
+                w = np.array(ast.literal_eval(wt))
+                b = np.array(ast.literal_eval(bt))
 
-                ls.append(partial(lib.linear, w=w, b=b))
+                l = lib.Linear(w, b)
+
+                ls.append(partial(l.apply))
             elif layer['type'] == 'function':
                 f = layer['func']
                 if f == 'relu':
