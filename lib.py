@@ -1,7 +1,5 @@
 import autograd.numpy as np
 
-from im2col import *
-
 '''
 w is in form of [number of neurons] x [number of features]
 b is in form of [number of neurons]
@@ -15,7 +13,7 @@ x @ w + b = (1, 20)
 '''
 class Linear:
     def __init__(self, weights, bias):
-        self.w = np.tranpose(weights)
+        self.w = weights.transpose(1, 0)
         self.b = bias.reshape(-1, bias.size)
 
     def apply(self, x):
@@ -24,8 +22,8 @@ class Linear:
 
 class ReluRNN:
     def __init__(self, weights_ih, weights_hh, bias_ih, bias_hh, h0):
-        self.w_ih = np.transpose(weights_ih)
-        self.w_hh = np.transpose(weights_hh)
+        self.w_ih = weights_ih.transpose(1, 0)
+        self.w_hh = weights_hh.transpose(1, 0)
         self.b_ih = bias_ih.reshape(-1, bias_ih.size)
         self.b_hh = bias_hh.reshape(-1, bias_hh.size)
         self.h_t = h0
@@ -38,8 +36,8 @@ class ReluRNN:
 
 class TanhRNN:
     def __init__(self, weights_ih, weights_hh, bias_ih, bias_hh, h0):
-        self.w_ih = np.transpose(weights_ih)
-        self.w_hh = np.transpose(weights_hh)
+        self.w_ih = weights_ih.transpose(1, 0)
+        self.w_hh = weights_hh.transpose(1, 0)
         self.b_ih = bias_ih.reshape(-1, bias_ih.size)
         self.b_hh = bias_hh.reshape(-1, bias_hh.size)
         self.h_t = h0
@@ -56,14 +54,14 @@ class LSTM:
                 bias_ii, bias_if, bias_ig, bias_it,
                 bias_hi, bias_hf, bias_hg, bias_ht,
                 h0, c0):
-        self.w_ii = np.transpose(weights_ii)
-        self.w_if = np.transpose(weights_if)
-        self.w_ig = np.transpose(weights_ig)
-        self.w_it = np.transpose(weights_it)
-        self.w_hi = np.transpose(weights_hi)
-        self.w_hf = np.transpose(weights_hf)
-        self.w_hg = np.transpose(weights_hg)
-        self.w_ht = np.transpose(weights_ht)
+        self.w_ii = weights_ii.transpose(1, 0)
+        self.w_if = weights_if.transpose(1, 0)
+        self.w_ig = weights_ig.transpose(1, 0)
+        self.w_it = weights_it.transpose(1, 0)
+        self.w_hi = weights_hi.transpose(1, 0)
+        self.w_hf = weights_hf.transpose(1, 0)
+        self.w_hg = weights_hg.transpose(1, 0)
+        self.w_ht = weights_ht.transpose(1, 0)
 
         self.b_ii = bias_ii.reshape(-1, bias_ii.size)
         self.b_if = bias_if.reshape(-1, bias_if.size)
@@ -94,12 +92,12 @@ class GRU:
                 bias_ir, bias_iz, bias_in,
                 bias_hr, bias_hz, bias_hn,
                 h0):
-        self.w_ir = np.transpose(weights_ir)
-        self.w_iz = np.transpose(weights_iz)
-        self.w_in = np.transpose(weights_in)
-        self.w_hr = np.transpose(weights_hr)
-        self.w_hz = np.transpose(weights_hz)
-        self.w_hn = np.transpose(weights_hn)
+        self.w_ir = weights_ir.transpose(1, 0)
+        self.w_iz = weights_iz.transpose(1, 0)
+        self.w_in = weights_in.transpose(1, 0)
+        self.w_hr = weights_hr.transpose(1, 0)
+        self.w_hz = weights_hz.transpose(1, 0)
+        self.w_hn = weights_hn.transpose(1, 0)
 
         self.b_ir = bias_ir.reshape(-1, bias_ir.size)
         self.b_iz = bias_iz.reshape(-1, bias_iz.size)
@@ -132,26 +130,17 @@ class Conv1d:
 
         b = self.bias.reshape(f_n, -1)  # 2, 1
 
-        x_pad = np.pad(x, (0, 0, self.padding), mode='constant')
+        p = self.padding
+        x_pad = np.pad(x, ((0,0), (0,0), (p,p)), mode='constant')
         x_n, x_c, x_l = x_pad.shape  # 1, 3, 10
 
-        # c_idx = np.repeat(np.arange(f_c), f_l) # [0 0 0 0 1 1 1 1 2 2 2 2] = 1, 12
-        # c_idx = c_idx.reshape(-1, 1) # 12, 1
-        #
-        # res_l = int((x_l - f_l) / self.stride) + 1
-        #
-        # size = f_c * f_l
-        #
-        # l_idx = np.tile(self.stride * np.arange(res_l), size) # (0 .. 9 0 .. 9 0 .. 9) = 1, 120
-        # l_idx = l_idx.reshape(size, -1) # 12, 10
-        # l_off = np.tile(np.arange(f_l), f_c) # (0 1 2 3 0 1 2 3 0 1 2 3) = 1, 12
-        # l_off = l_off.reshape(size, -1) # 12, 1
-        # l_idx = l_idx + l_off # 12, 10
+        res_l = int((x_l - f_l) / self.stride) + 1
+        size = f_c * f_l
 
         c_idx, l_idx = index1d(x_c, self.stride, (f_l), (x_l))
 
         res = x_pad[:, c_idx, l_idx] # 1, 12, 10
-        res = res.transpose(1, 0).reshape(size, -1) # 12, 10
+        res = res.reshape(size, -1) # 12, 10
 
         res = f @ res + b # 2, 10
         res = res.reshape(1, f_n, res_l) # 1, 2, 10
@@ -172,33 +161,18 @@ class Conv2d:
 
         b = self.bias.reshape(f_n, -1)
 
-        x_pad = np.pad(x, (0, 0, self.padding, self.padding), mode='constant')
+        p = self.padding
+        x_pad = np.pad(x, ((0,0), (0,0), (p,p), (p,p)), mode='constant')
         x_n, x_c, x_h, x_w = x_pad.shape
 
-        # c_idx = np.repeat(np.arange(f_c), f_h * f_w)
-        # c_idx = c_idx.reshape(-1, 1)
-        #
-        # res_h = int((x_h - f_h) / self.stride) + 1
-        # res_w = int((x_w - f_w) / self.stride) + 1
-        #
-        # size = f_c * f_h * f_w
-        #
-        # h_idx = np.tile(np.repeat(step.stride * np.arange(res_h), res_w), size)
-        # h_idx = h_idx.reshape(size, -1)
-        # h_off = np.tile(np.repeat(np.arange(f_h), f_w), f_c)
-        # h_off = h_off.reshape(size, -1)
-        # h_idx = h_idx + h_off
-        #
-        # w_idx = np.tile(np.tile(step.stride * np.arange(res_w), res_h), size)
-        # w_idx = w_idx.reshape(size, -1)
-        # w_off = np.tile(np.arange(f_w), f_c * f_h)
-        # w_off = w_off.reshape(size, -1)
-        # w_idx = w_idx + w_off
+        res_h = int((x_h - f_h) / self.stride) + 1
+        res_w = int((x_w - f_w) / self.stride) + 1
+        size = f_c * f_h * f_w
 
         c_idx, h_idx, w_idx = index2d(x_c, self.stride, (f_h, f_w), (x_h, x_w))
 
         res = x_pad[:, c_idx, h_idx, w_idx]
-        res = res.transpose(1, 2, 0).reshape(size, -1)
+        res = res.reshape(size, -1)
 
         res = f @ res + b
         res = res.reshape(1, f_n, res_h, res_w)
@@ -219,40 +193,19 @@ class Conv3d:
 
         b = self.bias.reshape(f_n, -1)
 
-        x_pad = np.pad(x, (0, 0, self.padding, self.padding, self.padding), mode='constant')
+        p = self.padding
+        x_pad = np.pad(x, ((0,0), (0,0), (p,p), (p,p), (p,p)), mode='constant')
         x_n, x_c, x_d, x_h, x_w = x_pad.shape
 
-        # c_idx = np.repeat(np.arange(f_c), f_d * f_h * f_w)
-        # c_idx = c_idx.reshape(-1, 1)
-        #
-        # res_d = int((x_d - f_d) / self.stride) + 1
-        # res_h = int((x_h - f_h) / self.stride) + 1
-        # res_w = int((x_w - f_w) / self.stride) + 1
-        #
-        # size = f_c * f_d * f_h * f_w
-        #
-        # d_idx = np.tile(np.repeat(step.stride * np.arange(res_d), res_h * res_w), size)
-        # d_idx = d_idx.reshape(size, -1)
-        # d_off = np.tile(np.repeat(np.arange(f_d), f_h * f_w), f_c)
-        # d_off = d_off.reshape(size, -1)
-        # d_idx = d_idx + d_off
-        #
-        # h_idx = np.tile(np.tile(np.repeat(step.stride * np.arange(res_h), res_w), res_d), size)
-        # h_idx = h_idx.reshape(size, -1)
-        # h_off = np.tile(np.repeat(np.arange(f_h), f_w), f_c * f_d)
-        # h_off = h_off.reshape(size, -1)
-        # h_idx = h_idx + h_off
-        #
-        # w_idx = np.tile(np.tile(step.stride * np.arange(res_w), res_d * res_h), size)
-        # w_idx = w_idx.reshape(size, -1)
-        # w_off = np.tile(np.arange(f_w), f_c * f_d * f_h)
-        # w_off = w_off.reshape(size, -1)
-        # w_idx = w_idx + w_off
+        res_d = int((x_d - f_d) / self.stride) + 1
+        res_h = int((x_h - f_h) / self.stride) + 1
+        res_w = int((x_w - f_w) / self.stride) + 1
+        size = f_c * f_d * f_h * f_w
 
         c_idx, d_idx, h_idx, w_idx = index3d(x_c, self.stride, (f_d, f_h, f_w), (x_d, x_h, x_w))
 
         res = x_pad[:, c_idx, d_idx, h_idx, w_idx]
-        res = res.transpose(1, 2, 3, 0).reshape(size, -1)
+        res = res.reshape(size, -1)
 
         res = f @ res + b
         res = res.reshape(1, f_n, res_d, res_h, res_w)
@@ -267,23 +220,8 @@ class MaxPool1d:
         self.padding = padding
 
     def apply(self, x):
-        # k_l = self.kernel
-
         x_pad = np.pad(x, (0, 0, self.padding), mode='constant')
         x_n, x_c, x_l = x_pad.shape
-
-        # c_idx = np.repeat(np.arange(x_c), k_l)
-        # c_idx = c_idx.reshape(-1, 1)
-        #
-        # res_l = int((x_l - k_l) / self.stride) + 1
-        #
-        # size = x_c * k_l
-        #
-        # l_idx = np.tile(self.stride * np.arange(res_l), size)
-        # l_idx = l_idx.reshape(size, -1)
-        # l_off = np.tile(np.arange(k_l), x_c)
-        # l_off = l_off.reshape(size, -1)
-        # l_idx = l_idx + l_off
 
         c_idx, l_idx = index1d(x_c, self.stride, self.kernel, (x_l))
 
@@ -303,30 +241,8 @@ class MaxPool2d:
         self.padding = padding
 
     def apply(self, x):
-        # k_h, k_w = self.kernel
-
         x_pad = np.pad(x, (0, 0, self.padding, self.padding), mode='constant')
         x_n, x_c, x_h, x_w = x_pad.shape
-
-        # c_idx = np.repeat(np.arange(x_c), k_h * k_w)
-        # c_idx = c_idx.reshape(-1, 1)
-        #
-        # res_h = int((x_h - k_h) / self.stride) + 1
-        # res_w = int((x_w - k_w) / self.stride) + 1
-        #
-        # size = x_c * k_h * k_w
-        #
-        # h_idx = np.tile(np.repeat(step.stride * np.arange(res_h), res_w), size)
-        # h_idx = h_idx.reshape(size, -1)
-        # h_off = np.tile(np.repeat(np.arange(k_h), k_w), x_c)
-        # h_off = h_off.reshape(size, -1)
-        # h_idx = h_idx + h_off
-        #
-        # w_idx = np.tile(np.tile(step.stride * np.arange(res_w), res_h), size)
-        # w_idx = w_idx.reshape(size, -1)
-        # w_off = np.tile(np.arange(k_w), x_c * k_h)
-        # w_off = w_off.reshape(size, -1)
-        # w_idx = w_idx + w_off
 
         c_idx, h_idx, w_idx = index2d(x_c, self.stride, self.kernel, (x_h, x_w))
 
@@ -346,37 +262,8 @@ class MaxPool3d:
         self.padding = padding
 
     def apply(self, x):
-        # k_d, k_h, k_w = self.kernel
-
         x_pad = np.pad(x, (0, 0, self.padding, self.padding, self.padding), mode='constant')
         x_n, x_c, x_d, x_h, x_w = x_pad.shape
-
-        # c_idx = np.repeat(np.arange(x_c), k_d * k_h * k_w)
-        # c_idx = c_idx.reshape(-1, 1)
-        #
-        # res_d = int((x_d - k_d) / self.stride) + 1
-        # res_h = int((x_h - k_h) / self.stride) + 1
-        # res_w = int((x_w - k_w) / self.stride) + 1
-        #
-        # size = x_c * k_d * k_h * k_w
-        #
-        # d_idx = np.tile(np.repeat(step.stride * np.arange(res_d), res_h * res_w), size)
-        # d_idx = d_idx.reshape(size, -1)
-        # d_off = np.tile(np.repeat(np.arange(k_d), k_h * k_w), x_c)
-        # d_off = d_off.reshape(size, -1)
-        # d_idx = d_idx + d_off
-        #
-        # h_idx = np.tile(np.tile(np.repeat(step.stride * np.arange(res_h), res_w), res_d), size)
-        # h_idx = h_idx.reshape(size, -1)
-        # h_off = np.tile(np.repeat(np.arange(k_h), k_w), x_c * k_d)
-        # h_off = h_off.reshape(size, -1)
-        # h_idx = h_idx + h_off
-        #
-        # w_idx = np.tile(np.tile(step.stride * np.arange(res_w), res_d * res_h), size)
-        # w_idx = w_idx.reshape(size, -1)
-        # w_off = np.tile(np.arange(k_w), x_c * k_d * k_h)
-        # w_off = w_off.reshape(size, -1)
-        # w_idx = w_idx + w_off
 
         c_idx, d_idx, h_idx, w_idx = index3d(x_c, self.stride, self.kernel, (x_d, x_h, x_w))
 
@@ -424,24 +311,24 @@ def index2d(channel, stride, kshape, xshape):
     c_idx = np.repeat(np.arange(channel), k_h * k_w)
     c_idx = c_idx.reshape(-1, 1)
 
-    res_h = int((x_h - k_h) / self.stride) + 1
-    res_w = int((x_w - k_w) / self.stride) + 1
+    res_h = int((x_h - k_h) / stride) + 1
+    res_w = int((x_w - k_w) / stride) + 1
 
     size = channel * k_h * k_w
 
-    h_idx = np.tile(np.repeat(step.stride * np.arange(res_h), res_w), size)
+    h_idx = np.tile(np.repeat(stride * np.arange(res_h), res_w), size)
     h_idx = h_idx.reshape(size, -1)
     h_off = np.tile(np.repeat(np.arange(k_h), k_w), channel)
     h_off = h_off.reshape(size, -1)
     h_idx = h_idx + h_off
 
-    w_idx = np.tile(np.tile(step.stride * np.arange(res_w), res_h), size)
+    w_idx = np.tile(np.tile(stride * np.arange(res_w), res_h), size)
     w_idx = w_idx.reshape(size, -1)
     w_off = np.tile(np.arange(k_w), channel * k_h)
     w_off = w_off.reshape(size, -1)
     w_idx = w_idx + w_off
 
-    return h_idx, w_idx
+    return c_idx, h_idx, w_idx
 
 
 def index3d(channel, stride, kshape, xshape):

@@ -57,7 +57,7 @@ def generate_robustness(spec):
             fun = get_fairness(ind, val)
             cons.append({'type': type, 'fun': fun})
 
-    print('x0 = {}'.format(x0.tolist()))
+    print('x0 = {}'.format(x0))
 
     output_x0 = apply_model(model, x0, shape, h0)
     print('Original output = {}'.format(output_x0))
@@ -73,7 +73,7 @@ def generate_robustness(spec):
 
     if 'target' in spec:
         target = spec['target']
-        args = (shape, model, x0, target, distance, h0)
+        args = (shape, model, x0, target, distance, h0, True)
 
         print('\nTarget = {}'.format(target))
 
@@ -81,15 +81,27 @@ def generate_robustness(spec):
             x = optimize_robustness(args, bnds, cons)
             x = post_process(x, spec)
 
-            print('Final x = {}'.format(x.tolist()))
+            print('Final x = {}'.format(x))
 
             # s = str(target)
             # s = s + ',' + ','.join((x * 255).astype(int).astype(str).tolist()) + '\n'
             # outfile.write(s)
+    elif 'untarget' in spec:
+        target = spec['untarget']
+
+        args = (shape, model, x0, target, distance, h0, False)
+
+        print('\nUntarget = {}'.format(target))
+
+        if target == label_x0:
+            x = optimize_robustness(args, bnds, cons)
+            x = post_process(x, spec)
+
+            print('Final x = {}'.format(x))
     else:
         for i in range(spec['out_size']):
             target = i
-            args = (shape, model, x0, target, distance, h0)
+            args = (shape, model, x0, target, distance, h0, True)
 
             print('\nTarget = {}'.format(target))
 
@@ -97,7 +109,7 @@ def generate_robustness(spec):
                 x = optimize_robustness(args, bnds, cons)
                 x = post_process(x, spec)
 
-                print('Final x = {}'.format(x.tolist()))
+                print('Final x = {}'.format(x))
 
                 # s = str(target)
                 # s = s + ',' + ','.join(((x + 1) / 2 * 255).astype(int).astype(str).tolist()) + '\n'
@@ -124,7 +136,7 @@ def generate_general(spec):
         h0t = open(spec['h0'], 'r').readline()
         h0 = np.array(ast.literal_eval(h0t))
 
-    print('x0 = {}'.format(x0.tolist()))
+    print('x0 = {}'.format(x0))
     output_x0 = apply_model(model, x0, shape, h0)
     print('Original output = {}\n'.format(output_x0))
 
@@ -143,7 +155,7 @@ def generate_general(spec):
     x = optimize_general(args, bnds, in_cons)
     x = post_process(x, spec)
 
-    print('Final x = {}'.format(x.tolist()))
+    print('Final x = {}'.format(x))
 
 
 def post_process(x, spec):
@@ -185,7 +197,7 @@ def get_model(spec):
                 l = lib.Linear(weights, bias)
 
                 ls.append(partial(l.apply))
-            elif layer['type'] == 'conv1d' or layer['type'] == 'conv2d'
+            elif layer['type'] == 'conv1d' or layer['type'] == 'conv2d' \
                 or layer['type'] == 'conv3d':
                 ft = open(layer['filters'], 'r').readline()
                 bt = open(layer['bias'], 'r').readline()
@@ -204,7 +216,7 @@ def get_model(spec):
                     l = lib.Conv3d(filters, bias, stride, padding)
 
                 ls.append(partial(l.apply))
-            elif layer['type'] == 'maxpool1d' or layer['type'] == 'maxpool2d'
+            elif layer['type'] == 'maxpool1d' or layer['type'] == 'maxpool2d' \
                 or layer['type'] == 'maxpool3d':
                 kt = open(layer['kernel'], 'r').readline()
 
@@ -283,10 +295,10 @@ def get_model(spec):
                 h0 = np.array(ast.literal_eval(h0t))
                 c0 = np.array(ast.literal_eval(c0t))
 
-                l = lib.LSTM(weights_ii, weights_if, weights_ig, weights_it,
-                    weights_hi, weights_hf, weights_hg, weights_ht,
-                    bias_ii, bias_if, bias_ig, bias_it,
-                    bias_hi, bias_hf, bias_hg, bias_ht
+                l = lib.LSTM(weights_ii, weights_if, weights_ig, weights_it, \
+                    weights_hi, weights_hf, weights_hg, weights_ht, \
+                    bias_ii, bias_if, bias_ig, bias_it, \
+                    bias_hi, bias_hf, bias_hg, bias_ht, \
                     h0, c0)
 
                 ls.append(partial(l.apply))
@@ -323,10 +335,10 @@ def get_model(spec):
 
                 h0 = np.array(ast.literal_eval(h0t))
 
-                l = lib.GRU(weights_ir, weights_iz, weights_in
-                    weights_hr, weights_hz, weights_hn,
-                    bias_ir, bias_iz, bias_in,
-                    bias_hr, bias_hz, bias_hn,
+                l = lib.GRU(weights_ir, weights_iz, weights_in, \
+                    weights_hr, weights_hz, weights_hn, \
+                    bias_ir, bias_iz, bias_in, \
+                    bias_hr, bias_hz, bias_hn, \
                     h0)
 
                 ls.append(partial(l.apply))
@@ -336,6 +348,10 @@ def get_model(spec):
                     ls.append(partial(np.maximum, 0))
                 elif f == 'tanh':
                     ls.append(partial(np.tanh))
+                elif f == 'reshape':
+                    ns = ast.literal_eval(layer['newshape'])
+                    import numpy as rnp
+                    ls.append(partial(rnp.reshape, newshape=ns))
 
         model = generate_model(ls)
 
@@ -447,6 +463,7 @@ def optimize_robustness(args, bnds, cons):
     model = args[1]    # model
 
     target = args[3]   # target
+    is_targeted = args[-1]  # target or untarget
 
     cmin = 1
     cmax = 100
@@ -481,13 +498,22 @@ def optimize_robustness(args, bnds, cons):
 
         max_label = np.argmax(output_x, axis=1)
 
-        if max_label == target:
-            if best_dist > res.fun:
-                best_x = res.x
-                best_dist = res.fun
-            cmax = c - 1
+        if is_targeted:
+            if max_label == target:
+                if best_dist > res.fun:
+                    best_x = res.x
+                    best_dist = res.fun
+                cmax = c - 1
+            else:
+                cmin = c + 1
         else:
-            cmin = c + 1
+            if max_label != target:
+                if best_dist > res.fun:
+                    best_x = res.x
+                    best_dist = res.fun
+                cmax = c - 1
+            else:
+                cmin = c + 1
 
     print('Best distance = {}'.format(best_dist))
 
@@ -500,7 +526,7 @@ def optimize_robustness(args, bnds, cons):
     return best_x
 
 
-def func_robustness(x, shape, model, x0, target, distance, h0, c):
+def func_robustness(x, shape, model, x0, target, distance, h0, is_targeted, c):
     if distance == 'll_0':
         loss1 = np.sum(x != x0)
     elif distance == 'll_2':
@@ -516,7 +542,10 @@ def func_robustness(x, shape, model, x0, target, distance, h0, c):
     output_x = output_x - np.eye(output_x[0].size)[target] * 1e6
     max_score = np.max(output_x)
 
-    loss2 = 0 if target_score > max_score else max_score - target_score + 1e-3
+    if is_targeted:
+        loss2 = 0 if target_score > max_score else max_score - target_score + 1e-3
+    else:
+        loss2 = 0 if target_score < max_score else target_score - max_score + 1e-3
 
     loss = loss1 + c * loss2
 
@@ -554,21 +583,37 @@ def func_general(x, shape, model, x0, cons, h0):
         type = con['type']
 
         if type == 'max':
-            i = con['index']
-            m = np.max(output_x).item()
-            loss_i = 0 if output_x[0][i] == m else m - output_x[0][i]
+            target = con['index']
+            target_score = output_x[0][target]
+
+            output_x = output_x - np.eye(output_x[0].size)[target] * 1e6
+            max_score = np.max(output_x)
+
+            loss_i = 0 if target_score > max_score else max_score - target_score + 1e-3
         elif type == 'nmax':
-            i = con['index']
-            m = np.max(output_x).item()
-            loss_i = 0 if output_x[0][i] < m else 1
+            target = con['index']
+            target_score = output_x[0][target]
+
+            output_x = output_x - np.eye(output_x[0].size)[target] * 1e6
+            max_score = np.max(output_x)
+
+            loss_i = 0 if target_score < max_score else target_score - max_score + 1e-3
         elif type == 'min':
-            i = con['index']
-            m = np.min(output_x).item()
-            loss_i = 0 if output_x[0][i] == m else output_x[0][i] - m
+            target = con['index']
+            target_score = output_x[0][target]
+
+            output_x = output_x + np.eye(output_x[0].size)[target] * 1e6
+            min_score = np.min(output_x)
+
+            loss_i = 0 if target_score < min_score else target_score - min_score + 1e-3
         elif type == 'nmin':
-            i = con['index']
-            m = np.min(output_x).item()
-            loss_i = 0 if output_x[0][i] > m else 1
+            target = con['index']
+            target_score = output_x[0][target]
+
+            output_x = output_x + np.eye(output_x[0].size)[target] * 1e6
+            min_score = np.min(output_x)
+
+            loss_i = 0 if target_score > min_score else min_score - target_score + 1e-3
         else:
             size = len(output_x[0])
             coef = ast.literal_eval(con['coef'])
