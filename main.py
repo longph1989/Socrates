@@ -11,12 +11,94 @@ from scipy.optimize import Bounds
 from autograd import grad
 from functools import partial
 
+count = 0
 
 def generate_adversarial_samples(spec):
-    if 'robustness' in spec:
-        generate_robustness(spec)
-    else:
-        generate_general(spec)
+    run_mnist_challenge(spec)
+    # if 'robustness' in spec:
+    #     generate_robustness(spec)
+    # else:
+    #     generate_general(spec)
+
+
+def run_mnist_challenge(spec):
+    global count
+
+    size = spec['in_size']
+    shape = ast.literal_eval(spec['in_shape'])
+
+    lb, ub = get_bounds(spec)
+    bnds = Bounds(lb, ub)
+    model = get_model(spec)
+
+    distance = 'll_i'
+
+    print('Using', distance)
+
+    h0 = None
+    cons = list()
+
+    for i in range(2):
+        xfile = open('benchmark/mnist_challenge/x&y/x' + str(i) + '.txt', 'r')
+        yfile = open('benchmark/mnist_challenge/x&y/y' + str(i) + '.txt', 'r')
+
+        xtext = xfile.readline()
+        ytext = yfile.readline()
+
+        xdata = np.array(ast.literal_eval(xtext))
+        ydata = np.array(ast.literal_eval(ytext))
+
+        for j in range(200):
+            x0 = xdata[j]
+
+            print('\n=================================\n')
+            print('x0 = {}'.format(x0))
+
+            output_x0 = apply_model(model, x0, shape, h0)
+            print('Original output = {}'.format(output_x0))
+
+            label_x0 = np.argmax(output_x0, axis=1)
+            print('Original label = {}'.format(label_x0))
+
+            target = ydata[j]
+
+            args = (shape, model, x0, target, distance, h0, False)
+
+            print('\nUntarget = {}'.format(target))
+
+            if target == label_x0:
+                x = optimize_robustness(args, bnds, cons)
+
+                if len(x) != 0:
+                    print('Final x = {}'.format(x))
+                    final_distance(distance, x, x0)
+
+                    output_x = apply_model(model, x, shape, h0)
+                    print('Final output = {}'.format(output_x))
+                else:
+                    print('Failed to find x!')
+    # else:
+    #     for i in range(spec['out_size']):
+    #         target = i
+    #         args = (shape, model, x0, target, distance, h0, True)
+    #
+    #         print('\nTarget = {}'.format(target))
+    #
+    #         if target != label_x0:
+    #             x = optimize_robustness(args, bnds, cons)
+    #             x = post_process(x, spec)
+    #
+    #             print('Final x = {}'.format(x))
+    #             final_distance(distance, x, x0)
+    #
+    #             # s = str(target)
+    #             # s = s + ',' + ','.join(((x + 1) / 2 * 255).astype(int).astype(str).tolist()) + '\n'
+    #             # outfile.write(s)
+    #
+    # # outfile.flush()
+    # # outfile.close()
+
+    print('Result = {}/10000'.format(count))
 
 
 def generate_robustness(spec):
@@ -65,6 +147,8 @@ def generate_robustness(spec):
     label_x0 = np.argmax(output_x0, axis=1)
     print('Original label = {}'.format(label_x0))
 
+    # input()
+
     # outfile = open('data.csv', 'w')
     #
     # s = str(label_x0)
@@ -82,6 +166,7 @@ def generate_robustness(spec):
             x = post_process(x, spec)
 
             print('Final x = {}'.format(x))
+            final_distance(distance, x, x0)
 
             # s = str(target)
             # s = s + ',' + ','.join((x * 255).astype(int).astype(str).tolist()) + '\n'
@@ -98,6 +183,7 @@ def generate_robustness(spec):
             x = post_process(x, spec)
 
             print('Final x = {}'.format(x))
+            final_distance(distance, x, x0)
     else:
         for i in range(spec['out_size']):
             target = i
@@ -110,6 +196,7 @@ def generate_robustness(spec):
                 x = post_process(x, spec)
 
                 print('Final x = {}'.format(x))
+                final_distance(distance, x, x0)
 
                 # s = str(target)
                 # s = s + ',' + ','.join(((x + 1) / 2 * 255).astype(int).astype(str).tolist()) + '\n'
@@ -117,6 +204,31 @@ def generate_robustness(spec):
 
     # outfile.flush()
     # outfile.close()
+
+
+def final_distance(distance, x, x0):
+    global count
+
+    if len(x) != 0:
+        if distance == 'll_0':
+            d = np.sum(x != x0)
+        elif distance == 'll_2':
+            d = np.sqrt(np.sum((x - x0) ** 2))
+        elif distance == 'll_i':
+            # x = x * 1 + 0.5
+            # x0 = x0 * 1 + 0.5
+            # x[0:32*32] = x[0:32*32] * 0.2023 + 0.4914
+            # x[32*32:2*32*32] = x[32*32:2*32*32] * 0.1994 + 0.4822
+            # x[2*32*32:3*32*32] = x[2*32*32:3*32*32] * 0.201 + 0.4465
+            # x0[0:32*32] = x0[0:32*32] * 0.2023 + 0.4914
+            # x0[32*32:2*32*32] = x0[32*32:2*32*32] * 0.1994 + 0.4822
+            # x0[2*32*32:3*32*32] = x0[2*32*32:3*32*32] * 0.201 + 0.4465
+            d = np.max(np.abs(x - x0))
+
+        print('Final distance = {}'.format(d))
+
+        if d <= 0.3:
+            count = count + 1
 
 
 def generate_general(spec):
@@ -218,7 +330,7 @@ def get_model(spec):
                 ls.append(partial(l.apply))
             elif layer['type'] == 'maxpool1d' or layer['type'] == 'maxpool2d' \
                 or layer['type'] == 'maxpool3d':
-                kt = open(layer['kernel'], 'r').readline()
+                kt = layer['kernel']
 
                 kernel = np.array(ast.literal_eval(kt))
 
@@ -352,6 +464,10 @@ def get_model(spec):
                     ns = ast.literal_eval(layer['newshape'])
                     import numpy as rnp
                     ls.append(partial(rnp.reshape, newshape=ns))
+                elif f == 'transpose':
+                    ax = ast.literal_eval(layer['axes'])
+                    import numpy as rnp
+                    ls.append(partial(rnp.transpose, axes=ax))
 
         model = generate_model(ls)
 
@@ -361,6 +477,7 @@ def get_model(spec):
 def generate_model(ls):
     def fun(x, ls=ls):
         res = x
+        i = 0
 
         for l in ls:
             res = l(res)
@@ -472,7 +589,7 @@ def optimize_robustness(args, bnds, cons):
     best_dist = 1e9
 
     if isinstance(model, types.FunctionType):
-        print('Model is a function. Jac is a function.')
+        # print('Model is a function. Jac is a function.')
         jac = grad(func_robustness)
     else:
         print('Model is a pytorch network. Jac is None.')
@@ -482,7 +599,7 @@ def optimize_robustness(args, bnds, cons):
         if cmin >= cmax: break
 
         c = int((cmin + cmax) / 2)
-        print('c = {}'.format(c))
+        # print('c = {}'.format(c))
 
         x = args[2]    # x0
         h0 = args[-1]
@@ -491,10 +608,10 @@ def optimize_robustness(args, bnds, cons):
 
         res = minimize(func_robustness, x, args=args_c, jac=jac, bounds=bnds, constraints=cons)
 
-        print('Global minimum f(x) = {}'.format(res.fun))
+        # print('Global minimum f(x) = {}'.format(res.fun))
 
         output_x = apply_model(model, res.x, shape, h0)
-        print('Output = {}'.format(output_x))
+        # print('Output = {}'.format(output_x))
 
         max_label = np.argmax(output_x, axis=1)
 
@@ -515,13 +632,13 @@ def optimize_robustness(args, bnds, cons):
             else:
                 cmin = c + 1
 
-    print('Best distance = {}'.format(best_dist))
+    # print('Best distance = {}'.format(best_dist))
 
-    if len(best_x) != 0:
-        output_x = apply_model(model, best_x, shape, h0)
-        print('Output = {}'.format(output_x))
-    else:
-        print('Failed to find x!')
+    # if len(best_x) != 0:
+    #     output_x = apply_model(model, best_x, shape, h0)
+    #     print('Output = {}'.format(output_x))
+    # else:
+    #     print('Failed to find x!')
 
     return best_x
 
@@ -532,7 +649,9 @@ def func_robustness(x, shape, model, x0, target, distance, h0, is_targeted, c):
     elif distance == 'll_2':
         loss1 = np.sqrt(np.sum((x - x0) ** 2))
     elif distance == 'll_i':
-        loss1 = np.sum(np.abs(x - x0))
+        # loss1 = np.sum(np.abs(x - x0))
+        loss1 = np.max(np.abs(x - x0))
+        # loss1 = np.sqrt(np.sum((x - x0) ** 2))
     else:
         loss1 = 0
 

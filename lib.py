@@ -220,13 +220,18 @@ class MaxPool1d:
         self.padding = padding
 
     def apply(self, x):
-        x_pad = np.pad(x, (0, 0, self.padding), mode='constant')
+        k_l = self.kernel
+
+        p = self.padding
+        x_pad = np.pad(x, ((0,0), (0,0), (p,p)), mode='constant')
         x_n, x_c, x_l = x_pad.shape
+
+        res_l = int((x_l - k_l) / self.stride) + 1
 
         c_idx, l_idx = index1d(x_c, self.stride, self.kernel, (x_l))
 
         res = x_pad[:, c_idx, l_idx]
-        res = res.transpose(1, 0).reshape(size, -1)
+        res = res.reshape(x_c, k_l, -1)
 
         res = np.max(res, axis=1)
         res = res.reshape(1, x_c, res_l)
@@ -241,15 +246,23 @@ class MaxPool2d:
         self.padding = padding
 
     def apply(self, x):
-        x_pad = np.pad(x, (0, 0, self.padding, self.padding), mode='constant')
+        k_h, k_w = self.kernel
+
+        p = self.padding
+        x_pad = np.pad(x, ((0,0), (0,0), (p,p), (p,p)), mode='constant')
         x_n, x_c, x_h, x_w = x_pad.shape
+
+        res_h = int((x_h - k_h) / self.stride) + 1
+        res_w = int((x_w - k_w) / self.stride) + 1
 
         c_idx, h_idx, w_idx = index2d(x_c, self.stride, self.kernel, (x_h, x_w))
 
         res = x_pad[:, c_idx, h_idx, w_idx]
-        res = res.transpose(1, 2, 0).reshape(size, -1)
+        # print(res.shape)
 
-        res = np.max(res, axis=2)
+        res = res.reshape(x_c, k_h * k_w, -1)
+
+        res = np.max(res, axis=1)
         res = res.reshape(1, x_c, res_h, res_w)
 
         return res
@@ -262,15 +275,22 @@ class MaxPool3d:
         self.padding = padding
 
     def apply(self, x):
-        x_pad = np.pad(x, (0, 0, self.padding, self.padding, self.padding), mode='constant')
+        k_d, k_h, k_w = self.kernel
+
+        p = self.padding
+        x_pad = np.pad(x, ((0,0), (0,0), (p,p), (p,p), (p,p)), mode='constant')
         x_n, x_c, x_d, x_h, x_w = x_pad.shape
+
+        res_d = int((x_d - k_d) / self.stride) + 1
+        res_h = int((x_h - k_h) / self.stride) + 1
+        res_w = int((x_w - k_w) / self.stride) + 1
 
         c_idx, d_idx, h_idx, w_idx = index3d(x_c, self.stride, self.kernel, (x_d, x_h, x_w))
 
         res = x_pad[:, c_idx, d_idx, h_idx, w_idx]
-        res = res.transpose(1, 2, 3, 0).reshape(size, -1)
+        res = res.reshape(x_c, k_d * k_h * k_w, -1)
 
-        res = np.max(res, axis=3)
+        res = np.max(res, axis=1)
         res = res.reshape(1, x_c, res_d, res_h, res_w)
 
         return res
