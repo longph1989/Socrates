@@ -27,8 +27,6 @@ def run_mnist_challenge(spec):
     size = spec['in_size']
     shape = ast.literal_eval(spec['in_shape'])
 
-    lb, ub = get_bounds(spec)
-    bnds = Bounds(lb, ub)
     model = get_model(spec)
 
     distance = 'll_i'
@@ -38,7 +36,7 @@ def run_mnist_challenge(spec):
     h0 = None
     cons = list()
 
-    for i in range(2):
+    for i in range(1):
         xfile = open('benchmark/mnist_challenge/x&y/x' + str(i) + '.txt', 'r')
         yfile = open('benchmark/mnist_challenge/x&y/y' + str(i) + '.txt', 'r')
 
@@ -48,8 +46,16 @@ def run_mnist_challenge(spec):
         xdata = np.array(ast.literal_eval(xtext))
         ydata = np.array(ast.literal_eval(ytext))
 
-        for j in range(200):
+        for j in range(50):
             x0 = xdata[j]
+
+            lb = x0 - 0.3
+            lb = np.maximum(lb, 0)
+
+            ub = x0 + 0.3
+            ub = np.minimum(ub, 1)
+
+            bnds = Bounds(lb, ub)
 
             print('\n=================================\n')
             print('x0 = {}'.format(x0))
