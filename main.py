@@ -11,18 +11,17 @@ from scipy.optimize import Bounds
 from autograd import grad
 from functools import partial
 
-count = 0
-
-def generate_adversarial_samples(spec):
-    run_mnist_challenge(spec)
-    # if 'robustness' in spec:
-    #     generate_robustness(spec)
-    # else:
-    #     generate_general(spec)
+def generate_adversarial_samples(spec, run_mnist):
+    if run_mnist:
+        run_mnist_challenge(spec)
+    elif 'robustness' in spec:
+        generate_robustness(spec)
+    else:
+        generate_general(spec)
 
 
 def run_mnist_challenge(spec):
-    global count
+    count = 0
 
     size = spec['in_size']
     shape = ast.literal_eval(spec['in_shape'])
@@ -30,10 +29,8 @@ def run_mnist_challenge(spec):
     model = get_model(spec)
 
     distance = 'll_i'
-
     print('Using', distance)
 
-    h0 = None
     cons = list()
 
     for i in range(1):
@@ -46,7 +43,7 @@ def run_mnist_challenge(spec):
         xdata = np.array(ast.literal_eval(xtext))
         ydata = np.array(ast.literal_eval(ytext))
 
-        for j in range(50):
+        for j in range(10):
             x0 = xdata[j]
 
             lb = x0 - 0.3
@@ -60,7 +57,7 @@ def run_mnist_challenge(spec):
             print('\n=================================\n')
             print('x0 = {}'.format(x0))
 
-            output_x0 = apply_model(model, x0, shape, h0)
+            output_x0 = apply_model(model, x0, shape)
             print('Original output = {}'.format(output_x0))
 
             label_x0 = np.argmax(output_x0, axis=1)
@@ -68,7 +65,7 @@ def run_mnist_challenge(spec):
 
             target = ydata[j]
 
-            args = (shape, model, x0, target, distance, h0, False)
+            args = (shape, model, x0, target, distance, False)
 
             print('\nUntarget = {}'.format(target))
 
@@ -77,32 +74,17 @@ def run_mnist_challenge(spec):
 
                 if len(x) != 0:
                     print('Final x = {}'.format(x))
-                    final_distance(distance, x, x0)
 
-                    output_x = apply_model(model, x, shape, h0)
+                    d = final_distance(distance, x, x0)
+                    print('Final distance = {}'.format(d))
+
+                    if d <= 0.3:
+                        count = count + 1
+
+                    output_x = apply_model(model, x, shape)
                     print('Final output = {}'.format(output_x))
                 else:
                     print('Failed to find x!')
-    # else:
-    #     for i in range(spec['out_size']):
-    #         target = i
-    #         args = (shape, model, x0, target, distance, h0, True)
-    #
-    #         print('\nTarget = {}'.format(target))
-    #
-    #         if target != label_x0:
-    #             x = optimize_robustness(args, bnds, cons)
-    #             x = post_process(x, spec)
-    #
-    #             print('Final x = {}'.format(x))
-    #             final_distance(distance, x, x0)
-    #
-    #             # s = str(target)
-    #             # s = s + ',' + ','.join(((x + 1) / 2 * 255).astype(int).astype(str).tolist()) + '\n'
-    #             # outfile.write(s)
-    #
-    # # outfile.flush()
-    # # outfile.close()
 
     print('Result = {}/10000'.format(count))
 
@@ -125,11 +107,6 @@ def generate_robustness(spec):
         x0 = np.maximum(x0, lb)
         x0 = np.minimum(x0, ub)
 
-    h0 = None
-    if 'h0' in spec:
-        h0t = open(spec['h0'], 'r').readline()
-        h0 = np.array(ast.literal_eval(h0t))
-
     if 'distance' in spec:
         distance = spec['distance']
     else:
@@ -147,73 +124,51 @@ def generate_robustness(spec):
 
     print('x0 = {}'.format(x0))
 
-    output_x0 = apply_model(model, x0, shape, h0)
+    output_x0 = apply_model(model, x0, shape)
     print('Original output = {}'.format(output_x0))
 
     label_x0 = np.argmax(output_x0, axis=1)
     print('Original label = {}'.format(label_x0))
 
-    # input()
+    def run():
+        x = optimize_robustness(args, bnds, cons)
+        x = post_process(x, spec)
 
-    # outfile = open('data.csv', 'w')
-    #
-    # s = str(label_x0)
-    # s = s + ',' + ','.join(((x0 + 1) / 2 * 255).astype(int).astype(str).tolist()) + '\n'
-    # outfile.write(s)
+        print('Final x = {}'.format(x))
+
+        d = final_distance(distance, x, x0)
+        print('Final distance = {}'.format(d))
+
+        output_x = apply_model(model, x, shape)
+        print('Final output = {}'.format(output_x))
 
     if 'target' in spec:
         target = spec['target']
-        args = (shape, model, x0, target, distance, h0, True)
+        args = (shape, model, x0, target, distance, True)
 
         print('\nTarget = {}'.format(target))
 
-        if target != label_x0:
-            x = optimize_robustness(args, bnds, cons)
-            x = post_process(x, spec)
-
-            print('Final x = {}'.format(x))
-            final_distance(distance, x, x0)
-
-            # s = str(target)
-            # s = s + ',' + ','.join((x * 255).astype(int).astype(str).tolist()) + '\n'
-            # outfile.write(s)
+        if target != label_x0: run()
     elif 'untarget' in spec:
         target = spec['untarget']
 
-        args = (shape, model, x0, target, distance, h0, False)
+        args = (shape, model, x0, target, distance, False)
 
         print('\nUntarget = {}'.format(target))
 
-        if target == label_x0:
-            x = optimize_robustness(args, bnds, cons)
-            x = post_process(x, spec)
-
-            print('Final x = {}'.format(x))
-            final_distance(distance, x, x0)
+        if target == label_x0: run()
     else:
         for i in range(spec['out_size']):
             target = i
-            args = (shape, model, x0, target, distance, h0, True)
+            args = (shape, model, x0, target, distance, True)
 
             print('\nTarget = {}'.format(target))
 
-            if target != label_x0:
-                x = optimize_robustness(args, bnds, cons)
-                x = post_process(x, spec)
-
-                print('Final x = {}'.format(x))
-                final_distance(distance, x, x0)
-
-                # s = str(target)
-                # s = s + ',' + ','.join(((x + 1) / 2 * 255).astype(int).astype(str).tolist()) + '\n'
-                # outfile.write(s)
-
-    # outfile.flush()
-    # outfile.close()
+            if target != label_x0: run()
 
 
 def final_distance(distance, x, x0):
-    global count
+    d = 1e9
 
     if len(x) != 0:
         if distance == 'll_0':
@@ -231,10 +186,7 @@ def final_distance(distance, x, x0):
             # x0[2*32*32:3*32*32] = x0[2*32*32:3*32*32] * 0.201 + 0.4465
             d = np.max(np.abs(x - x0))
 
-        print('Final distance = {}'.format(d))
-
-        if d <= 0.3:
-            count = count + 1
+    return d
 
 
 def generate_general(spec):
@@ -248,14 +200,9 @@ def generate_general(spec):
     print('General linear constraints\n')
 
     x0 = np.zeros(size)
-
-    h0 = None
-    if 'h0' in spec:
-        h0t = open(spec['h0'], 'r').readline()
-        h0 = np.array(ast.literal_eval(h0t))
-
     print('x0 = {}'.format(x0))
-    output_x0 = apply_model(model, x0, shape, h0)
+
+    output_x0 = apply_model(model, x0, shape)
     print('Original output = {}\n'.format(output_x0))
 
     in_cons = list()
@@ -269,11 +216,14 @@ def generate_general(spec):
 
     out_cons = spec['out_cons']
 
-    args = (shape, model, x0, out_cons, h0)
+    args = (shape, model, x0, out_cons)
     x = optimize_general(args, bnds, in_cons)
     x = post_process(x, spec)
 
     print('Final x = {}'.format(x))
+
+    output_x = apply_model(model, x, shape)
+    print('Final output = {}'.format(output_x))
 
 
 def post_process(x, spec):
@@ -532,14 +482,14 @@ def get_constraints(coef):
     return fun
 
 
-def apply_model(model, x, shape, h):
+def apply_model(model, x, shape):
     if isinstance(model, types.FunctionType):
-        return apply_model_func(model, x, shape, h)
+        return apply_model_func(model, x, shape)
     else:
-        return apply_model_pytorch(model, x, shape, h)
+        return apply_model_pytorch(model, x, shape)
 
 
-def apply_model_func(model, x, shape, h):
+def apply_model_func(model, x, shape):
     if shape[0] == 1:
         x = x.reshape(shape)
         output_x = model(x)
@@ -547,35 +497,27 @@ def apply_model_func(model, x, shape, h):
         shape_x = [1,*shape[1:]]
         size_x = np.prod(shape[1:])
 
-        # shape_h = [1,h.size]
-        # h = h.reshape(shape_h)
-
         for i in range(shape[0]):
             xi = x[size_x * i : size_x * (i + 1)].reshape(shape_x)
-            # output_x, h = model(xi, h)
             output_x = model(xi)
 
     return output_x
 
 
-def apply_model_pytorch(model, x, shape, h):
+def apply_model_pytorch(model, x, shape):
     with torch.no_grad():
         if shape[0] == 1:
             x = torch.from_numpy(x).view(shape)
             output_x = model(x)
         else:
             x = torch.from_numpy(x)
-            h = torch.from_numpy(h)
 
             shape_x = [1,*shape[1:]]
             size_x = np.prod(shape[1:])
 
-            shape_h = [1,h.size()[0]]
-            h = h.view(shape_h)
-
             for i in range(shape[0]):
                 xi = x[size_x * i : size_x * (i + 1)].view(shape_x)
-                output_x, h = model(xi, h)
+                output_x = model(xi)
 
     output_x = output_x.numpy()
     return output_x
@@ -595,7 +537,7 @@ def optimize_robustness(args, bnds, cons):
     best_dist = 1e9
 
     if isinstance(model, types.FunctionType):
-        # print('Model is a function. Jac is a function.')
+        print('Model is a function. Jac is a function.')
         jac = grad(func_robustness)
     else:
         print('Model is a pytorch network. Jac is None.')
@@ -605,19 +547,14 @@ def optimize_robustness(args, bnds, cons):
         if cmin >= cmax: break
 
         c = int((cmin + cmax) / 2)
-        # print('c = {}'.format(c))
 
         x = args[2]    # x0
-        h0 = args[-1]
 
         args_c = (*args, c)
 
         res = minimize(func_robustness, x, args=args_c, jac=jac, bounds=bnds, constraints=cons)
 
-        # print('Global minimum f(x) = {}'.format(res.fun))
-
-        output_x = apply_model(model, res.x, shape, h0)
-        # print('Output = {}'.format(output_x))
+        output_x = apply_model(model, res.x, shape)
 
         max_label = np.argmax(output_x, axis=1)
 
@@ -638,30 +575,20 @@ def optimize_robustness(args, bnds, cons):
             else:
                 cmin = c + 1
 
-    # print('Best distance = {}'.format(best_dist))
-
-    # if len(best_x) != 0:
-    #     output_x = apply_model(model, best_x, shape, h0)
-    #     print('Output = {}'.format(output_x))
-    # else:
-    #     print('Failed to find x!')
-
     return best_x
 
 
-def func_robustness(x, shape, model, x0, target, distance, h0, is_targeted, c):
+def func_robustness(x, shape, model, x0, target, distance, is_targeted, c):
     if distance == 'll_0':
         loss1 = np.sum(x != x0)
     elif distance == 'll_2':
         loss1 = np.sqrt(np.sum((x - x0) ** 2))
     elif distance == 'll_i':
-        # loss1 = np.sum(np.abs(x - x0))
         loss1 = np.max(np.abs(x - x0))
-        # loss1 = np.sqrt(np.sum((x - x0) ** 2))
     else:
         loss1 = 0
 
-    output_x = apply_model(model, x, shape, h0)
+    output_x = apply_model(model, x, shape)
     target_score = output_x[0][target]
 
     output_x = output_x - np.eye(output_x[0].size)[target] * 1e6
@@ -682,25 +609,19 @@ def optimize_general(args, bnds, cons):
     model = args[1] # model
 
     x = args[2]     # x0, no need to copy
-    h0 = args[-1]
 
     res = minimize(func_general, x, args=args, bounds=bnds, constraints=cons)
-
-    print('Global minimum f(x0) = {}'.format(res.fun))
 
     if res.fun <= 1e-6:
         print('SAT!')
     else:
         print('Unknown!')
 
-    output_x = apply_model(model, res.x, shape, h0)
-    print('Output = {}'.format(output_x))
-
     return res.x
 
 
-def func_general(x, shape, model, x0, cons, h0):
-    output_x = apply_model(model, x, shape, h0)
+def func_general(x, shape, model, x0, cons):
+    output_x = apply_model(model, x, shape)
 
     loss = 0
 
@@ -766,13 +687,15 @@ def main():
 
     parser.add_argument('--spec', type=str, default='spec.json',
                         help='the specification input file')
+    parser.add_argument('--mnist', action='store_true',
+                        help='run mnist challenge')
 
     args = parser.parse_args()
 
     with open(args.spec, 'r') as f:
         spec = json.load(f)
 
-    generate_adversarial_samples(spec)
+    generate_adversarial_samples(spec, args.mnist)
 
 
 if __name__ == '__main__':
