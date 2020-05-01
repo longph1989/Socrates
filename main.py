@@ -134,13 +134,16 @@ def generate_robustness(spec):
         x = optimize_robustness(args, bnds, cons)
         x = post_process(x, spec)
 
-        print('Final x = {}'.format(x))
+        if len(x) != 0:
+            print('Final x = {}'.format(x))
 
-        d = final_distance(distance, x, x0)
-        print('Final distance = {}'.format(d))
+            d = final_distance(distance, x, x0)
+            print('Final distance = {}'.format(d))
 
-        output_x = apply_model(model, x, shape)
-        print('Final output = {}'.format(output_x))
+            output_x = apply_model(model, x, shape)
+            print('Final output = {}'.format(output_x))
+        else:
+            print('Failed to find x!')
 
     if 'target' in spec:
         target = spec['target']
@@ -170,21 +173,20 @@ def generate_robustness(spec):
 def final_distance(distance, x, x0):
     d = 1e9
 
-    if len(x) != 0:
-        if distance == 'll_0':
-            d = np.sum(x != x0)
-        elif distance == 'll_2':
-            d = np.sqrt(np.sum((x - x0) ** 2))
-        elif distance == 'll_i':
-            # x = x * 1 + 0.5
-            # x0 = x0 * 1 + 0.5
-            # x[0:32*32] = x[0:32*32] * 0.2023 + 0.4914
-            # x[32*32:2*32*32] = x[32*32:2*32*32] * 0.1994 + 0.4822
-            # x[2*32*32:3*32*32] = x[2*32*32:3*32*32] * 0.201 + 0.4465
-            # x0[0:32*32] = x0[0:32*32] * 0.2023 + 0.4914
-            # x0[32*32:2*32*32] = x0[32*32:2*32*32] * 0.1994 + 0.4822
-            # x0[2*32*32:3*32*32] = x0[2*32*32:3*32*32] * 0.201 + 0.4465
-            d = np.max(np.abs(x - x0))
+    if distance == 'll_0':
+        d = np.sum(x != x0)
+    elif distance == 'll_2':
+        d = np.sqrt(np.sum((x - x0) ** 2))
+    elif distance == 'll_i':
+        # x = x * 1 + 0.5
+        # x0 = x0 * 1 + 0.5
+        # x[0:32*32] = x[0:32*32] * 0.2023 + 0.4914
+        # x[32*32:2*32*32] = x[32*32:2*32*32] * 0.1994 + 0.4822
+        # x[2*32*32:3*32*32] = x[2*32*32:3*32*32] * 0.201 + 0.4465
+        # x0[0:32*32] = x0[0:32*32] * 0.2023 + 0.4914
+        # x0[32*32:2*32*32] = x0[32*32:2*32*32] * 0.1994 + 0.4822
+        # x0[2*32*32:3*32*32] = x0[2*32*32:3*32*32] * 0.201 + 0.4465
+        d = np.max(np.abs(x - x0))
 
     return d
 
@@ -220,10 +222,13 @@ def generate_general(spec):
     x = optimize_general(args, bnds, in_cons)
     x = post_process(x, spec)
 
-    print('Final x = {}'.format(x))
+    if len(x) != 0:
+        print('Final x = {}'.format(x))
 
-    output_x = apply_model(model, x, shape)
-    print('Final output = {}'.format(output_x))
+        output_x = apply_model(model, x, shape)
+        print('Final output = {}'.format(output_x))
+    else:
+        print('Failed to find x!')
 
 
 def post_process(x, spec):
@@ -251,6 +256,9 @@ def get_model(spec):
     if 'model' in spec:
         model = torch.load(spec['model'])
     else:
+        shape = ast.literal_eval(spec['in_shape'])
+        len = shape[0]
+
         layers = spec['layers']
         ls = list()
 
@@ -321,93 +329,40 @@ def get_model(spec):
 
                 ls.append(partial(l.apply))
             elif layer['type'] == 'lstm':
-                wiit = open(layer['weights_ii'], 'r').readline()
-                wift = open(layer['weights_if'], 'r').readline()
-                wigt = open(layer['weights_ig'], 'r').readline()
-                witt = open(layer['weights_it'], 'r').readline()
-                whit = open(layer['weights_hi'], 'r').readline()
-                whft = open(layer['weights_hf'], 'r').readline()
-                whgt = open(layer['weights_hg'], 'r').readline()
-                whtt = open(layer['weights_ht'], 'r').readline()
-
-                biit = open(layer['bias_ii'], 'r').readline()
-                bift = open(layer['bias_if'], 'r').readline()
-                bigt = open(layer['bias_ig'], 'r').readline()
-                bitt = open(layer['bias_it'], 'r').readline()
-                bhit = open(layer['bias_hi'], 'r').readline()
-                bhft = open(layer['bias_hf'], 'r').readline()
-                bhgt = open(layer['bias_hg'], 'r').readline()
-                bhtt = open(layer['bias_ht'], 'r').readline()
+                wt = open(layer['weights'], 'r').readline()
+                bt = open(layer['bias'], 'r').readline()
 
                 h0t = open(layer['h0'], 'r').readline()
                 c0t = open(layer['c0'], 'r').readline()
 
-                weights_ii = np.array(ast.literal_eval(wiit))
-                weights_if = np.array(ast.literal_eval(wift))
-                weights_ig = np.array(ast.literal_eval(wigt))
-                weights_it = np.array(ast.literal_eval(witt))
-                weights_hi = np.array(ast.literal_eval(whit))
-                weights_hf = np.array(ast.literal_eval(whft))
-                weights_hg = np.array(ast.literal_eval(whgt))
-                weights_ht = np.array(ast.literal_eval(whtt))
-
-                bias_ii = np.array(ast.literal_eval(biit))
-                bias_if = np.array(ast.literal_eval(bift))
-                bias_ig = np.array(ast.literal_eval(bigt))
-                bias_it = np.array(ast.literal_eval(bitt))
-                bias_hi = np.array(ast.literal_eval(bhit))
-                bias_hf = np.array(ast.literal_eval(bhft))
-                bias_hg = np.array(ast.literal_eval(bhgt))
-                bias_ht = np.array(ast.literal_eval(bhtt))
+                weights = np.array(ast.literal_eval(wt))
+                bias = np.array(ast.literal_eval(bt))
 
                 h0 = np.array(ast.literal_eval(h0t))
                 c0 = np.array(ast.literal_eval(c0t))
 
-                l = lib.LSTM(weights_ii, weights_if, weights_ig, weights_it, \
-                    weights_hi, weights_hf, weights_hg, weights_ht, \
-                    bias_ii, bias_if, bias_ig, bias_it, \
-                    bias_hi, bias_hf, bias_hg, bias_ht, \
-                    h0, c0)
+                l = lib.LSTM(weights, bias, h0, c0, len)
 
                 ls.append(partial(l.apply))
             elif layer['type'] == 'gru':
-                wirt = open(layer['weights_ir'], 'r').readline()
-                wizt = open(layer['weights_iz'], 'r').readline()
-                wint = open(layer['weights_in'], 'r').readline()
-                whrt = open(layer['weights_hr'], 'r').readline()
-                whzt = open(layer['weights_hz'], 'r').readline()
-                whnt = open(layer['weights_hn'], 'r').readline()
+                gwt = open(layer['gate_weights'], 'r').readline()
+                cwt = open(layer['candidate_weights'], 'r').readline()
 
-                birt = open(layer['bias_ir'], 'r').readline()
-                bizt = open(layer['bias_iz'], 'r').readline()
-                bint = open(layer['bias_in'], 'r').readline()
-                bhrt = open(layer['bias_hr'], 'r').readline()
-                bhzt = open(layer['bias_hz'], 'r').readline()
-                bhnt = open(layer['bias_hn'], 'r').readline()
+                gbt = open(layer['gate_bias'], 'r').readline()
+                cbt = open(layer['candidate_bias'], 'r').readline()
 
                 h0t = open(layer['h0'], 'r').readline()
 
-                weights_ir = np.array(ast.literal_eval(wirt))
-                weights_iz = np.array(ast.literal_eval(wizt))
-                weights_in = np.array(ast.literal_eval(wint))
-                weights_hr = np.array(ast.literal_eval(whrt))
-                weights_hz = np.array(ast.literal_eval(whzt))
-                weights_hn = np.array(ast.literal_eval(whnt))
+                gate_weights = np.array(ast.literal_eval(gwt))
+                candidate_weights = np.array(ast.literal_eval(cwt))
 
-                bias_ir = np.array(ast.literal_eval(birt))
-                bias_iz = np.array(ast.literal_eval(bizt))
-                bias_in = np.array(ast.literal_eval(bint))
-                bias_hr = np.array(ast.literal_eval(bhrt))
-                bias_hz = np.array(ast.literal_eval(bhzt))
-                bias_hn = np.array(ast.literal_eval(bhnt))
+                gate_bias = np.array(ast.literal_eval(gbt))
+                candidate_bias = np.array(ast.literal_eval(cbt))
 
                 h0 = np.array(ast.literal_eval(h0t))
 
-                l = lib.GRU(weights_ir, weights_iz, weights_in, \
-                    weights_hr, weights_hz, weights_hn, \
-                    bias_ir, bias_iz, bias_in, \
-                    bias_hr, bias_hz, bias_hn, \
-                    h0)
+                l = lib.GRU(gate_weights, candidate_weights, \
+                    gate_bias, candidate_bias, h0, len)
 
                 ls.append(partial(l.apply))
             elif layer['type'] == 'function':

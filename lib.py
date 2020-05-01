@@ -21,100 +21,159 @@ class Linear:
 
 
 class ReluRNN:
-    def __init__(self, weights_ih, weights_hh, bias_ih, bias_hh, h0):
-        self.w_ih = weights_ih.transpose(1, 0)
-        self.w_hh = weights_hh.transpose(1, 0)
-        self.b_ih = bias_ih.reshape(-1, bias_ih.size)
-        self.b_hh = bias_hh.reshape(-1, bias_hh.size)
-        self.h_t = h0
+    def __init__(self, weights, bias, h0, len):
+        self.w = weights.transpose(1, 0)
+        self.b = bias.reshape(-1, bias.size)
+
+        self.h_0 = h0.reshape(-1, h0.size)
+        self.h_t = h0.reshape(-1, h0.size)
+
+        self.len = len
+        self.count = 0
 
     def apply(self, x):
-        self.h_t = relu(x @ self.w_ih + self.b_ih + self.h_t @ self.w_hh + self.b_hh)
+        x = np.concatenate((x, self.h_t), axis=1)
 
-        return self.h_t
+        self.h_t = relu(x @ self.w + self.b)
+
+        res = self.h_t
+
+        self.count = self.count + 1
+        if self.count == self.len:
+            self.h_t = self.h_0
+            self.count = 0
+
+        return res
 
 
 class TanhRNN:
-    def __init__(self, weights_ih, weights_hh, bias_ih, bias_hh, h0):
-        self.w_ih = weights_ih.transpose(1, 0)
-        self.w_hh = weights_hh.transpose(1, 0)
-        self.b_ih = bias_ih.reshape(-1, bias_ih.size)
-        self.b_hh = bias_hh.reshape(-1, bias_hh.size)
-        self.h_t = h0
+    def __init__(self, weights, bias, h0, len):
+        self.w = weights.transpose(1, 0)
+        self.b = bias.reshape(-1, bias.size)
+
+        self.h_0 = h0.reshape(-1, h0.size)
+        self.h_t = h0.reshape(-1, h0.size)
+
+        self.len = len
+        self.count = 0
 
     def apply(self, x):
-        self.h_t = tanh(x @ self.w_ih + self.b_ih + self.h_t @ self.w_hh + self.b_hh)
+        x = np.concatenate((x, self.h_t), axis=1)
 
-        return self.h_t
+        self.h_t = np.tanh(x @ self.w + self.b)
+
+        res = self.h_t
+
+        self.count = self.count + 1
+        if self.count == self.len:
+            self.h_t = self.h_0
+            self.count = 0
+
+        return res
 
 
 class LSTM:
-    def __init__(self, weights_ii, weights_if, weights_ig, weights_it,
-                weights_hi, weights_hf, weights_hg, weights_ht,
-                bias_ii, bias_if, bias_ig, bias_it,
-                bias_hi, bias_hf, bias_hg, bias_ht,
-                h0, c0):
-        self.w_ii = weights_ii.transpose(1, 0)
-        self.w_if = weights_if.transpose(1, 0)
-        self.w_ig = weights_ig.transpose(1, 0)
-        self.w_it = weights_it.transpose(1, 0)
-        self.w_hi = weights_hi.transpose(1, 0)
-        self.w_hf = weights_hf.transpose(1, 0)
-        self.w_hg = weights_hg.transpose(1, 0)
-        self.w_ht = weights_ht.transpose(1, 0)
+    def __init__(self, weights, bias, h0, c0, len):
+        self.w = weights.transpose(1, 0)
+        self.b = bias.reshape(-1, bias.size)
 
-        self.b_ii = bias_ii.reshape(-1, bias_ii.size)
-        self.b_if = bias_if.reshape(-1, bias_if.size)
-        self.b_ig = bias_ig.reshape(-1, bias_ig.size)
-        self.b_it = bias_it.reshape(-1, bias_it.size)
-        self.b_hi = bias_hi.reshape(-1, bias_hi.size)
-        self.b_hf = bias_hf.reshape(-1, bias_hf.size)
-        self.b_hg = bias_hg.reshape(-1, bias_hg.size)
-        self.b_ht = bias_ht.reshape(-1, bias_ht.size)
+        self.h_0 = h0.reshape(-1, h0.size)
+        self.c_0 = c0.reshape(-1, c0.size)
 
-        self.h_t = h0
-        self.c_t = c0
+        self.h_t = h0.reshape(-1, h0.size)
+        self.c_t = c0.reshape(-1, c0.size)
+
+        self.len = len
+        self.count = 0
 
     def apply(self, x):
-        i_t = sigmoid(x @ self.w_ii + self.b_ii + self.h_t @ self.w_hi + self.b_hi)
-        f_t = sigmoid(x @ self.w_if + self.b_if + self.h_t @ self.w_hf + self.b_hf)
-        g_t = np.tanh(x @ self.w_ig + self.b_ig + self.h_t @ self.w_hg + self.b_hg)
-        o_t = sigmoid(x @ self.w_io + self.b_io + self.h_t @ self.w_ho + self.b_ho)
-        self.c_t = f_t * self.c_t + i_t * g_t
-        self.h_t = o_t * np.tanh(self.c_t)
+        x = np.concatenate((x, self.h_t), axis=1)
 
-        return self.h_t
+        gates = x @ self.w + self.b
+
+        i, j, f, o = np.split(gates, 4, axis=1)
+
+        self.c_t = self.c_t * sigmoid(f) + sigmoid(i) * np.tanh(j)
+        self.h_t = sigmoid(o) * np.tanh(self.c_t)
+
+        res = self.h_t
+
+        self.count = self.count + 1
+        if self.count == self.len:
+            self.h_t = self.h_0
+            self.c_t = self.c_0
+            self.count = 0
+
+        return res
 
 
 class GRU:
-    def __init__(self, weights_ir, weights_iz, weights_in,
-                weights_hr, weights_hz, weights_hn,
-                bias_ir, bias_iz, bias_in,
-                bias_hr, bias_hz, bias_hn,
-                h0):
-        self.w_ir = weights_ir.transpose(1, 0)
-        self.w_iz = weights_iz.transpose(1, 0)
-        self.w_in = weights_in.transpose(1, 0)
-        self.w_hr = weights_hr.transpose(1, 0)
-        self.w_hz = weights_hz.transpose(1, 0)
-        self.w_hn = weights_hn.transpose(1, 0)
+    def __init__(self, gate_weights, candidate_weights,
+            gate_bias, candidate_bias, h0, len):
+        self.gw = gate_weights.transpose(1, 0)
+        self.gb = gate_bias.reshape(-1, gate_bias.size)
 
-        self.b_ir = bias_ir.reshape(-1, bias_ir.size)
-        self.b_iz = bias_iz.reshape(-1, bias_iz.size)
-        self.b_in = bias_in.reshape(-1, bias_in.size)
-        self.b_hr = bias_hr.reshape(-1, bias_hr.size)
-        self.b_hz = bias_hz.reshape(-1, bias_hz.size)
-        self.b_hn = bias_hn.reshape(-1, bias_hn.size)
+        self.cw = candidate_weights.transpose(1, 0)
+        self.cb = candidate_bias.reshape(-1, candidate_bias.size)
 
-        self.h_t = h0
+        self.h_0 = h0.reshape(-1, h0.size)
+        self.h_t = h0.reshape(-1, h0.size)
+
+        self.len = len
+        self.count = 0
 
     def apply(self, x):
-        r_t = sigmoid(x @ self.w_ir + self.b_ir + self.h_t @ self.w_hr + self.b_hr)
-        z_t = sigmoid(x @ self.w_iz + self.b_iz + self.h_t @ self.w_hz + self.b_hz)
-        n_t = np.tanh(x @ self.w_in + self.b_in + r_t * (self.h_t @ self.w_hn + self.b_hn))
-        self.h_t = (1 - z_t) * n_t + z_t * self.h_t
+        gx = np.concatenate((x, self.h_t), axis=1)
 
-        return self.h_t
+        gates = sigmoid(gx @ self.gw + self.gb)
+
+        r, u = np.split(gates, 2, axis=1)
+        r = r * self.h_t
+
+        cx = np.concatenate((x, r), axis=1)
+        c = np.tanh(cx @ self.cw + self.cb)
+
+        self.h_t = (1 - u) * c + u * self.h_t
+
+        res = self.h_t
+
+        self.count = self.count + 1
+        if self.count == self.len:
+            self.h_t = self.h_0
+            self.count = 0
+
+        return res
+
+
+# class GRU:
+#     def __init__(self, weights_ir, weights_iz, weights_in,
+#                 weights_hr, weights_hz, weights_hn,
+#                 bias_ir, bias_iz, bias_in,
+#                 bias_hr, bias_hz, bias_hn,
+#                 h0):
+#         self.w_ir = weights_ir.transpose(1, 0)
+#         self.w_iz = weights_iz.transpose(1, 0)
+#         self.w_in = weights_in.transpose(1, 0)
+#         self.w_hr = weights_hr.transpose(1, 0)
+#         self.w_hz = weights_hz.transpose(1, 0)
+#         self.w_hn = weights_hn.transpose(1, 0)
+#
+#         self.b_ir = bias_ir.reshape(-1, bias_ir.size)
+#         self.b_iz = bias_iz.reshape(-1, bias_iz.size)
+#         self.b_in = bias_in.reshape(-1, bias_in.size)
+#         self.b_hr = bias_hr.reshape(-1, bias_hr.size)
+#         self.b_hz = bias_hz.reshape(-1, bias_hz.size)
+#         self.b_hn = bias_hn.reshape(-1, bias_hn.size)
+#
+#         self.h_t = h0
+#
+#     def apply(self, x):
+#         r_t = sigmoid(x @ self.w_ir + self.b_ir + self.h_t @ self.w_hr + self.b_hr)
+#         z_t = sigmoid(x @ self.w_iz + self.b_iz + self.h_t @ self.w_hz + self.b_hz)
+#         n_t = np.tanh(x @ self.w_in + self.b_in + r_t * (self.h_t @ self.w_hn + self.b_hn))
+#         self.h_t = (1 - z_t) * n_t + z_t * self.h_t
+#
+#         return self.h_t
 
 
 class Conv1d:
