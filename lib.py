@@ -145,37 +145,6 @@ class GRU:
         return res
 
 
-# class GRU:
-#     def __init__(self, weights_ir, weights_iz, weights_in,
-#                 weights_hr, weights_hz, weights_hn,
-#                 bias_ir, bias_iz, bias_in,
-#                 bias_hr, bias_hz, bias_hn,
-#                 h0):
-#         self.w_ir = weights_ir.transpose(1, 0)
-#         self.w_iz = weights_iz.transpose(1, 0)
-#         self.w_in = weights_in.transpose(1, 0)
-#         self.w_hr = weights_hr.transpose(1, 0)
-#         self.w_hz = weights_hz.transpose(1, 0)
-#         self.w_hn = weights_hn.transpose(1, 0)
-#
-#         self.b_ir = bias_ir.reshape(-1, bias_ir.size)
-#         self.b_iz = bias_iz.reshape(-1, bias_iz.size)
-#         self.b_in = bias_in.reshape(-1, bias_in.size)
-#         self.b_hr = bias_hr.reshape(-1, bias_hr.size)
-#         self.b_hz = bias_hz.reshape(-1, bias_hz.size)
-#         self.b_hn = bias_hn.reshape(-1, bias_hn.size)
-#
-#         self.h_t = h0
-#
-#     def apply(self, x):
-#         r_t = sigmoid(x @ self.w_ir + self.b_ir + self.h_t @ self.w_hr + self.b_hr)
-#         z_t = sigmoid(x @ self.w_iz + self.b_iz + self.h_t @ self.w_hz + self.b_hz)
-#         n_t = np.tanh(x @ self.w_in + self.b_in + r_t * (self.h_t @ self.w_hn + self.b_hn))
-#         self.h_t = (1 - z_t) * n_t + z_t * self.h_t
-#
-#         return self.h_t
-
-
 class Conv1d:
     def __init__(self, filters, bias, stride, padding):
         self.filters = filters
@@ -351,6 +320,87 @@ class MaxPool3d:
 
         res = np.max(res, axis=1)
         res = res.reshape(1, x_c, res_d, res_h, res_w)
+
+        return res
+
+
+class ResNet2d2l:
+    def __init__(self, filters1, bias1, stride1, padding1,
+        filters2, bias2, stride2, padding2,
+        filtersX=None, biasX=None, strideX=None, paddingX=None):
+        self.filters1 = filters1
+        self.bias1 = bias1
+        self.stride1 = stride1
+        self.padding1 = padding1
+
+        self.filters2 = filters2
+        self.bias2 = bias2
+        self.stride2 = stride2
+        self.padding2 = padding2
+
+        self.filtersX = filtersX
+        self.biasX = biasX
+        self.strideX = strideX
+        self.paddingX = paddingX
+
+    def apply(self, x):
+        conv1 = Conv2d(self.filter1, self.bias1, self.stride1, self.padding1)
+        conv2 = Conv2d(self.filter2, self.bias2, self.stride2, self.padding2)
+
+        res = conv1.apply(x)
+        res = relu(res)
+        res = conv2.apply(res)
+
+        if self.filterX:
+            convX = Conv2d(self.filterX, self.biasX, self.strideX, self.paddingX)
+            x = convX.apply(x)
+
+        res = res + x
+
+        return res
+
+
+class ResNet2d3l:
+    def __init__(self, filters1, bias1, stride1, padding1,
+        filters2, bias2, stride2, padding2,
+        filters3, bias3, stride3, paddind3,
+        filtersX=None, biasX=None, strideX=None, paddingX=None):
+        self.filters1 = filters1
+        self.bias1 = bias1
+        self.stride1 = stride1
+        self.padding1 = padding1
+
+        self.filters2 = filters2
+        self.bias2 = bias2
+        self.stride2 = stride2
+        self.padding2 = padding2
+
+        self.filters3 = filters3
+        self.bias3 = bias3
+        self.stride3 = stride3
+        self.padding3 = padding3
+
+        self.filtersX = filtersX
+        self.biasX = biasX
+        self.strideX = strideX
+        self.paddingX = paddingX
+
+    def apply(self, x):
+        conv1 = Conv2d(self.filter1, self.bias1, self.stride1, self.padding1)
+        conv2 = Conv2d(self.filter2, self.bias2, self.stride2, self.padding2)
+        conv3 = Conv2d(self.filter3, self.bias3, self.stride3, self.padding3)
+
+        res = conv1.apply(x)
+        res = relu(res)
+        res = conv2.apply(res)
+        res = relu(res)
+        res = conv3.apply(res)
+
+        if self.filterX:
+            convX = Conv2d(self.filterX, self.biasX, self.strideX, self.paddingX)
+            x = convX.apply(x)
+
+        res = res + x
 
         return res
 
