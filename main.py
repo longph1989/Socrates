@@ -11,14 +11,105 @@ from scipy.optimize import Bounds
 from autograd import grad
 from functools import partial
 
-def generate_adversarial_samples(spec, run_mnist):
-    if run_mnist:
+def generate_adversarial_samples(spec, benchmark):
+    if benchmark == 'mnist_challenge':
         run_mnist_challenge(spec)
+    elif benchmark == 'eran_mnist':
+        xpath = './benchmark/eran/data/mnist/'
+        ypath = './benchmark/eran/data/labels/y_mnist.txt'
+        run_eran(spec, xpath, ypath, 'mnist', False)
+    elif benchmark == 'eran_mnist_norm':
+        xpath = './benchmark/eran/data/mnist_norm/'
+        ypath = './benchmark/eran/data/labels/y_mnist.txt'
+        run_eran(spec, xpath, ypath, 'mnist', True)
+    elif benchmark == 'eran_cifar':
+        xpath = './benchmark/eran/data/cifar/'
+        ypath = './benchmark/eran/data/labels/y_cifar.txt'
+        run_eran(spec, xpath, ypath, 'cifar', False)
+    elif benchmark == 'eran_cifar_norm':
+        xpath = './benchmark/eran/data/cifar_norm/'
+        ypath = './benchmark/eran/data/labels/y_cifar.txt'
+        run_eran(spec, xpath, ypath, 'cifar', True)
     elif 'robustness' in spec:
         generate_robustness(spec)
     else:
         generate_general(spec)
 
+
+def run_eran(spec, xpath, ypath, dataset, is_norm):
+    size = spec['in_size']
+    shape = ast.literal_eval(spec['in_shape'])
+
+    lb, ub = get_bounds(spec)
+    bnds = Bounds(lb, ub)
+    model = get_model(spec)
+
+    if 'distance' in spec:
+        distance = spec['distance']
+    else:
+        distance = 'll_i'
+
+    print('Using', distance)
+
+    cons = list()
+
+    yfile = open(ypath, 'r')
+    ytext = yfile.readline()
+    y0s = np.array(ast.literal_eval(ytext))
+
+    for i in range(100):
+        xfile = open(xpath + 'data' + str(i) + '.txt', 'r')
+        xtext = xfile.readline()
+        x0 = np.array(ast.literal_eval(xtext))
+
+        print('\n=================================\n')
+        print('x0 = {}'.format(x0))
+
+        output_x0 = apply_model(model, x0, shape)
+        print('Original output = {}'.format(output_x0))
+
+        label_x0 = np.argmax(output_x0, axis=1)
+        print('Original label = {}'.format(label_x0))
+
+        target = y0s[i]
+
+        args = (shape, model, x0, target, distance, False)
+
+        print('\nUntarget = {}'.format(target))
+
+        if target == label_x0:
+            x = optimize_robustness(args, bnds, cons)
+
+            if len(x) != 0:
+                print('Final x = {}'.format(x))
+
+                x0 = denormalize(x0, dataset, is_norm)
+                x = denormalize(x, dataset, is_norm)
+
+                d = final_distance(distance, x, x0)
+                print('Final distance = {}'.format(d))
+
+                output_x = apply_model(model, x, shape)
+                print('Final output = {}'.format(output_x))
+            else:
+                print('Failed to find x!')
+
+
+def denormalize(x, dataset, is_norm):
+    if dataset == 'mnist':
+        if is_norm:
+            x = x * 0.3081 + 0.1307
+        else:
+            x = x
+    elif dataset == 'cifar':
+        if is_norm:
+            x[0:1024] = x[0:1024] * 0.2023 + 0.4914
+            x[1024:2048] = x[1024:2048] * 0.1994 + 0.4822
+            x[2048:3072] = x[2048:3072] * 0.2010 + 0.4465
+        else:
+            x = x + 0.5
+
+    return x
 
 def run_mnist_challenge(spec):
     count = 0
@@ -368,7 +459,9 @@ def get_model(spec):
             elif layer['type'] == 'function':
                 f = layer['func']
                 if f == 'relu':
-                    ls.append(partial(np.maximum, 0))
+                    ls.append(partial(lib.relu))
+                elif f == 'sigmoid':
+                    ls.append(partial(lib.sigmoid))
                 elif f == 'tanh':
                     ls.append(partial(np.tanh))
                 elif f == 'reshape':
@@ -642,15 +735,15 @@ def main():
 
     parser.add_argument('--spec', type=str, default='spec.json',
                         help='the specification input file')
-    parser.add_argument('--mnist', action='store_true',
-                        help='run mnist challenge')
+    parser.add_argument('--bench', type=str, default='None',
+                        help='run different benchmark')
 
     args = parser.parse_args()
 
     with open(args.spec, 'r') as f:
         spec = json.load(f)
 
-    generate_adversarial_samples(spec, args.mnist)
+    generate_adversarial_samples(spec, args.bench)
 
 
 if __name__ == '__main__':
