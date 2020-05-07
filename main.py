@@ -17,32 +17,53 @@ def generate_adversarial_samples(spec, benchmark):
     elif benchmark == 'eran_mnist':
         xpath = './benchmark/eran/data/mnist/'
         ypath = './benchmark/eran/data/labels/y_mnist.txt'
-        run_eran(spec, xpath, ypath, 'mnist', False)
+        run_benchmark(spec, xpath, ypath, 'mnist', False)
     elif benchmark == 'eran_mnist_norm':
         xpath = './benchmark/eran/data/mnist_norm/'
         ypath = './benchmark/eran/data/labels/y_mnist.txt'
-        run_eran(spec, xpath, ypath, 'mnist', True)
+        run_benchmark(spec, xpath, ypath, 'mnist', True)
     elif benchmark == 'eran_cifar':
         xpath = './benchmark/eran/data/cifar/'
         ypath = './benchmark/eran/data/labels/y_cifar.txt'
-        run_eran(spec, xpath, ypath, 'cifar', False)
+        run_benchmark(spec, xpath, ypath, 'cifar', False)
     elif benchmark == 'eran_cifar_norm':
         xpath = './benchmark/eran/data/cifar_norm/'
         ypath = './benchmark/eran/data/labels/y_cifar.txt'
-        run_eran(spec, xpath, ypath, 'cifar', True)
+        run_benchmark(spec, xpath, ypath, 'cifar', True)
+    elif benchmark == 'fairness_bank':
+        xpath = './benchmark/fairness/bank/data/'
+        ypath = './benchmark/fairness/bank/data/labels.txt'
+        run_benchmark(spec, xpath, ypath)
+    elif benchmark == 'jigsaw_gru' or benchmark == 'jigsaw_lstm':
+        xpath = './benchmark/rnn/data/jigsaw/'
+        ypath = './benchmark/rnn/data/jigsaw/labels.txt'
+        run_benchmark(spec, xpath, ypath, 'jigsaw')
+    elif benchmark == 'wiki_gru' or benchmark == 'wiki_lstm':
+        xpath = './benchmark/rnn/data/wiki/'
+        ypath = './benchmark/rnn/data/wiki/labels.txt'
+        run_benchmark(spec, xpath, ypath, 'wiki')
+    elif benchmark == 'fairness_census':
+        xpath = './benchmark/fairness/census/data/'
+        ypath = './benchmark/fairness/census/data/labels.txt'
+        run_benchmark(spec, xpath, ypath)
+    elif benchmark == 'fairness_credit':
+        xpath = './benchmark/fairness/credit/data/'
+        ypath = './benchmark/fairness/credit/data/labels.txt'
+        run_benchmark(spec, xpath, ypath)
     elif 'robustness' in spec:
         generate_robustness(spec)
     else:
         generate_general(spec)
 
 
-def run_eran(spec, xpath, ypath, dataset, is_norm):
-    size = spec['in_size']
-    shape = ast.literal_eval(spec['in_shape'])
+def run_benchmark(spec, xpath, ypath, dataset=None, is_norm=None):
+    if dataset != 'jigsaw' and dataset != 'wiki':
+        size = spec['in_size']
+        shape = ast.literal_eval(spec['in_shape'])
 
-    lb, ub = get_bounds(spec)
-    bnds = Bounds(lb, ub)
-    model = get_model(spec)
+        lb, ub = get_bounds(spec)
+        bnds = Bounds(lb, ub)
+        model = get_model(spec)
 
     if 'distance' in spec:
         distance = spec['distance']
@@ -51,16 +72,32 @@ def run_eran(spec, xpath, ypath, dataset, is_norm):
 
     print('Using', distance)
 
-    cons = list()
-
     yfile = open(ypath, 'r')
     ytext = yfile.readline()
     y0s = np.array(ast.literal_eval(ytext))
 
-    for i in range(100):
+    batch = 100
+    if dataset == 'jigsaw' or dataset == 'wiki':
+        batch = 10
+
+    for i in range(batch):
         xfile = open(xpath + 'data' + str(i) + '.txt', 'r')
         xtext = xfile.readline()
         x0 = np.array(ast.literal_eval(xtext))
+
+        if dataset == 'jigsaw' or dataset == 'wiki':
+            size = len(x0)
+            shape = [int(size / 50), 50]
+
+            bnds = spec['bounds']
+            bnds = ast.literal_eval(bnds)
+
+            lb = np.full(size, bnds[0])
+            ub = np.full(size, bnds[1])
+
+            bnds = Bounds(lb, ub)
+
+            model = get_model(spec, shape)
 
         print('\n=================================\n')
         print('x0 = {}'.format(x0))
@@ -70,6 +107,14 @@ def run_eran(spec, xpath, ypath, dataset, is_norm):
 
         label_x0 = np.argmax(output_x0, axis=1)
         print('Original label = {}'.format(label_x0))
+
+        cons = list()
+        if 'fairness' in spec:
+            for ind in ast.literal_eval(spec['fairness']):
+                type = 'eq'
+                val = x0[ind]
+                fun = get_fairness(ind, val)
+                cons.append({'type': type, 'fun': fun})
 
         target = y0s[i]
 
@@ -110,6 +155,20 @@ def denormalize(x, dataset, is_norm):
             x = x + 0.5
 
     return x
+
+
+def final_distance(distance, x, x0):
+    d = 1e9
+
+    if distance == 'll_0':
+        d = np.sum(x != x0)
+    elif distance == 'll_2':
+        d = np.sqrt(np.sum((x - x0) ** 2))
+    elif distance == 'll_i':
+        d = np.max(np.abs(x - x0))
+
+    return d
+
 
 def run_mnist_challenge(spec):
     count = 0
@@ -261,27 +320,6 @@ def generate_robustness(spec):
             if target != label_x0: run()
 
 
-def final_distance(distance, x, x0):
-    d = 1e9
-
-    if distance == 'll_0':
-        d = np.sum(x != x0)
-    elif distance == 'll_2':
-        d = np.sqrt(np.sum((x - x0) ** 2))
-    elif distance == 'll_i':
-        # x = x * 1 + 0.5
-        # x0 = x0 * 1 + 0.5
-        # x[0:32*32] = x[0:32*32] * 0.2023 + 0.4914
-        # x[32*32:2*32*32] = x[32*32:2*32*32] * 0.1994 + 0.4822
-        # x[2*32*32:3*32*32] = x[2*32*32:3*32*32] * 0.201 + 0.4465
-        # x0[0:32*32] = x0[0:32*32] * 0.2023 + 0.4914
-        # x0[32*32:2*32*32] = x0[32*32:2*32*32] * 0.1994 + 0.4822
-        # x0[2*32*32:3*32*32] = x0[2*32*32:3*32*32] * 0.201 + 0.4465
-        d = np.max(np.abs(x - x0))
-
-    return d
-
-
 def generate_general(spec):
     size = spec['in_size']
     shape = ast.literal_eval(spec['in_shape'])
@@ -343,11 +381,12 @@ def post_process(x, spec):
     return x
 
 
-def get_model(spec):
+def get_model(spec, shape=None):
     if 'model' in spec:
         model = torch.load(spec['model'])
     else:
-        shape = ast.literal_eval(spec['in_shape'])
+        if shape == None:
+            shape = ast.literal_eval(spec['in_shape'])
         len = shape[0]
 
         layers = spec['layers']
