@@ -439,6 +439,82 @@ def get_model(spec, shape=None):
                     l = lib.MaxPool3d(kernel, stride, padding)
 
                 ls.append(partial(l.apply))
+            elif layer['type'] == 'resnet2d2l':
+                f1t = open(layer['filters1'], 'r').readline()
+                b1t = open(layer['bias1'], 'r').readline()
+                f2t = open(layer['filters2'], 'r').readline()
+                b2t = open(layer['bias2'], 'r').readline()
+
+                filters1 = np.array(ast.literal_eval(f1t))
+                bias1 = np.array(ast.literal_eval(b1t))
+                filters2 = np.array(ast.literal_eval(f2t))
+                bias2 = np.array(ast.literal_eval(b2t))
+
+                stride1 = layer['stride1']
+                padding1 = layer['padding1']
+                stride2 = layer['stride2']
+                padding2 = layer['padding2']
+
+                if 'filterX' in layer:
+                    fXt = open(layer['filtersX'], 'r').readline()
+                    bXt = open(layer['biasX'], 'r').readline()
+
+                    filtersX = np.array(ast.literal_eval(fXt))
+                    biasX = np.array(ast.literal_eval(bXt))
+
+                    strideX = layer['strideX']
+                    paddingX = layer['paddingX']
+
+                    l = lib.ResNet2d2l(filters1, bias1, stride1, padding1,
+                        filters2, bias2, stride2, padding2,
+                        filtersX, biasX, strideX, paddingX)
+                else:
+                    l = lib.ResNet2d2l(filters1, bias1, stride1, padding1,
+                        filters2, bias2, stride2, padding2)
+
+                ls.append(partial(l.apply))
+            elif layer['type'] == 'resnet2d3l':
+                f1t = open(layer['filters1'], 'r').readline()
+                b1t = open(layer['bias1'], 'r').readline()
+                f2t = open(layer['filters2'], 'r').readline()
+                b2t = open(layer['bias2'], 'r').readline()
+                f3t = open(layer['filters3'], 'r').readline()
+                b3t = open(layer['bias3'], 'r').readline()
+
+                filters1 = np.array(ast.literal_eval(f1t))
+                bias1 = np.array(ast.literal_eval(b1t))
+                filters2 = np.array(ast.literal_eval(f2t))
+                bias2 = np.array(ast.literal_eval(b2t))
+                filters3 = np.array(ast.literal_eval(f3t))
+                bias3 = np.array(ast.literal_eval(b3t))
+
+                stride1 = layer['stride1']
+                padding1 = layer['padding1']
+                stride2 = layer['stride2']
+                padding2 = layer['padding2']
+                stride3 = layer['stride3']
+                padding3 = layer['padding3']
+
+                if 'filterX' in layer:
+                    fXt = open(layer['filtersX'], 'r').readline()
+                    bXt = open(layer['biasX'], 'r').readline()
+
+                    filtersX = np.array(ast.literal_eval(fXt))
+                    biasX = np.array(ast.literal_eval(bXt))
+
+                    strideX = layer['strideX']
+                    paddingX = layer['paddingX']
+
+                    l = lib.ResNet2d3l(filters1, bias1, stride1, padding1,
+                        filters2, bias2, stride2, padding2,
+                        filters3, bias3, stride3, padding3,
+                        filtersX, biasX, strideX, paddingX)
+                else:
+                    l = lib.ResNet2d3l(filters1, bias1, stride1, padding1,
+                        filters2, bias2, stride2, padding2,
+                        filters3, bias3, stride3, padding3)
+
+                ls.append(partial(l.apply))
             elif layer['type'] == 'relurnn' or layer['type'] == 'tanhrnn':
                 wiht = open(layer['weights_ih'], 'r').readline()
                 whht = open(layer['weights_hh'], 'r').readline()
