@@ -439,7 +439,7 @@ def get_model(spec, shape=None):
                     l = lib.MaxPool3d(kernel, stride, padding)
 
                 ls.append(partial(l.apply))
-            elif layer['type'] == 'resnet2d2l':
+            elif layer['type'] == 'resnet2l':
                 f1t = open(layer['filters1'], 'r').readline()
                 b1t = open(layer['bias1'], 'r').readline()
                 f2t = open(layer['filters2'], 'r').readline()
@@ -465,15 +465,15 @@ def get_model(spec, shape=None):
                     strideX = layer['strideX']
                     paddingX = layer['paddingX']
 
-                    l = lib.ResNet2d2l(filters1, bias1, stride1, padding1,
+                    l = lib.ResNet2l(filters1, bias1, stride1, padding1,
                         filters2, bias2, stride2, padding2,
                         filtersX, biasX, strideX, paddingX)
                 else:
-                    l = lib.ResNet2d2l(filters1, bias1, stride1, padding1,
+                    l = lib.ResNet2l(filters1, bias1, stride1, padding1,
                         filters2, bias2, stride2, padding2)
 
                 ls.append(partial(l.apply))
-            elif layer['type'] == 'resnet2d3l':
+            elif layer['type'] == 'resnet3l':
                 f1t = open(layer['filters1'], 'r').readline()
                 b1t = open(layer['bias1'], 'r').readline()
                 f2t = open(layer['filters2'], 'r').readline()
@@ -505,12 +505,12 @@ def get_model(spec, shape=None):
                     strideX = layer['strideX']
                     paddingX = layer['paddingX']
 
-                    l = lib.ResNet2d3l(filters1, bias1, stride1, padding1,
+                    l = lib.ResNet3l(filters1, bias1, stride1, padding1,
                         filters2, bias2, stride2, padding2,
                         filters3, bias3, stride3, padding3,
                         filtersX, biasX, strideX, paddingX)
                 else:
-                    l = lib.ResNet2d3l(filters1, bias1, stride1, padding1,
+                    l = lib.ResNet3l(filters1, bias1, stride1, padding1,
                         filters2, bias2, stride2, padding2,
                         filters3, bias3, stride3, padding3)
 

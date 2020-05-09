@@ -324,7 +324,7 @@ class MaxPool3d:
         return res
 
 
-class ResNet2d2l:
+class ResNet2l:
     def __init__(self, filters1, bias1, stride1, padding1,
         filters2, bias2, stride2, padding2,
         filtersX=None, biasX=None, strideX=None, paddingX=None):
@@ -344,15 +344,28 @@ class ResNet2d2l:
         self.paddingX = paddingX
 
     def apply(self, x):
-        conv1 = Conv2d(self.filter1, self.bias1, self.stride1, self.padding1)
-        conv2 = Conv2d(self.filter2, self.bias2, self.stride2, self.padding2)
+        if (len(self.filters1.shape) == 3):
+            conv1 = Conv1d(self.filter1, self.bias1, self.stride1, self.padding1)
+            conv2 = Conv1d(self.filter2, self.bias2, self.stride2, self.padding2)
+        elif (len(self.filters1.shape) == 4):
+            conv1 = Conv2d(self.filter1, self.bias1, self.stride1, self.padding1)
+            conv2 = Conv2d(self.filter2, self.bias2, self.stride2, self.padding2)
+        elif (len(self.filters1.shape) == 5):
+            conv1 = Conv3d(self.filter1, self.bias1, self.stride1, self.padding1)
+            conv2 = Conv3d(self.filter2, self.bias2, self.stride2, self.padding2)
 
         res = conv1.apply(x)
         res = relu(res)
         res = conv2.apply(res)
 
         if self.filterX:
-            convX = Conv2d(self.filterX, self.biasX, self.strideX, self.paddingX)
+            if (len(self.filtersX.shape) == 3):
+                convX = Conv1d(self.filterX, self.biasX, self.strideX, self.paddingX)
+            elif (len(self.filters1.shape) == 4):
+                convX = Conv2d(self.filterX, self.biasX, self.strideX, self.paddingX)
+            elif (len(self.filters1.shape) == 5):
+                convX = Conv3d(self.filterX, self.biasX, self.strideX, self.paddingX)
+
             x = convX.apply(x)
 
         res = res + x
@@ -360,7 +373,7 @@ class ResNet2d2l:
         return res
 
 
-class ResNet2d3l:
+class ResNet3l:
     def __init__(self, filters1, bias1, stride1, padding1,
         filters2, bias2, stride2, padding2,
         filters3, bias3, stride3, paddind3,
@@ -386,9 +399,18 @@ class ResNet2d3l:
         self.paddingX = paddingX
 
     def apply(self, x):
-        conv1 = Conv2d(self.filter1, self.bias1, self.stride1, self.padding1)
-        conv2 = Conv2d(self.filter2, self.bias2, self.stride2, self.padding2)
-        conv3 = Conv2d(self.filter3, self.bias3, self.stride3, self.padding3)
+        if (len(self.filters1.shape) == 3):
+            conv1 = Conv1d(self.filter1, self.bias1, self.stride1, self.padding1)
+            conv2 = Conv1d(self.filter2, self.bias2, self.stride2, self.padding2)
+            conv3 = Conv1d(self.filter3, self.bias3, self.stride3, self.padding3)
+        elif (len(self.filters1.shape) == 4):
+            conv1 = Conv2d(self.filter1, self.bias1, self.stride1, self.padding1)
+            conv2 = Conv2d(self.filter2, self.bias2, self.stride2, self.padding2)
+            conv3 = Conv2d(self.filter3, self.bias3, self.stride3, self.padding3)
+        elif (len(self.filters1.shape) == 5):
+            conv1 = Conv3d(self.filter1, self.bias1, self.stride1, self.padding1)
+            conv2 = Conv3d(self.filter2, self.bias2, self.stride2, self.padding2)
+            conv3 = Conv3d(self.filter3, self.bias3, self.stride3, self.padding3)
 
         res = conv1.apply(x)
         res = relu(res)
@@ -397,7 +419,13 @@ class ResNet2d3l:
         res = conv3.apply(res)
 
         if self.filterX:
-            convX = Conv2d(self.filterX, self.biasX, self.strideX, self.paddingX)
+            if (len(self.filtersX.shape) == 3):
+                convX = Conv1d(self.filterX, self.biasX, self.strideX, self.paddingX)
+            elif (len(self.filters1.shape) == 4):
+                convX = Conv2d(self.filterX, self.biasX, self.strideX, self.paddingX)
+            elif (len(self.filters1.shape) == 5):
+                convX = Conv3d(self.filterX, self.biasX, self.strideX, self.paddingX)
+
             x = convX.apply(x)
 
         res = res + x
