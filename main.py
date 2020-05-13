@@ -5,6 +5,7 @@ import ast
 import autograd.numpy as np
 import torch
 import lib
+import matplotlib.pyplot as plt
 
 from scipy.optimize import minimize
 from scipy.optimize import Bounds
@@ -58,10 +59,10 @@ def generate_adversarial_samples(spec, benchmark):
 
 def run_benchmark(spec, xpath, ypath, dataset=None, is_norm=None):
     if dataset != 'jigsaw' and dataset != 'wiki':
-        size = spec['in_size']
-        shape = ast.literal_eval(spec['in_shape'])
+        shape = ast.literal_eval(spec['shape'])
+        size = np.prod(shape)
 
-        lb, ub = get_bounds(spec)
+        lb, ub = get_bounds(spec, size)
         bnds = Bounds(lb, ub)
         model = get_model(spec)
 
@@ -128,8 +129,8 @@ def run_benchmark(spec, xpath, ypath, dataset=None, is_norm=None):
             if len(x) != 0:
                 print('Final x = {}'.format(x))
 
-                x0 = denormalize(x0, dataset, is_norm)
-                x = denormalize(x, dataset, is_norm)
+                x0 = bench_denormalize(x0, dataset, is_norm)
+                x = bench_denormalize(x, dataset, is_norm)
 
                 d = final_distance(distance, x, x0)
                 print('Final distance = {}'.format(d))
@@ -140,7 +141,7 @@ def run_benchmark(spec, xpath, ypath, dataset=None, is_norm=None):
                 print('Failed to find x!')
 
 
-def denormalize(x, dataset, is_norm):
+def bench_denormalize(x, dataset, is_norm):
     if dataset == 'mnist':
         if is_norm:
             x = x * 0.3081 + 0.1307
@@ -157,24 +158,11 @@ def denormalize(x, dataset, is_norm):
     return x
 
 
-def final_distance(distance, x, x0):
-    d = 1e9
-
-    if distance == 'll_0':
-        d = np.sum(x != x0)
-    elif distance == 'll_2':
-        d = np.sqrt(np.sum((x - x0) ** 2))
-    elif distance == 'll_i':
-        d = np.max(np.abs(x - x0))
-
-    return d
-
-
 def run_mnist_challenge(spec):
     count = 0
 
-    size = spec['in_size']
-    shape = ast.literal_eval(spec['in_shape'])
+    shape = ast.literal_eval(spec['shape'])
+    size = np.prod(shape)
 
     model = get_model(spec)
 
@@ -239,23 +227,67 @@ def run_mnist_challenge(spec):
     print('Result = {}/10000'.format(count))
 
 
-def generate_robustness(spec):
-    size = spec['in_size']
-    shape = ast.literal_eval(spec['in_shape'])
+def display(x0, y0, x, y, shape):
+    fig, ax = plt.subplots(1, 2)
 
-    lb, ub = get_bounds(spec)
+    x0 = x0 * 255
+    x0 = x0.astype('uint8')
+    x0 = x0.reshape(shape)
+
+    ax[0].set(title='Original. Label is {}'.format(y0))
+    if len(shape) == 2:
+        ax[0].imshow(x0, cmap='gray')
+    elif len(shape) == 3:
+        x0 = x0.transpose(1, 2, 0)
+        ax[0].imshow(x0)
+
+    x = x * 255
+    x = x.astype('uint8')
+    x = x.reshape(shape)
+
+    ax[1].set(title='Adv. sample. Label is {}'.format(y))
+    if len(shape) == 2:
+        ax[1].imshow(x, cmap='gray')
+    elif len(shape) == 3:
+        x = x.transpose(1, 2, 0)
+        ax[1].imshow(x)
+
+    plt.show()
+
+
+def denormalize(x, mean=0, std=1):
+    x = x * std + mean
+
+    return x
+
+
+def final_distance(distance, x, x0):
+    d = 1e9
+
+    if distance == 'll_0':
+        d = np.sum(x != x0)
+    elif distance == 'll_2':
+        d = np.sqrt(np.sum((x - x0) ** 2))
+    elif distance == 'll_i':
+        d = np.max(np.abs(x - x0))
+
+    return d
+
+
+def generate_robustness(spec):
+    shape = ast.literal_eval(spec['shape'])
+    size = np.prod(shape)
+
+    lb, ub = get_bounds(spec, size)
     bnds = Bounds(lb, ub)
     model = get_model(spec)
 
     if spec['robustness'] == 'local':
         print('Local robustness\n')
-        x0t = open(spec['x0'], 'r').readline()
-        x0 = np.array(ast.literal_eval(x0t))
+        max_iter = 1
     else:
         print('Global robustness\n')
-        x0 = np.random.rand(size) * 2 - 1
-        x0 = np.maximum(x0, lb)
-        x0 = np.minimum(x0, ub)
+        max_iter = 100
 
     if 'distance' in spec:
         distance = spec['distance']
@@ -272,14 +304,6 @@ def generate_robustness(spec):
             fun = get_fairness(ind, val)
             cons.append({'type': type, 'fun': fun})
 
-    print('x0 = {}'.format(x0))
-
-    output_x0 = apply_model(model, x0, shape)
-    print('Original output = {}'.format(output_x0))
-
-    label_x0 = np.argmax(output_x0, axis=1)
-    print('Original label = {}'.format(label_x0))
-
     def run():
         x = optimize_robustness(args, bnds, cons)
         x = post_process(x, spec)
@@ -292,39 +316,84 @@ def generate_robustness(spec):
 
             output_x = apply_model(model, x, shape)
             print('Final output = {}'.format(output_x))
+
+            label_x = np.argmax(output_x, axis=1)
+            print('Final label = {}'.format(label_x))
+
+            if 'display' in spec and spec['display'] == 'on':
+                if 'dmean' in spec:
+                    dmean = ast.literal_eval(spec['dmean'])
+                else:
+                    dmean = 0
+
+                if 'dstd' in spec:
+                    dstd = ast.literal_eval(spec['dstd'])
+                else:
+                    dstd = 1
+
+                x0_denorm = denormalize(x0, dmean, dstd)
+                x_denorm = denormalize(x, dmean, dstd)
+
+                dshape = ast.literal_eval(spec['dshape'])
+
+                display(x0_denorm, label_x0, x_denorm, label_x, dshape)
+
+            return True
         else:
             print('Failed to find x!')
+            return False
 
-    if 'target' in spec:
-        target = spec['target']
-        args = (shape, model, x0, target, distance, True)
+    for i in range(max_iter):
+        if spec['robustness'] == 'local':
+            x0t = open(spec['x0'], 'r').readline()
+            x0 = np.array(ast.literal_eval(x0t))
+        else:
+            x0 = np.random.rand(size) * 2 - 1
+            x0 = np.maximum(x0, lb)
+            x0 = np.minimum(x0, ub)
 
-        print('\nTarget = {}'.format(target))
+        print('x0 = {}'.format(x0))
 
-        if target != label_x0: run()
-    elif 'untarget' in spec:
-        target = spec['untarget']
+        output_x0 = apply_model(model, x0, shape)
+        print('Original output = {}'.format(output_x0))
 
-        args = (shape, model, x0, target, distance, False)
+        label_x0 = np.argmax(output_x0, axis=1)
+        print('Original label = {}'.format(label_x0))
 
-        print('\nUntarget = {}'.format(target))
-
-        if target == label_x0: run()
-    else:
-        for i in range(spec['out_size']):
-            target = i
+        if 'target' in spec:
+            target = spec['target']
             args = (shape, model, x0, target, distance, True)
 
             print('\nTarget = {}'.format(target))
 
-            if target != label_x0: run()
+            if target != label_x0:
+                res = run()
+                if res: break
+        elif 'untarget' in spec:
+            target = spec['untarget']
+
+            args = (shape, model, x0, target, distance, False)
+
+            print('\nUntarget = {}'.format(target))
+
+            if target == label_x0:
+                res = run()
+                if res: break
+        # else:
+        #     for i in range(len(output_x0[0])):
+        #         target = i
+        #         args = (shape, model, x0, target, distance, True)
+        #
+        #         print('\nTarget = {}'.format(target))
+        #
+        #         if target != label_x0: run()
 
 
 def generate_general(spec):
-    size = spec['in_size']
-    shape = ast.literal_eval(spec['in_shape'])
+    shape = ast.literal_eval(spec['shape'])
+    size = np.prod(shape)
 
-    lb, ub = get_bounds(spec)
+    lb, ub = get_bounds(spec, size)
     bnds = Bounds(lb, ub)
     model = get_model(spec)
 
@@ -386,11 +455,32 @@ def get_model(spec, shape=None):
         model = torch.load(spec['model'])
     else:
         if shape == None:
-            shape = ast.literal_eval(spec['in_shape'])
+            shape = ast.literal_eval(spec['shape'])
         len = shape[0]
 
         layers = spec['layers']
         ls = list()
+
+        def add_func(layer, ls):
+            if 'func' in layer:
+                f = layer['func']
+
+                if f == 'relu':
+                    ls.append(partial(lib.relu))
+                elif f == 'sigmoid':
+                    ls.append(partial(lib.sigmoid))
+                elif f == 'tanh':
+                    ls.append(partial(np.tanh))
+                elif f == 'reshape':
+                    ns = ast.literal_eval(layer['newshape'])
+                    import numpy as rnp
+                    ls.append(partial(rnp.reshape, newshape=ns))
+                elif f == 'transpose':
+                    ax = ast.literal_eval(layer['axes'])
+                    import numpy as rnp
+                    ls.append(partial(rnp.transpose, axes=ax))
+                elif f != 'softmax':
+                    raise NameError('Not support yet!')
 
         for layer in layers:
             if layer['type'] == 'linear':
@@ -403,6 +493,8 @@ def get_model(spec, shape=None):
                 l = lib.Linear(weights, bias)
 
                 ls.append(partial(l.apply))
+
+                add_func(layer, ls)
             elif layer['type'] == 'conv1d' or layer['type'] == 'conv2d' \
                 or layer['type'] == 'conv3d':
                 ft = open(layer['filters'], 'r').readline()
@@ -422,6 +514,8 @@ def get_model(spec, shape=None):
                     l = lib.Conv3d(filters, bias, stride, padding)
 
                 ls.append(partial(l.apply))
+
+                add_func(layer, ls)
             elif layer['type'] == 'maxpool1d' or layer['type'] == 'maxpool2d' \
                 or layer['type'] == 'maxpool3d':
                 kt = layer['kernel']
@@ -439,6 +533,8 @@ def get_model(spec, shape=None):
                     l = lib.MaxPool3d(kernel, stride, padding)
 
                 ls.append(partial(l.apply))
+
+                add_func(layer, ls)
             elif layer['type'] == 'resnet2l':
                 f1t = open(layer['filters1'], 'r').readline()
                 b1t = open(layer['bias1'], 'r').readline()
@@ -473,6 +569,8 @@ def get_model(spec, shape=None):
                         filters2, bias2, stride2, padding2)
 
                 ls.append(partial(l.apply))
+
+                add_func(layer, ls)
             elif layer['type'] == 'resnet3l':
                 f1t = open(layer['filters1'], 'r').readline()
                 b1t = open(layer['bias1'], 'r').readline()
@@ -515,6 +613,8 @@ def get_model(spec, shape=None):
                         filters3, bias3, stride3, padding3)
 
                 ls.append(partial(l.apply))
+
+                add_func(layer, ls)
             elif layer['type'] == 'relurnn' or layer['type'] == 'tanhrnn':
                 wiht = open(layer['weights_ih'], 'r').readline()
                 whht = open(layer['weights_hh'], 'r').readline()
@@ -534,6 +634,8 @@ def get_model(spec, shape=None):
                     l = lib.TanhRNN(weights_ih, weights_hh, bias_ih, bias_hh, h0)
 
                 ls.append(partial(l.apply))
+
+                add_func(layer, ls)
             elif layer['type'] == 'lstm':
                 wt = open(layer['weights'], 'r').readline()
                 bt = open(layer['bias'], 'r').readline()
@@ -550,6 +652,8 @@ def get_model(spec, shape=None):
                 l = lib.LSTM(weights, bias, h0, c0, len)
 
                 ls.append(partial(l.apply))
+
+                add_func(layer, ls)
             elif layer['type'] == 'gru':
                 gwt = open(layer['gate_weights'], 'r').readline()
                 cwt = open(layer['candidate_weights'], 'r').readline()
@@ -571,22 +675,10 @@ def get_model(spec, shape=None):
                     gate_bias, candidate_bias, h0, len)
 
                 ls.append(partial(l.apply))
+
+                add_func(layer, ls)
             elif layer['type'] == 'function':
-                f = layer['func']
-                if f == 'relu':
-                    ls.append(partial(lib.relu))
-                elif f == 'sigmoid':
-                    ls.append(partial(lib.sigmoid))
-                elif f == 'tanh':
-                    ls.append(partial(np.tanh))
-                elif f == 'reshape':
-                    ns = ast.literal_eval(layer['newshape'])
-                    import numpy as rnp
-                    ls.append(partial(rnp.reshape, newshape=ns))
-                elif f == 'transpose':
-                    ax = ast.literal_eval(layer['axes'])
-                    import numpy as rnp
-                    ls.append(partial(rnp.transpose, axes=ax))
+                add_func(layer, ls)
 
         model = generate_model(ls)
 
@@ -605,9 +697,7 @@ def generate_model(ls):
     return fun
 
 
-def get_bounds(spec):
-    size = spec['in_size']
-
+def get_bounds(spec, size):
     if 'bounds' in spec:
         bnds = spec['bounds']
         if type(bnds) == list:
