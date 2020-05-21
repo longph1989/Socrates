@@ -73,6 +73,8 @@ def run_benchmark(spec, xpath, ypath, dataset=None, is_norm=None):
 
     print('Using', distance)
 
+    eps = -1.0
+
     yfile = open(ypath, 'r')
     ytext = yfile.readline()
     y0s = np.array(ast.literal_eval(ytext))
@@ -119,12 +121,22 @@ def run_benchmark(spec, xpath, ypath, dataset=None, is_norm=None):
 
         target = y0s[i]
 
-        args = (shape, model, x0, target, distance, False)
+        args = (shape, model, x0, target, distance, eps, False)
 
         print('\nUntarget = {}'.format(target))
 
         if target == label_x0:
-            x = optimize_robustness(args, bnds, cons)
+            if 'solver' in spec and spec['solver'] == 'sprt':
+                confidence = ast.literal_eval(spec['confidence'])
+                alpha = ast.literal_eval(spec['alpha'])
+                beta = ast.literal_eval(spec['beta'])
+                gamma = ast.literal_eval(spec['gamma'])
+
+                params = (confidence, alpha, beta, gamma)
+
+                x = sprt(args, bnds, cons, params)
+            else:
+                x = optimize_robustness(args, bnds, cons)
 
             if len(x) != 0:
                 print('Final x = {}'.format(x))
@@ -169,6 +181,8 @@ def run_mnist_challenge(spec):
     distance = 'll_i'
     print('Using', distance)
 
+    eps = -1.0
+
     cons = list()
 
     for i in range(1):
@@ -203,12 +217,22 @@ def run_mnist_challenge(spec):
 
             target = ydata[j]
 
-            args = (shape, model, x0, target, distance, False)
+            args = (shape, model, x0, target, distance, eps, False)
 
             print('\nUntarget = {}'.format(target))
 
             if target == label_x0:
-                x = optimize_robustness(args, bnds, cons)
+                if 'solver' in spec and spec['solver'] == 'sprt':
+                    confidence = ast.literal_eval(spec['confidence'])
+                    alpha = ast.literal_eval(spec['alpha'])
+                    beta = ast.literal_eval(spec['beta'])
+                    gamma = ast.literal_eval(spec['gamma'])
+
+                    params = (confidence, alpha, beta, gamma)
+
+                    x = sprt(args, bnds, cons, params)
+                else:
+                    x = optimize_robustness(args, bnds, cons)
 
                 if len(x) != 0:
                     print('Final x = {}'.format(x))
@@ -296,6 +320,11 @@ def generate_robustness(spec):
 
     print('Using', distance)
 
+    if 'eps' in spec:
+        eps = ast.literal_eval(spec['eps'])
+    else:
+        eps = -1.0
+
     cons = list()
     if 'fairness' in spec:
         for ind in ast.literal_eval(spec['fairness']):
@@ -305,7 +334,18 @@ def generate_robustness(spec):
             cons.append({'type': type, 'fun': fun})
 
     def run():
-        x = optimize_robustness(args, bnds, cons)
+        if 'solver' in spec and spec['solver'] == 'sprt':
+            confidence = ast.literal_eval(spec['confidence'])
+            alpha = ast.literal_eval(spec['alpha'])
+            beta = ast.literal_eval(spec['beta'])
+            gamma = ast.literal_eval(spec['gamma'])
+
+            params = (confidence, alpha, beta, gamma)
+
+            x = sprt(args, bnds, cons, params)
+        else:
+            x = optimize_robustness(args, bnds, cons)
+
         x = post_process(x, spec)
 
         if len(x) != 0:
@@ -362,7 +402,7 @@ def generate_robustness(spec):
 
         if 'target' in spec:
             target = spec['target']
-            args = (shape, model, x0, target, distance, True)
+            args = (shape, model, x0, target, distance, eps, True)
 
             print('\nTarget = {}'.format(target))
 
@@ -372,21 +412,13 @@ def generate_robustness(spec):
         elif 'untarget' in spec:
             target = spec['untarget']
 
-            args = (shape, model, x0, target, distance, False)
+            args = (shape, model, x0, target, distance, eps, False)
 
             print('\nUntarget = {}'.format(target))
 
             if target == label_x0:
                 res = run()
                 if res: break
-        # else:
-        #     for i in range(len(output_x0[0])):
-        #         target = i
-        #         args = (shape, model, x0, target, distance, True)
-        #
-        #         print('\nTarget = {}'.format(target))
-        #
-        #         if target != label_x0: run()
 
 
 def generate_general(spec):
@@ -417,7 +449,19 @@ def generate_general(spec):
     out_cons = spec['out_cons']
 
     args = (shape, model, x0, out_cons)
-    x = optimize_general(args, bnds, in_cons)
+
+    if 'solver' in spec and spec['solver'] == 'sprt':
+        confidence = ast.literal_eval(spec['confidence'])
+        alpha = ast.literal_eval(spec['alpha'])
+        beta = ast.literal_eval(spec['beta'])
+        gamma = ast.literal_eval(spec['gamma'])
+
+        params = (confidence, alpha, beta, gamma)
+
+        x = sprt(args, bnds, in_cons, params)
+    else:
+        x = optimize_general(args, bnds, in_cons)
+
     x = post_process(x, spec)
 
     if len(x) != 0:
@@ -776,6 +820,164 @@ def apply_model_pytorch(model, x, shape):
     return output_x
 
 
+def sprt(args, bnds, cons, params):
+    if len(args) == 7:
+        shape, model, x0, target, distance, eps, is_targeted = *args
+    elif len(args) == 4:
+        shape, model, x0, out_cons = *args
+
+    size = np.prod(shape)
+
+    confidence, alpha, beta, gamma = *params
+
+    p0 = confidence + gamma
+    p1 = confidence - gamma
+
+    lower = beta / (1 - alpha)
+    upper = (1 - beta) / alpha
+
+    pr = 1
+
+    while True:
+        x = np.random.rand(size)
+        lb = bnds.lb
+        ub = bnds.ub
+
+        x = (ub - lb) * x + lb
+
+        if len(args) == 7:
+            if distance == 'll_0':
+                d = np.sum(x != x0)
+            elif distance == 'll_2':
+                d = np.sqrt(np.sum((x - x0) ** 2))
+            elif distance == 'll_i':
+                d = np.max(np.abs(x - x0))
+            else:
+                d = 0
+
+            if d > eps:
+                pr = pr * p1 / p0
+                continue
+
+            output_x = apply_model(model, x, shape)
+
+            max_label = np.argmax(output_x, axis=1)
+
+            if is_targeted:
+                if max_label == target:
+                    pr = pr * (1 - p1) / (1 - p0)
+                else:
+                    pr = pr * p1 / p0
+            else:
+                if max_label != target:
+                    pr = pr * (1 - p1) / (1 - p0)
+                else:
+                    pr = pr * p1 / p0
+
+        elif len(args) == 4:
+            sat = True
+
+            for con in cons:
+                type = con['type']
+                size = len(x)
+                coef = ast.literal_eval(con['coef'])
+
+                sum = 0
+                for i in range(size):
+                    sum += coef[i] * x[i]
+                sum +=coef[size]
+
+                if type == 'eq':
+                    if sum != 0:
+                        sat = False
+                        break
+                elif type == 'ineq':
+                    if sum < 0:
+                        sat = False
+                        break
+
+            if not sat:
+                pr = pr * p1 / p0
+                continue
+
+            output_x = apply_model(model, x, shape)
+
+            for con in out_cons:
+                type = con['type']
+
+                if type == 'max':
+                    target = con['index']
+                    target_score = output_x[0][target]
+
+                    output_x = output_x - np.eye(output_x[0].size)[target] * 1e6
+                    max_score = np.max(output_x)
+
+                    if target_score < max_score:
+                        sat = False
+                        break
+                elif type == 'nmax':
+                    target = con['index']
+                    target_score = output_x[0][target]
+
+                    output_x = output_x - np.eye(output_x[0].size)[target] * 1e6
+                    max_score = np.max(output_x)
+
+                    if target_score > max_score:
+                        sat = False
+                        break
+                elif type == 'min':
+                    target = con['index']
+                    target_score = output_x[0][target]
+
+                    output_x = output_x + np.eye(output_x[0].size)[target] * 1e6
+                    min_score = np.min(output_x)
+
+                    if target_score > min_score:
+                        sat = False
+                        break
+                elif type == 'nmin':
+                    target = con['index']
+                    target_score = output_x[0][target]
+
+                    output_x = output_x + np.eye(output_x[0].size)[target] * 1e6
+                    min_score = np.min(output_x)
+
+                    if target_score < min_score:
+                        sat = False
+                        break
+                else:
+                    size = len(output_x[0])
+                    coef = ast.literal_eval(con['coef'])
+
+                    sum = 0
+                    for i in range(size):
+                        sum += coef[i] * output_x[0][i]
+                    sum +=coef[size]
+
+                    if type == 'eq':
+                        if sum != 0:
+                            sat = False
+                            break
+                    elif type == 'ineq':
+                        if sum < 0:
+                            sat = False
+                            break
+
+            if not sat:
+                pr = pr * p1 / p0
+            else:
+                pr = pr * (1 - p1) / (1 - p0)
+
+        if pr <= lower:
+            print('Accept H0. The formula is UNSAT with p >= {}'.format(p0))
+            break
+        elif pr >= upper:
+            print 'Accept H1. The formula is UNSAT with p <= {}'.format(p1))
+            break
+
+    return np.empty(0)
+
+
 def optimize_robustness(args, bnds, cons):
     shape = args[0]    # shape
     model = args[1]    # model
@@ -831,7 +1033,7 @@ def optimize_robustness(args, bnds, cons):
     return best_x
 
 
-def func_robustness(x, shape, model, x0, target, distance, is_targeted, c):
+def func_robustness(x, shape, model, x0, target, distance, eps, is_targeted, c):
     if distance == 'll_0':
         loss1 = np.sum(x != x0)
     elif distance == 'll_2':
@@ -925,7 +1127,7 @@ def func_general(x, shape, model, x0, cons):
             if type == 'eq':
                 loss_i = 0 if sum == 0 else abs(sum)
             elif type == 'ineq':
-                loss_i = 0 if sum > 0 else abs(sum)
+                loss_i = 0 if sum >= 0 else abs(sum)
 
         loss += loss_i
 
