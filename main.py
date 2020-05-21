@@ -820,15 +820,129 @@ def apply_model_pytorch(model, x, shape):
     return output_x
 
 
-def sprt(args, bnds, cons, params):
-    if len(args) == 7:
-        shape, model, x0, target, distance, eps, is_targeted = *args
-    elif len(args) == 4:
-        shape, model, x0, out_cons = *args
-
+def sprt_generate_x(shape, bnds):
     size = np.prod(shape)
+    x = np.random.rand(size)
 
-    confidence, alpha, beta, gamma = *params
+    lb = bnds.lb
+    ub = bnds.ub
+
+    x = (ub - lb) * x + lb
+
+    return x
+
+
+def sprt_is_sat_in_cons(cons, x):
+    for con in cons:
+        type = con['type']
+        size = len(x)
+        coef = ast.literal_eval(con['coef'])
+
+        sum = 0
+        for i in range(size):
+            sum += coef[i] * x[i]
+        sum +=coef[size]
+
+        if type == 'eq' and sum != 0: return False
+        elif type == 'ineq' and sum < 0: return False
+
+    return True
+
+
+def sprt_is_sat_robustness(shape, model, x0, target, distance, eps, is_targeted, x):
+    if distance == 'll_0':
+        d = np.sum(x != x0)
+    elif distance == 'll_2':
+        d = np.sqrt(np.sum((x - x0) ** 2))
+    elif distance == 'll_i':
+        d = np.max(np.abs(x - x0))
+    else:
+        d = 0
+
+    if d > eps:
+        return False
+
+    output_x = apply_model(model, x, shape)
+
+    max_label = np.argmax(output_x, axis=1)
+
+    if is_targeted:
+        if max_label == target:
+            return True
+        else:
+            return False
+    else:
+        if max_label != target:
+            return True
+        else:
+            return False
+
+
+def sprt_is_sat_general(shape, model, x0, out_cons, x):
+    output_x = apply_model(model, x, shape)
+
+    for con in out_cons:
+        type = con['type']
+
+        if type == 'max':
+            target = con['index']
+            target_score = output_x[0][target]
+
+            output_x = output_x - np.eye(output_x[0].size)[target] * 1e6
+            max_score = np.max(output_x)
+
+            if target_score < max_score: return False
+        elif type == 'nmax':
+            target = con['index']
+            target_score = output_x[0][target]
+
+            output_x = output_x - np.eye(output_x[0].size)[target] * 1e6
+            max_score = np.max(output_x)
+
+            if target_score > max_score: return False
+        elif type == 'min':
+            target = con['index']
+            target_score = output_x[0][target]
+
+            output_x = output_x + np.eye(output_x[0].size)[target] * 1e6
+            min_score = np.min(output_x)
+
+            if target_score > min_score: return False
+        elif type == 'nmin':
+            target = con['index']
+            target_score = output_x[0][target]
+
+            output_x = output_x + np.eye(output_x[0].size)[target] * 1e6
+            min_score = np.min(output_x)
+
+            if target_score < min_score: return False
+        else:
+            size = len(output_x[0])
+            coef = ast.literal_eval(con['coef'])
+
+            sum = 0
+            for i in range(size):
+                sum += coef[i] * output_x[0][i]
+            sum +=coef[size]
+
+            if type == 'eq' and sum != 0: return False
+            elif type == 'ineq' and sum < 0: return False
+
+    return True
+
+
+def sprt_is_sat(args, cons, x):
+    if sprt_is_sat_in_cons(cons, x):
+        if len(args) == 7:
+            return sprt_is_sat_robustness(*args, x)
+        elif len(args) == 4:
+            return sprt_is_sat_general(*args, x)
+    else:
+        return False
+
+
+def sprt(args, bnds, cons, params):
+    confidence, alpha, beta, gamma = params
 
     p0 = confidence + gamma
     p1 = confidence - gamma
@@ -839,140 +953,19 @@ def sprt(args, bnds, cons, params):
     pr = 1
 
     while True:
-        x = np.random.rand(size)
-        lb = bnds.lb
-        ub = bnds.ub
+        x = sprt_generate_x(shape, bnds)
+        sat = sprt_is_sat(args, cons, x)
 
-        x = (ub - lb) * x + lb
-
-        if len(args) == 7:
-            if distance == 'll_0':
-                d = np.sum(x != x0)
-            elif distance == 'll_2':
-                d = np.sqrt(np.sum((x - x0) ** 2))
-            elif distance == 'll_i':
-                d = np.max(np.abs(x - x0))
-            else:
-                d = 0
-
-            if d > eps:
-                pr = pr * p1 / p0
-                continue
-
-            output_x = apply_model(model, x, shape)
-
-            max_label = np.argmax(output_x, axis=1)
-
-            if is_targeted:
-                if max_label == target:
-                    pr = pr * (1 - p1) / (1 - p0)
-                else:
-                    pr = pr * p1 / p0
-            else:
-                if max_label != target:
-                    pr = pr * (1 - p1) / (1 - p0)
-                else:
-                    pr = pr * p1 / p0
-
-        elif len(args) == 4:
-            sat = True
-
-            for con in cons:
-                type = con['type']
-                size = len(x)
-                coef = ast.literal_eval(con['coef'])
-
-                sum = 0
-                for i in range(size):
-                    sum += coef[i] * x[i]
-                sum +=coef[size]
-
-                if type == 'eq':
-                    if sum != 0:
-                        sat = False
-                        break
-                elif type == 'ineq':
-                    if sum < 0:
-                        sat = False
-                        break
-
-            if not sat:
-                pr = pr * p1 / p0
-                continue
-
-            output_x = apply_model(model, x, shape)
-
-            for con in out_cons:
-                type = con['type']
-
-                if type == 'max':
-                    target = con['index']
-                    target_score = output_x[0][target]
-
-                    output_x = output_x - np.eye(output_x[0].size)[target] * 1e6
-                    max_score = np.max(output_x)
-
-                    if target_score < max_score:
-                        sat = False
-                        break
-                elif type == 'nmax':
-                    target = con['index']
-                    target_score = output_x[0][target]
-
-                    output_x = output_x - np.eye(output_x[0].size)[target] * 1e6
-                    max_score = np.max(output_x)
-
-                    if target_score > max_score:
-                        sat = False
-                        break
-                elif type == 'min':
-                    target = con['index']
-                    target_score = output_x[0][target]
-
-                    output_x = output_x + np.eye(output_x[0].size)[target] * 1e6
-                    min_score = np.min(output_x)
-
-                    if target_score > min_score:
-                        sat = False
-                        break
-                elif type == 'nmin':
-                    target = con['index']
-                    target_score = output_x[0][target]
-
-                    output_x = output_x + np.eye(output_x[0].size)[target] * 1e6
-                    min_score = np.min(output_x)
-
-                    if target_score < min_score:
-                        sat = False
-                        break
-                else:
-                    size = len(output_x[0])
-                    coef = ast.literal_eval(con['coef'])
-
-                    sum = 0
-                    for i in range(size):
-                        sum += coef[i] * output_x[0][i]
-                    sum +=coef[size]
-
-                    if type == 'eq':
-                        if sum != 0:
-                            sat = False
-                            break
-                    elif type == 'ineq':
-                        if sum < 0:
-                            sat = False
-                            break
-
-            if not sat:
-                pr = pr * p1 / p0
-            else:
-                pr = pr * (1 - p1) / (1 - p0)
+        if sat:
+            pr = pr * (1 - p1) / (1 - p0)
+        else:
+            pr = pr * p1 / p0
 
         if pr <= lower:
             print('Accept H0. The formula is UNSAT with p >= {}'.format(p0))
             break
         elif pr >= upper:
-            print 'Accept H1. The formula is UNSAT with p <= {}'.format(p1))
+            print('Accept H1. The formula is UNSAT with p <= {}'.format(p1))
             break
 
     return np.empty(0)
