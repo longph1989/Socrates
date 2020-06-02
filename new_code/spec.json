@@ -1,0 +1,49 @@
+{
+  "model": {
+    "shape": "(1,5)",
+    "layers": [
+      {
+        "type": "linear",
+        "weights": "../benchmark/reluplex/nnet/nnet_1_1/weights/w1.txt",
+        "bias": "../benchmark/reluplex/nnet/nnet_1_1/bias/b1.txt",
+        "func": "relu"
+      },
+      {
+        "type": "linear",
+        "weights": "../benchmark/reluplex/nnet/nnet_1_1/weights/w2.txt",
+        "bias": "../benchmark/reluplex/nnet/nnet_1_1/bias/b2.txt",
+        "func": "relu"
+      },
+      {
+        "type": "linear",
+        "weights": "../benchmark/reluplex/nnet/nnet_1_1/weights/w3.txt",
+        "bias": "../benchmark/reluplex/nnet/nnet_1_1/bias/b3.txt",
+        "func": "relu"
+      },
+      {
+        "type": "linear",
+        "weights": "../benchmark/reluplex/nnet/nnet_1_1/weights/w4.txt",
+        "bias": "../benchmark/reluplex/nnet/nnet_1_1/bias/b4.txt",
+        "func": "relu"
+      },
+      {
+        "type": "linear",
+        "weights": "../benchmark/reluplex/nnet/nnet_1_1/weights/w5.txt",
+        "bias": "../benchmark/reluplex/nnet/nnet_1_1/bias/b5.txt",
+        "func": "relu"
+      },
+      {
+        "type": "linear",
+        "weights": "../benchmark/reluplex/nnet/nnet_1_1/weights/w6.txt",
+        "bias": "../benchmark/reluplex/nnet/nnet_1_1/bias/b6.txt",
+        "func": "relu"
+      },
+      {
+        "type": "linear",
+        "weights": "../benchmark/reluplex/nnet/nnet_1_1/weights/w7.txt",
+        "bias": "../benchmark/reluplex/nnet/nnet_1_1/bias/b7.txt",
+        "func": "softmax"
+      }
+    ]
+  }
+}
