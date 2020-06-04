@@ -4,6 +4,7 @@ import os
 
 from model import Model
 from lib_layers import *
+from lib_solvers import *
 
 
 def read(text):
@@ -175,7 +176,24 @@ def parse_model(spec):
     return Model(shape, layers)
 
 
+def parse_solver(spec):
+    name = spec['name']
+
+    if name = 'optimize':
+        solver = Optimize()
+    if name == 'sqrt':
+        threshold = ast.literal_eval(read(spec['threshold']))
+        alpha = ast.literal_eval(read(spec['alpha']))
+        beta = ast.literal_eval(read(spec['beta']))
+        delta = ast.literal_eval(read(spec['delta']))
+
+        solver = SPRT(threshold, alpha, beta, delta)
+
+    return solver
+
+
 def parse(spec):
     model = parse_model(spec['model'])
+    solver = parse_solver(spec['solver'])
 
     print('done')
