@@ -18,34 +18,32 @@ conjunction
       ;
 
 term
-      :   func GE num
-      |   func GT num
-      |   func LE num
-      |   func LT num
-      |   func EQ num
-      |   func NE num
-      |   VAR LB INT RB GE num
-      |   VAR LB INT RB GT num
-      |   VAR LB INT RB LE num
-      |   VAR LB INT RB LT num
-      |   VAR LB INT RB EQ num
-      |   VAR LB INT RB NE num
-      |   VAR LB INT RB EQ VAR LB INT RB
-      |   VAR EQ array
+      :   func op num
+      |   func op func
+      |   VAR EQ array                      // init x0
+      |   VAR op num                        // bounds for whole input
+      |   VAR op array                      // bounds for input segments
+      |   VAR LB INT RB op num              // bounds for each element
+      |   VAR LB INT RB op VAR LB INT RB    // fairness
       ;
 
 func
-      :   name LP (VAR | num) (CM (VAR | num))* RP
-      |   name LP func RP
+      :   'd0' LP VAR CM VAR RP           // 0-norm distance function
+      |   'd2' LP VAR CM VAR RP           // 2-norm distance function
+      |   'di' LP VAR CM VAR RP           // inf-norm distance function
+      |   'arg_max' LP VAR RP             // arg max index for output
+      |   'arg_min' LP VAR RP             // arg min index for output
+      |   'lin_inp' LP VAR CM array RP    // linear application for input
+      |   'lin_out' LP VAR CM array RP    // linear application for output
       ;
 
-name
-      :   'd_0'
-      |   'd_2'
-      |   'd_i'
-      |   'm'
-      |   'la'
-      |   'li'
+op
+      :   GE
+      |   GT
+      |   LE
+      |   LT
+      |   EQ
+      |   NE
       ;
 
 array
