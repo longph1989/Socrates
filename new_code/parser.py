@@ -3,6 +3,8 @@ import autograd.numpy as np
 import os
 
 from model import Model
+from assertion import Assertion
+
 from lib_layers import *
 from lib_solvers import *
 
@@ -176,6 +178,12 @@ def parse_model(spec):
     return Model(shape, layers)
 
 
+def parse_assertion(spec):
+    assertion = spec
+
+    return Assertion
+
+
 def parse_solver(spec):
     name = spec['name']
 
@@ -194,6 +202,7 @@ def parse_solver(spec):
 
 def parse(spec):
     model = parse_model(spec['model'])
+    assertion = parse_assertion(spec['assert'])
     solver = parse_solver(spec['solver'])
 
     print('done')
