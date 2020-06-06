@@ -18,9 +18,9 @@ conjunction
       ;
 
 term
-      :   func op num
+      :   TRUE
+      |   func op num
       |   func op func
-      |   VAR EQ array                      // init x0
       |   VAR op num                        // bounds for whole input
       |   VAR op array                      // bounds for input segments
       |   VAR LB INT RB op num              // bounds for each element
@@ -78,5 +78,7 @@ NE    :   '!=' ;
 OR    :   '\\/' ;
 AND   :   '/\\' ;
 IMP   :   '=>' ;
+
+TRUE  :   'True';
 
 WS    :   [ \t\r\n]+ -> skip ;
