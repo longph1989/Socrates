@@ -12,49 +12,51 @@ else:
 def serializedATN():
     with StringIO() as buf:
         buf.write("\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\36")
-        buf.write("\u0088\4\2\t\2\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7")
+        buf.write("\u008b\4\2\t\2\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7")
         buf.write("\4\b\t\b\4\t\t\t\3\2\3\2\3\2\3\2\3\2\7\2\30\n\2\f\2\16")
         buf.write("\2\33\13\2\3\2\3\2\3\2\3\2\3\2\3\2\3\3\3\3\3\3\7\3&\n")
         buf.write("\3\f\3\16\3)\13\3\3\4\3\4\3\4\7\4.\n\4\f\4\16\4\61\13")
         buf.write("\4\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5")
-        buf.write("\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\5")
-        buf.write("\5M\n\5\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3")
+        buf.write("\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3")
+        buf.write("\5\3\5\3\5\5\5P\n\5\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3")
         buf.write("\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6")
         buf.write("\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3")
-        buf.write("\6\3\6\5\6w\n\6\3\7\3\7\3\b\3\b\3\b\3\b\7\b\177\n\b\f")
-        buf.write("\b\16\b\u0082\13\b\3\b\3\b\3\t\3\t\3\t\2\2\n\2\4\6\b\n")
-        buf.write("\f\16\20\2\4\3\2\25\32\3\2\r\16\2\u008d\2\22\3\2\2\2\4")
-        buf.write("\"\3\2\2\2\6*\3\2\2\2\bL\3\2\2\2\nv\3\2\2\2\fx\3\2\2\2")
-        buf.write("\16z\3\2\2\2\20\u0085\3\2\2\2\22\23\7\17\2\2\23\24\7\4")
-        buf.write("\2\2\24\31\7\f\2\2\25\26\7\23\2\2\26\30\7\f\2\2\27\25")
-        buf.write("\3\2\2\2\30\33\3\2\2\2\31\27\3\2\2\2\31\32\3\2\2\2\32")
-        buf.write("\34\3\2\2\2\33\31\3\2\2\2\34\35\7\24\2\2\35\36\5\4\3\2")
-        buf.write("\36\37\7\35\2\2\37 \5\4\3\2 !\7\20\2\2!\3\3\2\2\2\"\'")
-        buf.write("\5\6\4\2#$\7\33\2\2$&\5\6\4\2%#\3\2\2\2&)\3\2\2\2\'%\3")
-        buf.write("\2\2\2\'(\3\2\2\2(\5\3\2\2\2)\'\3\2\2\2*/\5\b\5\2+,\7")
-        buf.write("\34\2\2,.\5\b\5\2-+\3\2\2\2.\61\3\2\2\2/-\3\2\2\2/\60")
-        buf.write("\3\2\2\2\60\7\3\2\2\2\61/\3\2\2\2\62M\7\3\2\2\63\64\5")
-        buf.write("\n\6\2\64\65\5\f\7\2\65\66\5\20\t\2\66M\3\2\2\2\678\5")
-        buf.write("\n\6\289\5\f\7\29:\5\n\6\2:M\3\2\2\2;<\7\f\2\2<=\7\21")
-        buf.write("\2\2=>\7\r\2\2>?\7\22\2\2?@\5\f\7\2@A\5\20\t\2AM\3\2\2")
-        buf.write("\2BC\7\f\2\2CD\7\21\2\2DE\7\r\2\2EF\7\22\2\2FG\5\f\7\2")
-        buf.write("GH\7\f\2\2HI\7\21\2\2IJ\7\r\2\2JK\7\22\2\2KM\3\2\2\2L")
-        buf.write("\62\3\2\2\2L\63\3\2\2\2L\67\3\2\2\2L;\3\2\2\2LB\3\2\2")
-        buf.write("\2M\t\3\2\2\2NO\7\5\2\2OP\7\17\2\2PQ\7\f\2\2QR\7\23\2")
-        buf.write("\2RS\7\f\2\2Sw\7\20\2\2TU\7\6\2\2UV\7\17\2\2VW\7\f\2\2")
-        buf.write("WX\7\23\2\2XY\7\f\2\2Yw\7\20\2\2Z[\7\7\2\2[\\\7\17\2\2")
-        buf.write("\\]\7\f\2\2]^\7\23\2\2^_\7\f\2\2_w\7\20\2\2`a\7\b\2\2")
-        buf.write("ab\7\17\2\2bc\7\f\2\2cw\7\20\2\2de\7\t\2\2ef\7\17\2\2")
-        buf.write("fg\7\f\2\2gw\7\20\2\2hi\7\n\2\2ij\7\17\2\2jk\7\f\2\2k")
-        buf.write("l\7\23\2\2lm\5\16\b\2mn\7\20\2\2nw\3\2\2\2op\7\13\2\2")
-        buf.write("pq\7\17\2\2qr\7\f\2\2rs\7\23\2\2st\5\16\b\2tu\7\20\2\2")
-        buf.write("uw\3\2\2\2vN\3\2\2\2vT\3\2\2\2vZ\3\2\2\2v`\3\2\2\2vd\3")
-        buf.write("\2\2\2vh\3\2\2\2vo\3\2\2\2w\13\3\2\2\2xy\t\2\2\2y\r\3")
-        buf.write("\2\2\2z{\7\21\2\2{\u0080\5\20\t\2|}\7\23\2\2}\177\5\20")
-        buf.write("\t\2~|\3\2\2\2\177\u0082\3\2\2\2\u0080~\3\2\2\2\u0080")
-        buf.write("\u0081\3\2\2\2\u0081\u0083\3\2\2\2\u0082\u0080\3\2\2\2")
-        buf.write("\u0083\u0084\7\22\2\2\u0084\17\3\2\2\2\u0085\u0086\t\3")
-        buf.write("\2\2\u0086\21\3\2\2\2\b\31\'/Lv\u0080")
+        buf.write("\6\3\6\3\6\3\6\3\6\5\6z\n\6\3\7\3\7\3\b\3\b\3\b\3\b\7")
+        buf.write("\b\u0082\n\b\f\b\16\b\u0085\13\b\3\b\3\b\3\t\3\t\3\t\2")
+        buf.write("\2\n\2\4\6\b\n\f\16\20\2\4\3\2\25\32\3\2\r\16\2\u0091")
+        buf.write("\2\22\3\2\2\2\4\"\3\2\2\2\6*\3\2\2\2\bO\3\2\2\2\ny\3\2")
+        buf.write("\2\2\f{\3\2\2\2\16}\3\2\2\2\20\u0088\3\2\2\2\22\23\7\17")
+        buf.write("\2\2\23\24\7\4\2\2\24\31\7\f\2\2\25\26\7\23\2\2\26\30")
+        buf.write("\7\f\2\2\27\25\3\2\2\2\30\33\3\2\2\2\31\27\3\2\2\2\31")
+        buf.write("\32\3\2\2\2\32\34\3\2\2\2\33\31\3\2\2\2\34\35\7\24\2\2")
+        buf.write("\35\36\5\4\3\2\36\37\7\35\2\2\37 \5\4\3\2 !\7\20\2\2!")
+        buf.write("\3\3\2\2\2\"\'\5\6\4\2#$\7\33\2\2$&\5\6\4\2%#\3\2\2\2")
+        buf.write("&)\3\2\2\2\'%\3\2\2\2\'(\3\2\2\2(\5\3\2\2\2)\'\3\2\2\2")
+        buf.write("*/\5\b\5\2+,\7\34\2\2,.\5\b\5\2-+\3\2\2\2.\61\3\2\2\2")
+        buf.write("/-\3\2\2\2/\60\3\2\2\2\60\7\3\2\2\2\61/\3\2\2\2\62P\7")
+        buf.write("\3\2\2\63\64\5\n\6\2\64\65\5\f\7\2\65\66\5\20\t\2\66P")
+        buf.write("\3\2\2\2\678\5\n\6\289\5\f\7\29:\5\n\6\2:P\3\2\2\2;<\7")
+        buf.write("\f\2\2<=\7\21\2\2=>\7\r\2\2>?\7\22\2\2?@\5\f\7\2@A\5\20")
+        buf.write("\t\2AP\3\2\2\2BC\7\f\2\2CD\7\21\2\2DE\7\r\2\2EF\7\22\2")
+        buf.write("\2FG\5\f\7\2GH\7\f\2\2HI\7\21\2\2IJ\7\r\2\2JK\7\22\2\2")
+        buf.write("KP\3\2\2\2LM\7\f\2\2MN\7\31\2\2NP\5\16\b\2O\62\3\2\2\2")
+        buf.write("O\63\3\2\2\2O\67\3\2\2\2O;\3\2\2\2OB\3\2\2\2OL\3\2\2\2")
+        buf.write("P\t\3\2\2\2QR\7\5\2\2RS\7\17\2\2ST\7\f\2\2TU\7\23\2\2")
+        buf.write("UV\7\f\2\2Vz\7\20\2\2WX\7\6\2\2XY\7\17\2\2YZ\7\f\2\2Z")
+        buf.write("[\7\23\2\2[\\\7\f\2\2\\z\7\20\2\2]^\7\7\2\2^_\7\17\2\2")
+        buf.write("_`\7\f\2\2`a\7\23\2\2ab\7\f\2\2bz\7\20\2\2cd\7\b\2\2d")
+        buf.write("e\7\17\2\2ef\7\f\2\2fz\7\20\2\2gh\7\t\2\2hi\7\17\2\2i")
+        buf.write("j\7\f\2\2jz\7\20\2\2kl\7\n\2\2lm\7\17\2\2mn\7\f\2\2no")
+        buf.write("\7\23\2\2op\5\16\b\2pq\7\20\2\2qz\3\2\2\2rs\7\13\2\2s")
+        buf.write("t\7\17\2\2tu\7\f\2\2uv\7\23\2\2vw\5\16\b\2wx\7\20\2\2")
+        buf.write("xz\3\2\2\2yQ\3\2\2\2yW\3\2\2\2y]\3\2\2\2yc\3\2\2\2yg\3")
+        buf.write("\2\2\2yk\3\2\2\2yr\3\2\2\2z\13\3\2\2\2{|\t\2\2\2|\r\3")
+        buf.write("\2\2\2}~\7\21\2\2~\u0083\5\20\t\2\177\u0080\7\23\2\2\u0080")
+        buf.write("\u0082\5\20\t\2\u0081\177\3\2\2\2\u0082\u0085\3\2\2\2")
+        buf.write("\u0083\u0081\3\2\2\2\u0083\u0084\3\2\2\2\u0084\u0086\3")
+        buf.write("\2\2\2\u0085\u0083\3\2\2\2\u0086\u0087\7\22\2\2\u0087")
+        buf.write("\17\3\2\2\2\u0088\u0089\t\3\2\2\u0089\21\3\2\2\2\b\31")
+        buf.write("\'/Oy\u0083")
         return buf.getvalue()
 
 
@@ -402,6 +404,13 @@ class AssertionParser ( Parser ):
             else:
                 return self.getToken(AssertionParser.RB, i)
 
+        def EQ(self):
+            return self.getToken(AssertionParser.EQ, 0)
+
+        def array(self):
+            return self.getTypedRuleContext(AssertionParser.ArrayContext,0)
+
+
         def getRuleIndex(self):
             return AssertionParser.RULE_term
 
@@ -421,7 +430,7 @@ class AssertionParser ( Parser ):
         localctx = AssertionParser.TermContext(self, self._ctx, self.state)
         self.enterRule(localctx, 6, self.RULE_term)
         try:
-            self.state = 74
+            self.state = 77
             self._errHandler.sync(self)
             la_ = self._interp.adaptivePredict(self._input,3,self._ctx)
             if la_ == 1:
@@ -486,6 +495,16 @@ class AssertionParser ( Parser ):
                 self.match(AssertionParser.INT)
                 self.state = 72
                 self.match(AssertionParser.RB)
+                pass
+
+            elif la_ == 6:
+                self.enterOuterAlt(localctx, 6)
+                self.state = 74
+                self.match(AssertionParser.VAR)
+                self.state = 75
+                self.match(AssertionParser.EQ)
+                self.state = 76
+                self.array()
                 pass
 
 
@@ -563,104 +582,104 @@ class AssertionParser ( Parser ):
         localctx = AssertionParser.FuncContext(self, self._ctx, self.state)
         self.enterRule(localctx, 8, self.RULE_func)
         try:
-            self.state = 116
+            self.state = 119
             self._errHandler.sync(self)
             token = self._input.LA(1)
             if token in [AssertionParser.D0]:
                 self.enterOuterAlt(localctx, 1)
-                self.state = 76
-                self.match(AssertionParser.D0)
-                self.state = 77
-                self.match(AssertionParser.LP)
-                self.state = 78
-                self.match(AssertionParser.VAR)
                 self.state = 79
-                self.match(AssertionParser.CM)
+                self.match(AssertionParser.D0)
                 self.state = 80
-                self.match(AssertionParser.VAR)
+                self.match(AssertionParser.LP)
                 self.state = 81
+                self.match(AssertionParser.VAR)
+                self.state = 82
+                self.match(AssertionParser.CM)
+                self.state = 83
+                self.match(AssertionParser.VAR)
+                self.state = 84
                 self.match(AssertionParser.RP)
                 pass
             elif token in [AssertionParser.D2]:
                 self.enterOuterAlt(localctx, 2)
-                self.state = 82
-                self.match(AssertionParser.D2)
-                self.state = 83
-                self.match(AssertionParser.LP)
-                self.state = 84
-                self.match(AssertionParser.VAR)
                 self.state = 85
-                self.match(AssertionParser.CM)
+                self.match(AssertionParser.D2)
                 self.state = 86
-                self.match(AssertionParser.VAR)
+                self.match(AssertionParser.LP)
                 self.state = 87
+                self.match(AssertionParser.VAR)
+                self.state = 88
+                self.match(AssertionParser.CM)
+                self.state = 89
+                self.match(AssertionParser.VAR)
+                self.state = 90
                 self.match(AssertionParser.RP)
                 pass
             elif token in [AssertionParser.DI]:
                 self.enterOuterAlt(localctx, 3)
-                self.state = 88
-                self.match(AssertionParser.DI)
-                self.state = 89
-                self.match(AssertionParser.LP)
-                self.state = 90
-                self.match(AssertionParser.VAR)
                 self.state = 91
-                self.match(AssertionParser.CM)
+                self.match(AssertionParser.DI)
                 self.state = 92
-                self.match(AssertionParser.VAR)
+                self.match(AssertionParser.LP)
                 self.state = 93
+                self.match(AssertionParser.VAR)
+                self.state = 94
+                self.match(AssertionParser.CM)
+                self.state = 95
+                self.match(AssertionParser.VAR)
+                self.state = 96
                 self.match(AssertionParser.RP)
                 pass
             elif token in [AssertionParser.ARG_MAX]:
                 self.enterOuterAlt(localctx, 4)
-                self.state = 94
-                self.match(AssertionParser.ARG_MAX)
-                self.state = 95
-                self.match(AssertionParser.LP)
-                self.state = 96
-                self.match(AssertionParser.VAR)
                 self.state = 97
+                self.match(AssertionParser.ARG_MAX)
+                self.state = 98
+                self.match(AssertionParser.LP)
+                self.state = 99
+                self.match(AssertionParser.VAR)
+                self.state = 100
                 self.match(AssertionParser.RP)
                 pass
             elif token in [AssertionParser.ARG_MIN]:
                 self.enterOuterAlt(localctx, 5)
-                self.state = 98
-                self.match(AssertionParser.ARG_MIN)
-                self.state = 99
-                self.match(AssertionParser.LP)
-                self.state = 100
-                self.match(AssertionParser.VAR)
                 self.state = 101
+                self.match(AssertionParser.ARG_MIN)
+                self.state = 102
+                self.match(AssertionParser.LP)
+                self.state = 103
+                self.match(AssertionParser.VAR)
+                self.state = 104
                 self.match(AssertionParser.RP)
                 pass
             elif token in [AssertionParser.LIN_INP]:
                 self.enterOuterAlt(localctx, 6)
-                self.state = 102
-                self.match(AssertionParser.LIN_INP)
-                self.state = 103
-                self.match(AssertionParser.LP)
-                self.state = 104
-                self.match(AssertionParser.VAR)
                 self.state = 105
-                self.match(AssertionParser.CM)
+                self.match(AssertionParser.LIN_INP)
                 self.state = 106
-                self.array()
+                self.match(AssertionParser.LP)
                 self.state = 107
+                self.match(AssertionParser.VAR)
+                self.state = 108
+                self.match(AssertionParser.CM)
+                self.state = 109
+                self.array()
+                self.state = 110
                 self.match(AssertionParser.RP)
                 pass
             elif token in [AssertionParser.LIN_OUT]:
                 self.enterOuterAlt(localctx, 7)
-                self.state = 109
-                self.match(AssertionParser.LIN_OUT)
-                self.state = 110
-                self.match(AssertionParser.LP)
-                self.state = 111
-                self.match(AssertionParser.VAR)
                 self.state = 112
-                self.match(AssertionParser.CM)
+                self.match(AssertionParser.LIN_OUT)
                 self.state = 113
-                self.array()
+                self.match(AssertionParser.LP)
                 self.state = 114
+                self.match(AssertionParser.VAR)
+                self.state = 115
+                self.match(AssertionParser.CM)
+                self.state = 116
+                self.array()
+                self.state = 117
                 self.match(AssertionParser.RP)
                 pass
             else:
@@ -720,7 +739,7 @@ class AssertionParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 118
+            self.state = 121
             _la = self._input.LA(1)
             if not((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << AssertionParser.GE) | (1 << AssertionParser.GT) | (1 << AssertionParser.LE) | (1 << AssertionParser.LT) | (1 << AssertionParser.EQ) | (1 << AssertionParser.NE))) != 0)):
                 self._errHandler.recoverInline(self)
@@ -782,23 +801,23 @@ class AssertionParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 120
+            self.state = 123
             self.match(AssertionParser.LB)
-            self.state = 121
+            self.state = 124
             self.num()
-            self.state = 126
+            self.state = 129
             self._errHandler.sync(self)
             _la = self._input.LA(1)
             while _la==AssertionParser.CM:
-                self.state = 122
+                self.state = 125
                 self.match(AssertionParser.CM)
-                self.state = 123
+                self.state = 126
                 self.num()
-                self.state = 128
+                self.state = 131
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
 
-            self.state = 129
+            self.state = 132
             self.match(AssertionParser.RB)
         except RecognitionException as re:
             localctx.exception = re
@@ -842,7 +861,7 @@ class AssertionParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 131
+            self.state = 134
             _la = self._input.LA(1)
             if not(_la==AssertionParser.INT or _la==AssertionParser.FLT):
                 self._errHandler.recoverInline(self)

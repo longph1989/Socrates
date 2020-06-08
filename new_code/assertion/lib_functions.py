@@ -2,7 +2,7 @@ import autograd.numpy as np
 
 model = None
 
-def set_mode(m):
+def set_model(m):
     global model
     model = m
 

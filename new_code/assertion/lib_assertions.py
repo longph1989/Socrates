@@ -13,12 +13,15 @@ import enum
 
 
 class Implication:
-    def __init__(self, vars, pre, post):
+    def __init__(self, vars, pre, post, init_dict):
         self.vars = vars
         self.pre = pre
         self.post = post
+        self.init_dict = init_dict
 
     def get_value(self, vars_dict):
+        vars_dict.update(self.init_dict)
+
         if not self.get_pre_value(vars_dict):
             return True
         elif self.get_post_value(vars_dict):
@@ -27,9 +30,11 @@ class Implication:
             return False
 
     def get_pre_value(self, vars_dict):
+        vars_dict.update(self.init_dict)
         return pre.get_value(vars_dict)
 
     def get_post_value(self, vars_dict):
+        vars_dict.update(self.init_dict)
         return post.get_value(vars_dict)
 
 
@@ -73,17 +78,17 @@ class GeneralTerm:
         lhs_value = lhs.get_value(vars_dict)
         rhs_value = rhs.get_value(vars_dict)
 
-        if self.op = Op.GE:
+        if self.op == Op.GE:
             return True if lhs_value >= rhs_value else False
-        elif self.op = Op.GT:
+        elif self.op == Op.GT:
             return True if lhs_value > rhs_value else False
-        elif self.op = Op.LE:
+        elif self.op == Op.LE:
             return True if lhs_value <= rhs_value else False
-        elif self.op = Op.LT:
+        elif self.op == Op.LT:
             return True if lhs_value < rhs_value else False
-        elif self.op = Op.EQ:
+        elif self.op == Op.EQ:
             return True if lhs_value == rhs_value else False
-        elif self.op = Op.NE:
+        elif self.op == Op.NE:
             return True if lhs_value != rhs_value else False
 
 

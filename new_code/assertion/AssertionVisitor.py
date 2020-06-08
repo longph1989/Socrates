@@ -6,6 +6,7 @@ else:
     from AssertionParser import AssertionParser
 
 import ast
+import autograd.numpy as np
 
 from .lib_assertions import *
 from .lib_functions import *
@@ -14,6 +15,9 @@ from functools import partial
 # This class defines a complete generic visitor for a parse tree produced by AssertionParser.
 
 class AssertionVisitor(ParseTreeVisitor):
+
+    def __init__(self):
+        self.init_dict = {}
 
     # def visitAssertion(self, ctx:AssertionParser.AssertionContext):
     #     impls = list()
@@ -32,7 +36,7 @@ class AssertionVisitor(ParseTreeVisitor):
         pre = self.visitDisjunction(ctx.disjunction(0))
         post = self.visitDisjunction(ctx.disjunction(1))
 
-        return Implication(vars, pre, post)
+        return Implication(vars, pre, post, self.init_dict)
 
     def visitDisjunction(self, ctx:AssertionParser.DisjunctionContext):
         conjs = list()
@@ -62,20 +66,24 @@ class AssertionVisitor(ParseTreeVisitor):
                 elif ctx.num():
                     rhs = ast.literal_eval(ctx.num().getText())
             elif ctx.VAR(0):
-                vars1 = list()
-                vars1.append(Var(ctx.VAR(0).getText()))
+                if ctx.array():
+                    self.init_dict[ctx.VAR(0).getText()] = np.array(ctx.array().getText())
+                    return TrueTerm()
+                else:
+                    vars1 = list()
+                    vars1.append(Var(ctx.VAR(0).getText()))
 
-                idx1 = ast.literal_eval(ctx.INT(0).getText())
-                lhs = Function(partial(index, idx1), vars1)
+                    idx1 = ast.literal_eval(ctx.INT(0).getText())
+                    lhs = Function(partial(index, idx1), vars1)
 
-                if ctx.VAR(1):
-                    vars2 = list()
-                    vars2.append(Var(ctx.VAR(1).getText()))
+                    if ctx.VAR(1):
+                        vars2 = list()
+                        vars2.append(Var(ctx.VAR(1).getText()))
 
-                    idx2 = ast.literal_eval(ctx.INT(1).getText())
-                    rhs = Function(partial(index, idx2), vars2)
-                elif ctx.num():
-                    rhs = ast.literal_eval(ctx.num().getText())
+                        idx2 = ast.literal_eval(ctx.INT(1).getText())
+                        rhs = Function(partial(index, idx2), vars2)
+                    elif ctx.num():
+                        rhs = ast.literal_eval(ctx.num().getText())
 
             op = self.visitOp(ctx.op())
 

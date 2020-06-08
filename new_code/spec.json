@@ -1,6 +1,7 @@
 {
   "model": {
     "shape": "(1,5)",
+    "bounds": ["(0.0,1.0)"],
     "layers": [
       {
         "type": "linear",

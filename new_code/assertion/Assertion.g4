@@ -25,6 +25,7 @@ term
 //      |   VAR op array                      // bounds for input segments
       |   VAR LB INT RB op num              // bounds for each element
       |   VAR LB INT RB op VAR LB INT RB    // fairness
+      |   VAR EQ array
       ;
 
 func

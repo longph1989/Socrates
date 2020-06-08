@@ -5,6 +5,7 @@ import os
 from model.lib_models import *
 from model.lib_layers import *
 from assertion.lib_assertions import *
+from assertion.lib_functions import *
 from solver.lib_solvers import *
 
 from antlr4 import *
