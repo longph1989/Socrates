@@ -15,7 +15,7 @@ def main():
     with open(args.spec, 'r') as f:
         spec = json.load(f)
 
-    parse(spec)
+    model, assertion, solver = parse(spec)
 
 
 if __name__ == '__main__':

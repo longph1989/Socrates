@@ -2,15 +2,16 @@ import ast
 import autograd.numpy as np
 import os
 
-from model.lib_models import *
-from model.lib_layers import *
-from assertion.lib_assertions import *
-from solver.lib_solvers import *
+from model import Model
+from assertion import Assertion
+
+from lib_layers import *
+from lib_solvers import *
 
 from antlr4 import *
-from assertion.AssertionLexer import AssertionLexer
-from assertion.AssertionParser import AssertionParser
-from assertion.AssertionVisitor import AssertionVisitor
+from AssertionLexer import AssertionLexer
+from AssertionParser import AssertionParser
+from AssertionVisitor import AssertionVisitor
 
 
 def read(text):
@@ -184,10 +185,8 @@ def parse_model(spec):
 
 def parse_assertion(spec):
     if isinstance(spec, dict):
-        # syntactic sugar definition
         return spec
     else:
-        # general assertion
         input = InputStream(spec)
         lexer = AssertionLexer(input)
         token = CommonTokenStream(lexer)
@@ -219,7 +218,5 @@ def parse(spec):
     model = parse_model(spec['model'])
     assertion = parse_assertion(spec['assert'])
     solver = parse_solver(spec['solver'])
-
-    print('done')
 
     return model, assertion, solver

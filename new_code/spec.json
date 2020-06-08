@@ -45,5 +45,9 @@
         "func": "softmax"
       }
     ]
+  },
+  "assert": "(FA x1, x2 . d0(x1,x2) = 3 => lin_inp(x2,[1,2,2.4]) >= 5.4)",
+  "solver": {
+    "name": "optimize"
   }
 }
