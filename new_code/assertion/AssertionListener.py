@@ -8,15 +8,6 @@ else:
 # This class defines a complete listener for a parse tree produced by AssertionParser.
 class AssertionListener(ParseTreeListener):
 
-    # Enter a parse tree produced by AssertionParser#assertion.
-    def enterAssertion(self, ctx:AssertionParser.AssertionContext):
-        pass
-
-    # Exit a parse tree produced by AssertionParser#assertion.
-    def exitAssertion(self, ctx:AssertionParser.AssertionContext):
-        pass
-
-
     # Enter a parse tree produced by AssertionParser#implication.
     def enterImplication(self, ctx:AssertionParser.ImplicationContext):
         pass

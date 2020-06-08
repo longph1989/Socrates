@@ -16,6 +16,7 @@ def main():
         spec = json.load(f)
 
     model, assertion, solver = parse(spec)
+    solver.solve(model, assertion)
 
 
 if __name__ == '__main__':

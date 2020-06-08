@@ -1,9 +1,9 @@
 grammar Assertion;
 
 
-assertion
-      :   implication (OR implication)* EOF
-      ;
+//assertion
+//      :   implication (OR implication)* EOF
+//      ;
 
 implication
       :   LP FA VAR (CM VAR)* DOT disjunction IMP disjunction RP

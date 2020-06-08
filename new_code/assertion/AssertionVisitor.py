@@ -15,13 +15,13 @@ from functools import partial
 
 class AssertionVisitor(ParseTreeVisitor):
 
-    def visitAssertion(self, ctx:AssertionParser.AssertionContext):
-        impls = list()
-
-        for impl in ctx.implication():
-            impls.append(self.visitImplication(impl))
-
-        return Assertion(impls)
+    # def visitAssertion(self, ctx:AssertionParser.AssertionContext):
+    #     impls = list()
+    #
+    #     for impl in ctx.implication():
+    #         impls.append(self.visitImplication(impl))
+    #
+    #     return Assertion(impls)
 
     def visitImplication(self, ctx:AssertionParser.ImplicationContext):
         vars = list()

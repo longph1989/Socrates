@@ -175,11 +175,27 @@ def parse_layers(spec):
     return layers
 
 
+def parse_bounds(size, spec):
+    lower = np.zeros(size)
+    upper = np.zeros(size)
+
+    step = int(size / len(spec))
+
+    for i in range(len(spec)):
+        bound = ast.literal_eval(spec[i])
+
+        lower[i * step : (i + 1) * step] = bound[0]
+        upper[i * step : (i + 1) * step] = bound[1]
+
+    return lower, upper
+
+
 def parse_model(spec):
-    shape = ast.literal_eval(read(spec['shape']))
+    shape = np.array(ast.literal_eval(read(spec['shape'])))
+    lower, upper = parse_bounds(np.prod(shape), spec['bounds'])
     layers = parse_layers(spec['layers'])
 
-    return Model(shape, layers)
+    return Model(shape, lower, upper, layers)
 
 
 def parse_assertion(spec):
@@ -193,10 +209,10 @@ def parse_assertion(spec):
         token = CommonTokenStream(lexer)
         parser = AssertionParser(token)
 
-        assertion_tree = parser.assertion()
-        assertion = AssertionVisitor().visitAssertion(assertion_tree)
+        assertion_tree = parser.implication()
+        assertion = AssertionVisitor().visitImplication(assertion_tree)
 
-        return Assertion
+        return assertion
 
 
 def parse_solver(spec):
@@ -204,7 +220,7 @@ def parse_solver(spec):
 
     if name == 'optimize':
         solver = Optimize()
-    if name == 'sqrt':
+    if name == 'sprt':
         threshold = ast.literal_eval(read(spec['threshold']))
         alpha = ast.literal_eval(read(spec['alpha']))
         beta = ast.literal_eval(read(spec['beta']))
@@ -220,6 +236,6 @@ def parse(spec):
     assertion = parse_assertion(spec['assert'])
     solver = parse_solver(spec['solver'])
 
-    print('done')
+    set_model(model)
 
     return model, assertion, solver

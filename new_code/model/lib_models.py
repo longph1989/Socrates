@@ -1,8 +1,10 @@
 import autograd.numpy as np
 
 class Model:
-    def __init__(self, shape, layers):
+    def __init__(self, shape, lower, upper, layers):
         self.shape = shape
+        self.lower = lower
+        self.upper = upper
         self.layers = layers
 
     def apply(x):
