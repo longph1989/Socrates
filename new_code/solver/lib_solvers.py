@@ -45,6 +45,8 @@ class SPRT():
                 x = self.__generate_x(model.shape, model.lower, model.upper)
                 vars_dict[var.name] = x
 
+            vars_dict.update(assertion.init_dict)
+
             if assertion.get_pre_value(vars_dict):
                 if assertion.get_post_value(vars_dict):
                     pr = pr * p1 / p0

@@ -64,7 +64,7 @@ class AssertionVisitor(ParseTreeVisitor):
                 if ctx.func(1):
                     rhs = self.visitFunc(ctx.func(1))
                 elif ctx.num():
-                    rhs = ast.literal_eval(ctx.num().getText())
+                    rhs = Num(ast.literal_eval(ctx.num().getText()))
             elif ctx.VAR(0):
                 if ctx.array():
                     self.init_dict[ctx.VAR(0).getText()] = np.array(ctx.array().getText())
@@ -83,7 +83,7 @@ class AssertionVisitor(ParseTreeVisitor):
                         idx2 = ast.literal_eval(ctx.INT(1).getText())
                         rhs = Function(partial(index, idx2), vars2)
                     elif ctx.num():
-                        rhs = ast.literal_eval(ctx.num().getText())
+                        rhs = Num(ast.literal_eval(ctx.num().getText()))
 
             op = self.visitOp(ctx.op())
 
