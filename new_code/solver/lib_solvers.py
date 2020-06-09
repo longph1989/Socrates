@@ -29,7 +29,7 @@ class Optimize():
         x = np.zeros(np.prod(model.shape) * len(assertion.vars))
         args = (model, assertion)
         bounds = Bounds(model.lower, model.upper)
-        jac = grad(self.__obj_func)
+        jac = grad(self.__obj_func) if model.layers != None else None
 
         res = minimize(self.__obj_func, x, args=args, bounds=bounds, jac=jac)
 

@@ -194,9 +194,10 @@ def parse_bounds(size, spec):
 def parse_model(spec):
     shape = np.array(ast.literal_eval(read(spec['shape'])))
     lower, upper = parse_bounds(np.prod(shape), spec['bounds'])
-    layers = parse_layers(spec['layers'])
+    layers = parse_layers(spec['layers']) if 'layer' in spec else None
+    path = spec['path'] if 'path' in spec else None
 
-    return Model(shape, lower, upper, layers)
+    return Model(shape, lower, upper, layers, path)
 
 
 def parse_assertion(spec):
