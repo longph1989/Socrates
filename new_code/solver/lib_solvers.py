@@ -1,11 +1,38 @@
 import autograd.numpy as np
 
+from scipy.optimize import minimize
+from scipy.optimize import Bounds
+
 class Optimize():
     def __init__(self):
         return
 
-    def solve(self, model, assertion):
+    def __solve_syntactic_sugar(self, model, assertion):
         return
+
+    def __obj_func(x, model, assertion):
+        vars_dict = {}
+        size = np.prod(model.shape)
+
+        for i in len(assertion.vars):
+            var = assertion.vars[i]
+            vars_dict[var.name] = x[i * size : (i + 1) * size]
+
+        vars_dict.update(assertion.init_dict)
+
+        return assertion.neg_num_value(vars_dict)
+
+    def solve(self, model, assertion):
+        if isinstance(assertion, dict):
+            return self.__solve_syntactic_sugar(model, assertion)
+
+        x = np.zeros(np.prod(model.shape) * len(assertion.vars))
+        args = (model, assertion)
+        bounds = Bounds(model.lower, model.upper)
+        jac = grad(self.__obj_func)
+
+        res = minimize(self.__obj_func, x, args=args, bounds=bounds, jac=jac)
+
 
 
 class SPRT():
@@ -24,7 +51,7 @@ class SPRT():
         return x
 
     def __solve_syntactic_sugar(self, model, spec):
-        return x
+        return
 
     def solve(self, model, assertion):
         if isinstance(assertion, dict):

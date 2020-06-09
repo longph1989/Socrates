@@ -21,8 +21,6 @@ term
       :   TRUE
       |   func op num
       |   func op func
-//      |   VAR op num                        // bounds for whole input
-//      |   VAR op array                      // bounds for input segments
       |   VAR LB INT RB op num              // bounds for each element
       |   VAR LB INT RB op VAR LB INT RB    // fairness
       |   VAR EQ array
