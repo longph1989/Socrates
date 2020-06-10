@@ -222,10 +222,11 @@ def parse_solver(spec):
 
     if name == 'optimize':
         display = True if 'display' in spec and spec['display'] == 'on' else False
-        mean = ast.literal_eval(read(spec['mean'])) if 'mean' in spec else 0
-        variance = ast.literal_eval(read(spec['variance'])) if 'variance' in spec else 1
+        mean = np.array(ast.literal_eval(read(spec['mean']))) if 'mean' in spec else np.empty(0)
+        variance = np.array(ast.literal_eval(read(spec['variance']))) if 'variance' in spec else np.empty(0)
+        resolution = np.array(ast.literal_eval(read(spec['resolution']))) if 'resolution' in spec else np.empty(0)
 
-        solver = Optimize(display, mean, variance)
+        solver = Optimize(display, mean, variance, resolution)
     if name == 'sprt':
         threshold = ast.literal_eval(read(spec['threshold']))
         alpha = ast.literal_eval(read(spec['alpha']))
