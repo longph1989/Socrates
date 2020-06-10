@@ -4,8 +4,10 @@ from scipy.optimize import minimize
 from scipy.optimize import Bounds
 
 class Optimize():
-    def __init__(self):
-        return
+    def __init__(self, display, mean, variance):
+        self.display = display
+        self.mean = mean
+        self.variance = variance
 
     def __solve_syntactic_sugar(self, model, assertion):
         return
@@ -32,6 +34,11 @@ class Optimize():
         jac = grad(self.__obj_func) if model.layers != None else None
 
         res = minimize(self.__obj_func, x, args=args, bounds=bounds, jac=jac)
+
+        if res.fun == 0:
+            print('The assertion is unsatisfied with x = {}.'.format(res.x))
+        else:
+            print('The assertion is probably satisfied.')
 
 
 
@@ -64,6 +71,7 @@ class SPRT():
         h1 = (1 - self.beta) / self.alpha
 
         pr = 1
+        no = 0
 
         while True:
             vars_dict = {}
@@ -75,14 +83,15 @@ class SPRT():
             vars_dict.update(assertion.init_dict)
 
             if assertion.get_pre_value(vars_dict):
+                no = no + 1
                 if assertion.get_post_value(vars_dict):
                     pr = pr * p1 / p0
                 else:
                     pr = pr * (1 - p1) / (1 - p0)
 
-            if pr <= h0:
-                print('Accept H0. The assertion is satisfied with p >= {} after {} tests.'.format(p0, no_x))
-                break
-            elif pr >= h1:
-                print('Accept H1. The assertion is satisfied with p <= {} after {} tests.'.format(p1, no_x))
-                break
+                if pr <= h0:
+                    print('Accept H0. The assertion is satisfied with p >= {} after {} tests.'.format(p0, no))
+                    break
+                elif pr >= h1:
+                    print('Accept H1. The assertion is satisfied with p <= {} after {} tests.'.format(p1, no))
+                    break

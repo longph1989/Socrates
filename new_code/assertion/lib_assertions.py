@@ -1,17 +1,6 @@
 import enum
 
 
-# class Assertion:
-#     def __init__(self, impls):
-#         self.impls = impls
-#
-#     def get_bool_value(self, vars_dict):
-#         for impl in self.impls:
-#             if impl.get_bool_value(vars_dict):
-#                 return True
-#         return False
-
-
 class Implication:
     def __init__(self, vars, pre, post, init_dict):
         self.vars = vars
