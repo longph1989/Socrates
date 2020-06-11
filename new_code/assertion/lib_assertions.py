@@ -155,34 +155,34 @@ class GeneralTerm:
         rhs_value = self.rhs.get_num_value(vars_dict)
 
         if self.op == Op.GE:
-            return 0 if lhs_value >= rhs_value else abs(lhs_value - rhs_value)
+            return 0 if lhs_value >= rhs_value else abs(lhs_value - rhs_value + 1e-3)
         elif self.op == Op.GT:
-            return 0 if lhs_value > rhs_value else abs(lhs_value - rhs_value)
+            return 0 if lhs_value > rhs_value else abs(lhs_value - rhs_value + 1e-3)
         elif self.op == Op.LE:
-            return 0 if lhs_value <= rhs_value else abs(lhs_value - rhs_value)
+            return 0 if lhs_value <= rhs_value else abs(lhs_value - rhs_value + 1e-3)
         elif self.op == Op.LT:
-            return 0 if lhs_value < rhs_value else abs(lhs_value - rhs_value)
+            return 0 if lhs_value < rhs_value else abs(lhs_value - rhs_value + 1e-3)
         elif self.op == Op.EQ:
-            return 0 if lhs_value == rhs_value else abs(lhs_value - rhs_value)
+            return 0 if lhs_value == rhs_value else abs(lhs_value - rhs_value + 1e-3)
         elif self.op == Op.NE:
-            return 0 if lhs_value != rhs_value else 1
+            return 0 if lhs_value != rhs_value else 1e-3
 
-    def get_num_value(self, vars_dict):
+    def neg_num_value(self, vars_dict):
         lhs_value = self.lhs.get_num_value(vars_dict)
         rhs_value = self.rhs.get_num_value(vars_dict)
 
         if self.op == Op.GE:
-            return 0 if lhs_value < rhs_value else abs(lhs_value - rhs_value)
+            return 0 if lhs_value < rhs_value else abs(lhs_value - rhs_value + 1e-3)
         elif self.op == Op.GT:
-            return 0 if lhs_value <= rhs_value else abs(lhs_value - rhs_value)
+            return 0 if lhs_value <= rhs_value else abs(lhs_value - rhs_value + 1e-3)
         elif self.op == Op.LE:
-            return 0 if lhs_value > rhs_value else abs(lhs_value - rhs_value)
+            return 0 if lhs_value > rhs_value else abs(lhs_value - rhs_value + 1e-3)
         elif self.op == Op.LT:
-            return 0 if lhs_value >= rhs_value else abs(lhs_value - rhs_value)
+            return 0 if lhs_value >= rhs_value else abs(lhs_value - rhs_value + 1e-3)
         elif self.op == Op.EQ:
-            return 0 if lhs_value != rhs_value else 1
+            return 0 if lhs_value != rhs_value else 1e-3
         elif self.op == Op.NE:
-            return 0 if lhs_value == rhs_value else abs(lhs_value - rhs_value)
+            return 0 if lhs_value == rhs_value else abs(lhs_value - rhs_value + 1e-3)
 
 
 class Function:
@@ -196,7 +196,7 @@ class Function:
         for var in self.vars:
             args.append(vars_dict[var.name])
 
-        return func(*args)
+        return self.func(*args)
 
 
 class Var:

@@ -74,7 +74,7 @@ class AssertionParser ( Parser ):
                      "'arg_max'", "'arg_min'", "'lin_inp'", "'lin_out'", 
                      "<INVALID>", "<INVALID>", "<INVALID>", "'('", "')'", 
                      "'['", "']'", "','", "'.'", "'>='", "'>'", "'<='", 
-                     "'<'", "'='", "'!='", "'\\/'", "'/\\'", "'=>'" ]
+                     "'<'", "'='", "'!='", "'||'", "'&&'", "'=>'" ]
 
     symbolicNames = [ "<INVALID>", "TRUE", "FA", "D0", "D2", "DI", "ARG_MAX", 
                       "ARG_MIN", "LIN_INP", "LIN_OUT", "VAR", "INT", "FLT", 

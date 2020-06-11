@@ -11,8 +11,8 @@ class Model:
         if layers == None and path != None:
             self.ptmodel = torch.load(path)
 
-    def __apply_ptmodel(x):
-        x = torch.from_numpy(x).view(self.shape)
+    def __apply_ptmodel(self, x):
+        x = torch.from_numpy(x).view(self.shape.tolist())
 
         with torch.no_grad():
             output = self.ptmodel(x)
@@ -21,11 +21,11 @@ class Model:
 
         return output
 
-    def apply(x):
+    def apply(self, x):
         if self.layers == None:
             return self.__apply_ptmodel(x)
 
-        shape_i = [1, self.shape[1:]]
+        shape_i = [1, *self.shape[1:]]
         size_i = np.prod(shape_i)
 
         len = int(x.size / size_i)
@@ -36,7 +36,7 @@ class Model:
             for layer in self.layers:
                 output = layer.apply(output)
 
-        for layer in layers:
+        for layer in self.layers:
             layer.reset()
 
         return output

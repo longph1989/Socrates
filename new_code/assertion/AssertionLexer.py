@@ -74,9 +74,9 @@ def serializedATN():
         buf.write("@\2\2\u00a4*\3\2\2\2\u00a5\u00a6\7>\2\2\u00a6\u00a7\7")
         buf.write("?\2\2\u00a7,\3\2\2\2\u00a8\u00a9\7>\2\2\u00a9.\3\2\2\2")
         buf.write("\u00aa\u00ab\7?\2\2\u00ab\60\3\2\2\2\u00ac\u00ad\7#\2")
-        buf.write("\2\u00ad\u00ae\7?\2\2\u00ae\62\3\2\2\2\u00af\u00b0\7^")
-        buf.write("\2\2\u00b0\u00b1\7\61\2\2\u00b1\64\3\2\2\2\u00b2\u00b3")
-        buf.write("\7\61\2\2\u00b3\u00b4\7^\2\2\u00b4\66\3\2\2\2\u00b5\u00b6")
+        buf.write("\2\u00ad\u00ae\7?\2\2\u00ae\62\3\2\2\2\u00af\u00b0\7~")
+        buf.write("\2\2\u00b0\u00b1\7~\2\2\u00b1\64\3\2\2\2\u00b2\u00b3\7")
+        buf.write("(\2\2\u00b3\u00b4\7(\2\2\u00b4\66\3\2\2\2\u00b5\u00b6")
         buf.write("\7?\2\2\u00b6\u00b7\7@\2\2\u00b78\3\2\2\2\u00b8\u00ba")
         buf.write("\t\6\2\2\u00b9\u00b8\3\2\2\2\u00ba\u00bb\3\2\2\2\u00bb")
         buf.write("\u00b9\3\2\2\2\u00bb\u00bc\3\2\2\2\u00bc\u00bd\3\2\2\2")
@@ -127,8 +127,8 @@ class AssertionLexer(Lexer):
     literalNames = [ "<INVALID>",
             "'TRUE'", "'FA'", "'d0'", "'d2'", "'di'", "'arg_max'", "'arg_min'", 
             "'lin_inp'", "'lin_out'", "'('", "')'", "'['", "']'", "','", 
-            "'.'", "'>='", "'>'", "'<='", "'<'", "'='", "'!='", "'\\/'", 
-            "'/\\'", "'=>'" ]
+            "'.'", "'>='", "'>'", "'<='", "'<'", "'='", "'!='", "'||'", 
+            "'&&'", "'=>'" ]
 
     symbolicNames = [ "<INVALID>",
             "TRUE", "FA", "D0", "D2", "DI", "ARG_MAX", "ARG_MIN", "LIN_INP", 

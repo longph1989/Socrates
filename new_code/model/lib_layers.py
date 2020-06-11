@@ -6,7 +6,7 @@ class Layer:
     def apply(self, x):
         return x
 
-    def reset():
+    def reset(self):
         return
 
 

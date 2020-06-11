@@ -3,9 +3,15 @@ import matplotlib.pyplot as plt
 
 from scipy.optimize import minimize
 from scipy.optimize import Bounds
-from parser import read
+from autograd import grad
 from assertion.lib_functions import d0, d2, di
 
+#
+# def read(text):
+#     if os.path.isfile(text):
+#         return open(text, 'r').readline()
+#     else:
+#         return text
 
 
 class Optimize():
@@ -14,9 +20,9 @@ class Optimize():
         self.mean = mean
         self.variance = variance
         self.resolution = resolution
-        
 
-    def __denormalize(x):
+
+    def __denormalize(self, x):
         step = int(x.size / len(mean))
 
         for i in range(len(mean)):
@@ -28,7 +34,7 @@ class Optimize():
         return x
 
 
-    def __display(model, x0, y0, x, y):
+    def __display(self, model, x0, y0, x, y):
         x0 = self.__denormalize(x0)
         x = self.__denormalize(x)
 
@@ -40,7 +46,7 @@ class Optimize():
         if self.resolution[0] == 1:
             ax[0].imshow(x0, cmap='gray')
             ax[1].imshow(x, cmap='gray')
-        elif self.resolution[0] == 3:
+        else:
             ax[0].imshow(x0.transpose(1, 2, 0))
             ax[1].imshow(x.transpose(1, 2, 0))
 
@@ -72,7 +78,7 @@ class Optimize():
             x0 = self.__generate_x(model.shape, model.lower, model.upper)
             y0 = np.argmax(model.apply(x0), axis=1)
 
-            res, _ = self.__solve_robustness(model, spec, x0, y0):
+            res, _ = self.__solve_robustness(model, spec, x0, y0)
 
             if not res:
                 print('The model is unsatisfied with global robustness.')
@@ -116,7 +122,7 @@ class Optimize():
             return True, np.empty(0)
 
 
-    def __obj_robustness(x, model, x0, y0, dfunc, eps):
+    def __obj_robustness(self, x, model, x0, y0, dfunc, eps):
         loss1 = dfunc(x, x0)
 
         loss1 = 0 if loss1 <= eps else loss1 - eps
@@ -124,7 +130,7 @@ class Optimize():
         output = model.apply(x)
         y0_score = output_x[0][y0]
 
-        output = output - np.eye(output_x[0].size)[y0] * 1e6
+        output = output - np.eye(output_x[0].size)[y0] * 1e9
         max_score = np.max(output)
 
         loss2 = 0 if y0_score < max_score else y0_score - max_score + 1e-3
@@ -134,11 +140,11 @@ class Optimize():
         return loss
 
 
-    def __obj_func(x, model, assertion):
+    def __obj_func(self, x, model, assertion):
         vars_dict = {}
         size = np.prod(model.shape)
 
-        for i in len(assertion.vars):
+        for i in range(len(assertion.vars)):
             var = assertion.vars[i]
             vars_dict[var.name] = x[i * size : (i + 1) * size]
 
@@ -245,7 +251,7 @@ class SPRT():
 
                 y = np.argmax(model.apply(x), axis=1)
 
-                if y == y0
+                if y == y0:
                     pr = pr * p1 / p0
                 else:
                     pr = pr * (1 - p1) / (1 - p0)
@@ -280,10 +286,10 @@ class SPRT():
 
             vars_dict.update(assertion.init_dict)
 
-            if assertion.get_pre_value(vars_dict):
+            if assertion.get_pre_bool_value(vars_dict):
                 no = no + 1
 
-                if assertion.get_post_value(vars_dict):
+                if assertion.get_post_bool_value(vars_dict):
                     pr = pr * p1 / p0
                 else:
                     pr = pr * (1 - p1) / (1 - p0)

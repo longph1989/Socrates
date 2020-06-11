@@ -7,7 +7,6 @@ def set_model(m):
     model = m
 
 def apply_model(x):
-    global model
     return model.apply(x)
 
 def d0(x1, x2):
