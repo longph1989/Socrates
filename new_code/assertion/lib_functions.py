@@ -31,9 +31,10 @@ def lin_inp(coefs, x):
     return res
 
 def lin_out(coefs, x):
+    res = 0
     out = apply_model(x)
     for i in range(out.size):
-        res = res + coefs[i] * out[i]
+        res = res + coefs[i] * out[0][i]
     return res
 
 def index(i, x):
