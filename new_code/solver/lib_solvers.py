@@ -141,7 +141,7 @@ class Optimize():
 
 
     def __obj_func(self, x, model, assertion):
-        vars_dict = {}
+        vars_dict = dict()
         size = np.prod(model.shape)
 
         for i in range(len(assertion.vars)):
@@ -150,7 +150,7 @@ class Optimize():
 
         vars_dict.update(assertion.init_dict)
 
-        return assertion.neg_num_value(vars_dict)
+        return assertion.neg_num_value(vars_dict) + np.sum(x - x)
 
 
     def solve(self, model, assertion):
@@ -278,7 +278,7 @@ class SPRT():
         no = 0
 
         while True:
-            vars_dict = {}
+            vars_dict = dict()
 
             for var in assertion.vars:
                 x = self.__generate_x(model.shape, model.lower, model.upper)

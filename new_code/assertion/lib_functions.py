@@ -1,13 +1,27 @@
 import autograd.numpy as np
 
 model = None
+cache = dict()
 
 def set_model(m):
     global model
     model = m
 
+def update_cache(str_x, output):
+    cache[str_x] = output
+
 def apply_model(x):
-    return model.apply(x)
+    if isinstance(x, np.ndarray):
+        str_x = 'ndarray ' + str(x)
+    else:
+        str_x = 'arraybox ' + str(x._value)
+
+    if str_x in cache:
+        return cache[str_x]
+
+    output = model.apply(x)
+    update_cache(str_x, output)
+    return output
 
 def d0(x1, x2):
     return np.sum(x1 != x2)
@@ -19,10 +33,10 @@ def di(x1, x2):
     return np.max(np.abs(x1 - x2))
 
 def arg_max(x):
-    return np.argmax(apply_model(x), axis=1)
+    return np.argmax(apply_model(x), axis=1)[0]
 
 def arg_min(x):
-    return np.argmin(apply_model(x), axis=1)
+    return np.argmin(apply_model(x), axis=1)[0]
 
 def lin_inp(coefs, x):
     res = 0

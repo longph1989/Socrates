@@ -1,7 +1,11 @@
 import enum
+from assertion.lib_functions import apply_model
+
+class Formula:
+    pass
 
 
-class Implication:
+class Implication(Formula):
     def __init__(self, vars, pre, post, init_dict):
         self.vars = vars
         self.pre = pre
@@ -20,9 +24,7 @@ class Implication:
         return not self.get_bool_value(vars_dict)
 
     def get_num_value(self, vars_dict):
-        pre_num_value = self.neg_pre_num_value(vars_dict)
-
-        if pre_num_value == 0:
+        if self.neg_pre_num_value(vars_dict) == 0:
             return 0
         else:
             return pre_num_value * self.get_post_num_value(vars_dict)
@@ -55,7 +57,7 @@ class Implication:
         return self.post.neg_num_value(vars_dict)
 
 
-class Disjunction:
+class Disjunction(Formula):
     def __init__(self, conjs):
         self.conjs = conjs
 
@@ -81,7 +83,7 @@ class Disjunction:
         return res
 
 
-class Conjunction:
+class Conjunction(Formula):
     def __init__(self, terms):
         self.terms = terms
 
@@ -107,7 +109,7 @@ class Conjunction:
         return res
 
 
-class TrueTerm:
+class TrueTerm(Formula):
     def __init__(self):
         pass
 
@@ -124,7 +126,7 @@ class TrueTerm:
         return 1
 
 
-class GeneralTerm:
+class GeneralTerm(Formula):
     def __init__(self, op, lhs, rhs):
         self.op = op
         self.lhs = lhs
@@ -151,41 +153,77 @@ class GeneralTerm:
         return not self.get_bool_value(vars_dict)
 
     def get_num_value(self, vars_dict):
+        if self.lhs.func.__name__ == 'arg_max' or self.lhs.func.__name__ == 'arg_min':
+            return self.get_arg_min_max_num_value(vars_dict)
+
         lhs_value = self.lhs.get_num_value(vars_dict)
         rhs_value = self.rhs.get_num_value(vars_dict)
 
         if self.op == Op.GE:
-            return 0 if lhs_value >= rhs_value else abs(lhs_value - rhs_value + 1e-3)
+            return 0 if lhs_value >= rhs_value else abs(lhs_value - rhs_value) + 1e-9
         elif self.op == Op.GT:
-            return 0 if lhs_value > rhs_value else abs(lhs_value - rhs_value + 1e-3)
+            return 0 if lhs_value > rhs_value else abs(lhs_value - rhs_value) + 1e-9
         elif self.op == Op.LE:
-            return 0 if lhs_value <= rhs_value else abs(lhs_value - rhs_value + 1e-3)
+            return 0 if lhs_value <= rhs_value else abs(lhs_value - rhs_value) + 1e-9
         elif self.op == Op.LT:
-            return 0 if lhs_value < rhs_value else abs(lhs_value - rhs_value + 1e-3)
+            return 0 if lhs_value < rhs_value else abs(lhs_value - rhs_value) + 1e-9
         elif self.op == Op.EQ:
-            return 0 if lhs_value == rhs_value else abs(lhs_value - rhs_value + 1e-3)
+            return 0 if lhs_value == rhs_value else abs(lhs_value - rhs_value) + 1e-9
         elif self.op == Op.NE:
-            return 0 if lhs_value != rhs_value else 1e-3
+            return 0 if lhs_value != rhs_value else 1e-9
+
+    def get_arg_min_max_num_value(self, vars_dict):
+        lhs_value = self.lhs.get_num_value(vars_dict)
+        rhs_value = self.rhs.get_num_value(vars_dict)
+
+        x = vars_dict[self.lhs.vars[0].name]
+        output = apply_model(x)
+
+        if self.op == Op.EQ:
+            return 0 if lhs_value == rhs_value else abs(output[0][lhs_value] - output[0][rhs_value]) + 1e-9
+        elif self.op == Op.NE:
+            return 0 if lhs_value != rhs_value else 1e-9
+        else:
+            print('The operator should be EQ or NE.')
+            return 0
 
     def neg_num_value(self, vars_dict):
+        if self.lhs.func.__name__ == 'arg_max' or self.lhs.func.__name__ == 'arg_min':
+            return self.neg_arg_min_max_num_value(vars_dict)
+
         lhs_value = self.lhs.get_num_value(vars_dict)
         rhs_value = self.rhs.get_num_value(vars_dict)
 
         if self.op == Op.GE:
-            return 0 if lhs_value < rhs_value else abs(lhs_value - rhs_value + 1e-3)
+            return 0 if lhs_value < rhs_value else abs(lhs_value - rhs_value) + 1e-9
         elif self.op == Op.GT:
-            return 0 if lhs_value <= rhs_value else abs(lhs_value - rhs_value + 1e-3)
+            return 0 if lhs_value <= rhs_value else abs(lhs_value - rhs_value) + 1e-9
         elif self.op == Op.LE:
-            return 0 if lhs_value > rhs_value else abs(lhs_value - rhs_value + 1e-3)
+            return 0 if lhs_value > rhs_value else abs(lhs_value - rhs_value) + 1e-9
         elif self.op == Op.LT:
-            return 0 if lhs_value >= rhs_value else abs(lhs_value - rhs_value + 1e-3)
+            return 0 if lhs_value >= rhs_value else abs(lhs_value - rhs_value) + 1e-9
         elif self.op == Op.EQ:
-            return 0 if lhs_value != rhs_value else 1e-3
+            return 0 if lhs_value != rhs_value else 1e-9
         elif self.op == Op.NE:
-            return 0 if lhs_value == rhs_value else abs(lhs_value - rhs_value + 1e-3)
+            return 0 if lhs_value == rhs_value else abs(lhs_value - rhs_value) + 1e-9
+
+    def neg_arg_min_max_num_value(self, vars_dict):
+        lhs_value = self.lhs.get_num_value(vars_dict)
+        rhs_value = self.rhs.get_num_value(vars_dict)
+
+        x = vars_dict[self.lhs.vars[0].name]
+        output = apply_model(x)
+
+        if self.op == Op.EQ:
+            return 0 if lhs_value != rhs_value else 1e-9
+        elif self.op == Op.NE:
+            return 0 if lhs_value == rhs_value else abs(output[0][lhs_value] - output[0][rhs_value]) + 1e-9
+        else:
+            print('The operator should be EQ or NE.')
+            return 0
 
 
-class Function:
+class Function(Formula):
     def __init__(self, func, vars):
         self.func = func
         self.vars = vars
@@ -199,12 +237,12 @@ class Function:
         return self.func(*args)
 
 
-class Var:
+class Var(Formula):
     def __init__(self, name):
         self.name = name
 
 
-class Num:
+class Num(Formula):
     def __init__(self, value):
         self.value = value
 

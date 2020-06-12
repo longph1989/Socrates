@@ -10,7 +10,12 @@ import autograd.numpy as np
 
 from .lib_assertions import *
 from .lib_functions import *
-from functools import partial
+from functools import partial, update_wrapper
+
+def wrapped_partial(func, *args, **kwargs):
+    partial_func = partial(func, *args, **kwargs)
+    update_wrapper(partial_func, func)
+    return partial_func
 
 # This class defines a complete generic visitor for a parse tree produced by AssertionParser.
 
@@ -110,12 +115,12 @@ class AssertionVisitor(ParseTreeVisitor):
         elif ctx.LIN_INP():
             vars.append(Var(ctx.VAR(0).getText()))
             array = np.array(ast.literal_eval(ctx.array().getText()))
-            return Function(partial(lin_inp, array), vars)
+            return Function(wrapped_partial(lin_inp, array), vars)
 
         elif ctx.LIN_OUT():
             vars.append(Var(ctx.VAR(0).getText()))
             array = np.array(ast.literal_eval(ctx.array().getText()))
-            return Function(partial(lin_out, array), vars)
+            return Function(wrapped_partial(lin_out, array), vars)
 
         else:
             return None
