@@ -107,7 +107,7 @@ class Optimize():
                 lower[index] = x0[index]
                 upper[index] = x0[index]
 
-        x = np.zeros(x0.size)
+        x = x0.copy()
         args = (model, x0, y0, dfunc, eps)
         bounds = Bounds(lower, upper)
         jac = grad(self.__obj_robustness) if model.layers != None else None
@@ -124,14 +124,9 @@ class Optimize():
 
     def __obj_robustness(self, x, model, x0, y0, dfunc, eps):
         loss1 = dfunc(x, x0)
-
-        print(loss1)
-
         loss1 = 0 if loss1 <= eps else loss1 - eps
 
         output = model.apply(x)
-        print(output)
-
         y0_score = output[0][y0]
 
         output = output - np.eye(output[0].size)[y0] * 1e9
