@@ -1,3 +1,4 @@
+import autograd.numpy as np
 import argparse
 import json
 
@@ -5,6 +6,7 @@ from parser import parse
 
 
 def main():
+    np.set_printoptions(threshold=20)
     parser = argparse.ArgumentParser(description='nSolver')
 
     parser.add_argument('--spec', type=str, default='spec.json',

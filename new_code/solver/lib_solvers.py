@@ -10,21 +10,26 @@ from utils import *
 
 
 class Optimize():
-    def __init__(self, display, mean, variance, resolution):
+    def __init__(self, display, mean, std, resolution):
         self.display = display
         self.mean = mean
-        self.variance = variance
+        self.std = std
         self.resolution = resolution
 
 
     def __denormalize(self, x):
-        step = int(x.size / len(mean))
+        step = int(x.size / len(self.mean))
 
-        for i in range(len(mean)):
-            x[i * step : (i + 1) * step] = x[i * step : (i + 1) * step] * std[i] + mean[i]
+        for i in range(len(self.mean)):
+            x[i * step : (i + 1) * step] = x[i * step : (i + 1) * step] * self.std[i] + self.mean[i]
 
-        x = x * 255
-        x = x.astype('uint8').reshape(self.resolution)
+        x = (x * 255).astype('uint8')
+
+        if np.prod(self.resolution) == x.size:
+            x = x.reshape(self.resolution)
+        else:
+            new_shape = (x.size / np.prod(self.resolution), *self.resolution)
+            x = x.reshape(new_shape).transpose(1, 2, 0)
 
         return x
 
@@ -38,12 +43,12 @@ class Optimize():
         ax[0].set(title='Original. Label is {}'.format(y0))
         ax[1].set(title='Adv. sample. Label is {}'.format(y))
 
-        if self.resolution[0] == 1:
+        if len(x.shape) == 2:
             ax[0].imshow(x0, cmap='gray')
             ax[1].imshow(x, cmap='gray')
         else:
-            ax[0].imshow(x0.transpose(1, 2, 0))
-            ax[1].imshow(x.transpose(1, 2, 0))
+            ax[0].imshow(x0)
+            ax[1].imshow(x)
 
         plt.show()
 
@@ -83,29 +88,29 @@ class Optimize():
 
 
     def __solve_robustness(self, model, spec, x0, y0):
+        lower = model.lower
+        upper = model.upper
+
+        eps = ast.literal_eval(read(spec['eps']))
+
         if spec['distance'] == 'd0':
             dfunc = d0
         elif spec['distance'] == 'd2':
             dfunc = d2
         elif spec['distance'] == 'di':
             dfunc = di
-
-        eps = ast.literal_eval(read(spec['eps']))
-
-        x = np.zeros(x0.size)
-        args = (model, x0, y0, dfunc, eps)
-        bounds = Bounds(model.lower, model.upper)
-        jac = grad(self.__obj_robustness) if model.layers != None else None
+            lower = np.maximum(lower, x0 - eps)
+            upper = np.minimum(upper, x0 + eps)
 
         if 'fairness' in spec:
-            lower = model.lower
-            upper = model.upper
-
-            for index in np.array(ast.literal_eval(read(spec['x0']))):
+            for index in np.array(ast.literal_eval(read(spec['fairness']))):
                 lower[index] = x0[index]
                 upper[index] = x0[index]
 
-            bounds = Bounds(lower, upper)
+        x = np.zeros(x0.size)
+        args = (model, x0, y0, dfunc, eps)
+        bounds = Bounds(lower, upper)
+        jac = grad(self.__obj_robustness) if model.layers != None else None
 
         res = minimize(self.__obj_robustness, x, args=args, bounds=bounds, jac=jac)
 
@@ -120,19 +125,23 @@ class Optimize():
     def __obj_robustness(self, x, model, x0, y0, dfunc, eps):
         loss1 = dfunc(x, x0)
 
+        print(loss1)
+
         loss1 = 0 if loss1 <= eps else loss1 - eps
 
         output = model.apply(x)
+        print(output)
+
         y0_score = output[0][y0]
 
         output = output - np.eye(output[0].size)[y0] * 1e9
         max_score = np.max(output)
 
-        loss2 = 0 if y0_score < max_score else y0_score - max_score + 1e-9
+        loss2 = 0 if y0_score < max_score else y0_score - max_score + 1e-3
 
         loss = loss1 + loss2
 
-        return loss
+        return loss + np.sum(x - x)
 
 
     def __obj_func(self, x, model, assertion):

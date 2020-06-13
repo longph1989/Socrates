@@ -169,13 +169,15 @@ def parse_layers(spec):
 
 
 def parse_bounds(size, spec):
+    bounds = np.array(ast.literal_eval(read(spec)))
+
     lower = np.zeros(size)
     upper = np.zeros(size)
 
-    step = int(size / len(spec))
+    step = int(size / len(bounds))
 
-    for i in range(len(spec)):
-        bound = ast.literal_eval(spec[i])
+    for i in range(len(bounds)):
+        bound = bounds[i]
 
         lower[i * step : (i + 1) * step] = bound[0]
         upper[i * step : (i + 1) * step] = bound[1]
@@ -215,10 +217,10 @@ def parse_solver(spec):
     if name == 'optimize':
         display = True if 'display' in spec and spec['display'] == 'on' else False
         mean = np.array(ast.literal_eval(read(spec['mean']))) if 'mean' in spec else np.empty(0)
-        variance = np.array(ast.literal_eval(read(spec['variance']))) if 'variance' in spec else np.empty(0)
+        std = np.array(ast.literal_eval(read(spec['std']))) if 'std' in spec else np.empty(0)
         resolution = np.array(ast.literal_eval(read(spec['resolution']))) if 'resolution' in spec else np.empty(0)
 
-        solver = Optimize(display, mean, variance, resolution)
+        solver = Optimize(display, mean, std, resolution)
     if name == 'sprt':
         threshold = ast.literal_eval(read(spec['threshold']))
         alpha = ast.literal_eval(read(spec['alpha']))
