@@ -1,0 +1,44 @@
+{
+  "model": {
+    "shape": "(1,784)",
+    "bounds" : "[(0,1)]",
+    "layers": [
+      {
+        "type": "linear",
+        "weights": "tests/motivation/nnet/weights/w1.txt",
+        "bias": "tests/motivation/nnet/bias/b1.txt"
+      },
+      {
+        "type": "function",
+        "func": "relu"
+      },
+      {
+        "type": "linear",
+        "weights": "tests/motivation/nnet/weights/w2.txt",
+        "bias": "tests/motivation/nnet/bias/b2.txt"
+      },
+      {
+        "type": "function",
+        "func": "relu"
+      },
+      {
+        "type": "linear",
+        "weights": "tests/motivation/nnet/weights/w3.txt",
+        "bias": "tests/motivation/nnet/bias/b3.txt"
+      }
+    ]
+  },
+  "assert": {
+    "robustness": "local",
+    "x0": "tests/motivation/data0.txt",
+    "distance": "di",
+    "eps": "0.1"
+  },
+  "solver": {
+    "name": "optimize",
+    "display": "on",
+    "mean": "[0]",
+    "std": "[1]",
+    "resolution": "(28,28)"
+  }
+}

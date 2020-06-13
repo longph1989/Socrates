@@ -1,0 +1,53 @@
+{
+  "model": {
+    "shape": "(1,784)",
+    "bounds" : "[(0,1)]",
+    "layers": [
+      {
+        "type": "linear",
+        "weights": "/Users/smu/Workspace/Code/nsolver/benchmark/eran/nnet/mnist_relu_4_1024/weights/w1.txt",
+        "bias": "/Users/smu/Workspace/Code/nsolver/benchmark/eran/nnet/mnist_relu_4_1024/bias/b1.txt"
+      },
+      {
+        "type": "function",
+        "func": "relu"
+      },
+      {
+        "type": "linear",
+        "weights": "/Users/smu/Workspace/Code/nsolver/benchmark/eran/nnet/mnist_relu_4_1024/weights/w2.txt",
+        "bias": "/Users/smu/Workspace/Code/nsolver/benchmark/eran/nnet/mnist_relu_4_1024/bias/b2.txt"
+      },
+      {
+        "type": "function",
+        "func": "relu"
+      },
+      {
+        "type": "linear",
+        "weights": "/Users/smu/Workspace/Code/nsolver/benchmark/eran/nnet/mnist_relu_4_1024/weights/w3.txt",
+        "bias": "/Users/smu/Workspace/Code/nsolver/benchmark/eran/nnet/mnist_relu_4_1024/bias/b3.txt"
+      },
+      {
+        "type": "function",
+        "func": "relu"
+      },
+      {
+        "type": "linear",
+        "weights": "/Users/smu/Workspace/Code/nsolver/benchmark/eran/nnet/mnist_relu_4_1024/weights/w4.txt",
+        "bias": "/Users/smu/Workspace/Code/nsolver/benchmark/eran/nnet/mnist_relu_4_1024/bias/b4.txt"
+      }
+    ]
+  },
+  "assert": {
+    "robustness": "local",
+    "x0": "/Users/smu/Workspace/Code/nsolver/benchmark/eran/data/mnist/data0.txt",
+    "distance": "di",
+    "eps": "0.22"
+  },
+  "solver": {
+    "name": "optimize",
+    "display": "on",
+    "mean": "[0]",
+    "std": "[1]",
+    "resolution": "(28,28)"
+  }
+}
