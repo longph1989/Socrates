@@ -1,6 +1,7 @@
 import enum
 from assertion.lib_functions import apply_model
 
+
 class Formula:
     pass
 

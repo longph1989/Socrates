@@ -1,5 +1,5 @@
-import ast
 import autograd.numpy as np
+import ast
 
 from antlr4 import *
 from assertion.AssertionLexer import AssertionLexer

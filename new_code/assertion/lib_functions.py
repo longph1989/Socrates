@@ -1,5 +1,6 @@
 import autograd.numpy as np
 
+
 model = None
 cache = dict()
 
@@ -11,10 +12,7 @@ def update_cache(str_x, output):
     cache[str_x] = output
 
 def apply_model(x):
-    if isinstance(x, np.ndarray):
-        str_x = 'ndarray ' + str(x)
-    else:
-        str_x = 'arraybox ' + str(x._value)
+    str_x = str(x)
 
     if str_x in cache:
         return cache[str_x]

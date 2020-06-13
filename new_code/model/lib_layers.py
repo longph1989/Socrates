@@ -1,5 +1,5 @@
 import autograd.numpy as np
-from functools import partial
+from utils import *
 
 
 class Layer:
@@ -12,7 +12,7 @@ class Layer:
 
 class Function(Layer):
     def __init__(self, name, params):
-        self.func = Utils.get_func(name, params)
+        self.func = get_func(name, params)
 
     def apply(self, x):
         return self.func(x)
@@ -22,7 +22,7 @@ class Linear(Layer):
     def __init__(self, weights, bias, name):
         self.weights = weights.transpose(1, 0)
         self.bias = bias.reshape(-1, bias.size)
-        self.func = Utils.get_func(name, None)
+        self.func = get_func(name, None)
 
     def apply(self, x):
         if self.func == None:
@@ -42,7 +42,7 @@ class ReluRNN(Layer):
     def apply(self, x):
         x = np.concatenate((x, self.h_t), axis=1)
 
-        self.h_t = Utils.relu(x @ self.weights + self.bias)
+        self.h_t = relu(x @ self.weights + self.bias)
 
         return self.h_t
 
@@ -61,7 +61,7 @@ class TanhRNN(Layer):
     def apply(self, x):
         x = np.concatenate((x, self.h_t), axis=1)
 
-        self.h_t = Utils.tanh(x @ self.weights + self.bias)
+        self.h_t = tanh(x @ self.weights + self.bias)
 
         return self.h_t
 
@@ -87,8 +87,8 @@ class LSTM(Layer):
 
         i, j, f, o = np.split(gates, 4, axis=1)
 
-        self.c_t = self.c_t * Utils.sigmoid(f) + Utils.sigmoid(i) * Utils.tanh(j)
-        self.h_t = Utils.sigmoid(o) * Utils.tanh(self.c_t)
+        self.c_t = self.c_t * sigmoid(f) + sigmoid(i) * tanh(j)
+        self.h_t = sigmoid(o) * tanh(self.c_t)
 
         return self.h_t
 
@@ -112,13 +112,13 @@ class GRU(Layer):
     def apply(self, x):
         gx = np.concatenate((x, self.h_t), axis=1)
 
-        gates = Utils.sigmoid(gx @ self.gate_weights + self.gate_bias)
+        gates = sigmoid(gx @ self.gate_weights + self.gate_bias)
 
         r, u = np.split(gates, 2, axis=1)
         r = r * self.h_t
 
         cx = np.concatenate((x, r), axis=1)
-        c = Utils.tanh(cx @ self.candidate_weights + self.candidate_bias)
+        c = tanh(cx @ self.candidate_weights + self.candidate_bias)
 
         self.h_t = (1 - u) * c + u * self.h_t
 
@@ -148,7 +148,7 @@ class Conv1d(Layer):
         res_l = int((x_l - f_l) / self.stride) + 1
         size = f_c * f_l
 
-        c_idx, l_idx = Utils.index1d(x_c, self.stride, (f_l), (x_l))
+        c_idx, l_idx = index1d(x_c, self.stride, (f_l), (x_l))
 
         res = x_pad[:, c_idx, l_idx] # 1, 12, 10
         res = res.reshape(size, -1) # 12, 10
@@ -180,7 +180,7 @@ class Conv2d(Layer):
         res_w = int((x_w - f_w) / self.stride) + 1
         size = f_c * f_h * f_w
 
-        c_idx, h_idx, w_idx = Utils.index2d(x_c, self.stride, (f_h, f_w), (x_h, x_w))
+        c_idx, h_idx, w_idx = index2d(x_c, self.stride, (f_h, f_w), (x_h, x_w))
 
         res = x_pad[:, c_idx, h_idx, w_idx]
         res = res.reshape(size, -1)
@@ -213,7 +213,7 @@ class Conv3d(Layer):
         res_w = int((x_w - f_w) / self.stride) + 1
         size = f_c * f_d * f_h * f_w
 
-        c_idx, d_idx, h_idx, w_idx = Utils.index3d(x_c, self.stride, (f_d, f_h, f_w), (x_d, x_h, x_w))
+        c_idx, d_idx, h_idx, w_idx = index3d(x_c, self.stride, (f_d, f_h, f_w), (x_d, x_h, x_w))
 
         res = x_pad[:, c_idx, d_idx, h_idx, w_idx]
         res = res.reshape(size, -1)
@@ -239,7 +239,7 @@ class MaxPool1d(Layer):
 
         res_l = int((x_l - k_l) / self.stride) + 1
 
-        c_idx, l_idx = Utils.index1d(x_c, self.stride, self.kernel, (x_l))
+        c_idx, l_idx = index1d(x_c, self.stride, self.kernel, (x_l))
 
         res = x_pad[:, c_idx, l_idx]
         res = res.reshape(x_c, k_l, -1)
@@ -266,7 +266,7 @@ class MaxPool2d(Layer):
         res_h = int((x_h - k_h) / self.stride) + 1
         res_w = int((x_w - k_w) / self.stride) + 1
 
-        c_idx, h_idx, w_idx = Utils.index2d(x_c, self.stride, self.kernel, (x_h, x_w))
+        c_idx, h_idx, w_idx = index2d(x_c, self.stride, self.kernel, (x_h, x_w))
 
         res = x_pad[:, c_idx, h_idx, w_idx]
 
@@ -295,7 +295,7 @@ class MaxPool3d(Layer):
         res_h = int((x_h - k_h) / self.stride) + 1
         res_w = int((x_w - k_w) / self.stride) + 1
 
-        c_idx, d_idx, h_idx, w_idx = Utils.index3d(x_c, self.stride, self.kernel, (x_d, x_h, x_w))
+        c_idx, d_idx, h_idx, w_idx = index3d(x_c, self.stride, self.kernel, (x_d, x_h, x_w))
 
         res = x_pad[:, c_idx, d_idx, h_idx, w_idx]
         res = res.reshape(x_c, k_d * k_h * k_w, -1)
@@ -338,7 +338,7 @@ class ResNet2l(Layer):
             conv2 = Conv3d(self.filter2, self.bias2, self.stride2, self.padding2)
 
         res = conv1.apply(x)
-        res = Utils.relu(res)
+        res = relu(res)
         res = conv2.apply(res)
 
         if self.filterX:
@@ -397,9 +397,9 @@ class ResNet3l(Layer):
             conv3 = Conv3d(self.filter3, self.bias3, self.stride3, self.padding3)
 
         res = conv1.apply(x)
-        res = Utils.relu(res)
+        res = relu(res)
         res = conv2.apply(res)
-        res = Utils.relu(res)
+        res = relu(res)
         res = conv3.apply(res)
 
         if self.filterX:
@@ -415,112 +415,3 @@ class ResNet3l(Layer):
         res = res + x
 
         return res
-
-
-class Utils:
-    def relu(x):
-        return np.maximum(0, x)
-
-    def sigmoid(x):
-       return 1 / (1 + np.exp(-x))
-
-    def tanh(x):
-        return np.tanh(x)
-
-    def get_func(name, params):
-        if name == None:
-            return None
-        elif name == 'relu':
-            return Utils.relu
-        elif name == 'sigmoid':
-            return Utils.sigmoid
-        elif name == 'tanh':
-            return Utils.tanh
-        elif name == 'softmax':
-            return None
-        elif name == 'reshape':
-            import numpy as rnp
-            return partial(rnp.reshape, newshape=params[0])
-        elif name == 'transpose':
-            import numpy as rnp
-            return partial(rnp.transpose, axes=params[0])
-        else:
-            raise NameError('Not support yet!')
-
-    def index1d(channel, stride, kshape, xshape):
-        k_l = kshape
-        x_l = xshape
-
-        c_idx = np.repeat(np.arange(channel), k_l)
-        c_idx = c_idx.reshape(-1, 1)
-
-        res_l = int((x_l - k_l) / stride) + 1
-
-        size = channel * k_l
-
-        l_idx = np.tile(stride * np.arange(res_l), size)
-        l_idx = l_idx.reshape(size, -1)
-        l_off = np.tile(np.arange(k_l), channel)
-        l_off = l_off.reshape(size, -1)
-        l_idx = l_idx + l_off
-
-        return c_idx, l_idx
-
-    def index2d(channel, stride, kshape, xshape):
-        k_h, k_w = kshape
-        x_h, x_w = xshape
-
-        c_idx = np.repeat(np.arange(channel), k_h * k_w)
-        c_idx = c_idx.reshape(-1, 1)
-
-        res_h = int((x_h - k_h) / stride) + 1
-        res_w = int((x_w - k_w) / stride) + 1
-
-        size = channel * k_h * k_w
-
-        h_idx = np.tile(np.repeat(stride * np.arange(res_h), res_w), size)
-        h_idx = h_idx.reshape(size, -1)
-        h_off = np.tile(np.repeat(np.arange(k_h), k_w), channel)
-        h_off = h_off.reshape(size, -1)
-        h_idx = h_idx + h_off
-
-        w_idx = np.tile(np.tile(stride * np.arange(res_w), res_h), size)
-        w_idx = w_idx.reshape(size, -1)
-        w_off = np.tile(np.arange(k_w), channel * k_h)
-        w_off = w_off.reshape(size, -1)
-        w_idx = w_idx + w_off
-
-        return c_idx, h_idx, w_idx
-
-    def index3d(channel, stride, kshape, xshape):
-        k_d, k_h, k_w = kshape
-        x_d, x_h, x_w = xshape
-
-        c_idx = np.repeat(np.arange(channel), k_d * k_h * k_w)
-        c_idx = c_idx.reshape(-1, 1)
-
-        res_d = int((x_d - k_d) / stride) + 1
-        res_h = int((x_h - k_h) / stride) + 1
-        res_w = int((x_w - k_w) / stride) + 1
-
-        size = channel * k_d * k_h * k_w
-
-        d_idx = np.tile(np.repeat(stride * np.arange(res_d), res_h * res_w), size)
-        d_idx = d_idx.reshape(size, -1)
-        d_off = np.tile(np.repeat(np.arange(k_d), k_h * k_w), channel)
-        d_off = d_off.reshape(size, -1)
-        d_idx = d_idx + d_off
-
-        h_idx = np.tile(np.tile(np.repeat(stride * np.arange(res_h), res_w), res_d), size)
-        h_idx = h_idx.reshape(size, -1)
-        h_off = np.tile(np.repeat(np.arange(k_h), k_w), channel * k_d)
-        h_off = h_off.reshape(size, -1)
-        h_idx = h_idx + h_off
-
-        w_idx = np.tile(np.tile(stride * np.arange(res_w), res_d * res_h), size)
-        w_idx = w_idx.reshape(size, -1)
-        w_off = np.tile(np.arange(k_w), channel * k_d * k_h)
-        w_off = w_off.reshape(size, -1)
-        w_idx = w_idx + w_off
-
-        return c_idx, d_idx, h_idx, w_idx

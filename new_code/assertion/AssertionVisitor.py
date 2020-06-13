@@ -5,17 +5,13 @@ if __name__ is not None and "." in __name__:
 else:
     from AssertionParser import AssertionParser
 
-import ast
 import autograd.numpy as np
+import ast
 
 from .lib_assertions import *
 from .lib_functions import *
-from functools import partial, update_wrapper
+from utils import *
 
-def wrapped_partial(func, *args, **kwargs):
-    partial_func = partial(func, *args, **kwargs)
-    update_wrapper(partial_func, func)
-    return partial_func
 
 # This class defines a complete generic visitor for a parse tree produced by AssertionParser.
 
