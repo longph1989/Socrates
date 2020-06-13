@@ -66,8 +66,8 @@ class Optimize():
 
         res, x = self.__solve_robustness(model, spec, x0, y0)
 
-        if self.display:
-            y = np.argmax(model.apply(x), axis=1)
+        if not res and self.display:
+            y = np.argmax(model.apply(x), axis=1)[0]
             self.__display(model, x0, y0, x, y)
 
 
@@ -132,7 +132,7 @@ class Optimize():
         output = output - np.eye(output[0].size)[y0] * 1e9
         max_score = np.max(output)
 
-        loss2 = 0 if y0_score < max_score else y0_score - max_score + 1e-3
+        loss2 = 0 if y0_score < max_score else y0_score - max_score + 1e-9
 
         loss = loss1 + loss2
 
