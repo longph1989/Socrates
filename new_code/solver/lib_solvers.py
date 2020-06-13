@@ -48,7 +48,7 @@ class Optimize():
         plt.show()
 
 
-    def __solve_syntactic_sugar(self, model, assertion):
+    def __solve_syntactic_sugar(self, model, spec):
         if spec['robustness'] == 'local':
             self.__solve_local_robustness(model, spec)
         elif spec['robustness'] == 'global':
@@ -57,11 +57,11 @@ class Optimize():
 
     def __solve_local_robustness(self, model, spec):
         x0 = np.array(ast.literal_eval(read(spec['x0'])))
-        y0 = ast.literal_eval(read(spec['y0']))
+        y0 = np.argmax(model.apply(x0), axis=1)[0]
 
         res, x = self.__solve_robustness(model, spec, x0, y0)
 
-        if self.display():
+        if self.display:
             y = np.argmax(model.apply(x), axis=1)
             self.__display(model, x0, y0, x, y)
 
@@ -71,7 +71,7 @@ class Optimize():
 
         for i in range(n):
             x0 = self.__generate_x(model.shape, model.lower, model.upper)
-            y0 = np.argmax(model.apply(x0), axis=1)
+            y0 = np.argmax(model.apply(x0), axis=1)[0]
 
             res, _ = self.__solve_robustness(model, spec, x0, y0)
 
@@ -92,10 +92,10 @@ class Optimize():
 
         eps = ast.literal_eval(read(spec['eps']))
 
-        x = np.zeros(np.prod(model.shape) * len(assertion.vars))
+        x = np.zeros(x0.size)
         args = (model, x0, y0, dfunc, eps)
         bounds = Bounds(model.lower, model.upper)
-        jac = grad(self.__obj_func) if model.layers != None else None
+        jac = grad(self.__obj_robustness) if model.layers != None else None
 
         if 'fairness' in spec:
             lower = model.lower
@@ -123,12 +123,12 @@ class Optimize():
         loss1 = 0 if loss1 <= eps else loss1 - eps
 
         output = model.apply(x)
-        y0_score = output_x[0][y0]
+        y0_score = output[0][y0]
 
-        output = output - np.eye(output_x[0].size)[y0] * 1e9
+        output = output - np.eye(output[0].size)[y0] * 1e9
         max_score = np.max(output)
 
-        loss2 = 0 if y0_score < max_score else y0_score - max_score + 1e-3
+        loss2 = 0 if y0_score < max_score else y0_score - max_score + 1e-9
 
         loss = loss1 + loss2
 
