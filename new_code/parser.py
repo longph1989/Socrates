@@ -1,24 +1,16 @@
 import ast
 import autograd.numpy as np
-import os
-
-from model.lib_models import *
-from model.lib_layers import *
-from assertion.lib_assertions import *
-from assertion.lib_functions import *
-from solver.lib_solvers import *
 
 from antlr4 import *
 from assertion.AssertionLexer import AssertionLexer
 from assertion.AssertionParser import AssertionParser
 from assertion.AssertionVisitor import AssertionVisitor
 
-
-def read(text):
-    if os.path.isfile(text):
-        return open(text, 'r').readline()
-    else:
-        return text
+from model.lib_models import *
+from model.lib_layers import *
+from assertion.lib_functions import set_model
+from solver.lib_solvers import *
+from utils import *
 
 
 def parse_layers(spec):

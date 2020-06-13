@@ -14,7 +14,7 @@ class Function(Layer):
     def __init__(self, name, params):
         self.func = Utils.get_func(name, params)
 
-    def apply(x):
+    def apply(self, x):
         return self.func(x)
 
 

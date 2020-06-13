@@ -1,17 +1,12 @@
 import autograd.numpy as np
 import matplotlib.pyplot as plt
+import ast
 
 from scipy.optimize import minimize
 from scipy.optimize import Bounds
 from autograd import grad
 from assertion.lib_functions import d0, d2, di
-
-#
-# def read(text):
-#     if os.path.isfile(text):
-#         return open(text, 'r').readline()
-#     else:
-#         return text
+from utils import *
 
 
 class Optimize():
@@ -197,7 +192,7 @@ class SPRT():
 
     def __solve_local_robustness(self, model, spec):
         x0 = np.array(ast.literal_eval(read(spec['x0'])))
-        y0 = ast.literal_eval(read(spec['y0']))
+        y0 = np.argmax(model.apply(x0), axis=1)[0]
 
         self.__solve_robustness(model, spec, x0, y0)
 
@@ -207,7 +202,7 @@ class SPRT():
 
         for i in range(n):
             x0 = self.__generate_x(model.shape, model.lower, model.upper)
-            y0 = np.argmax(model.apply(x0), axis=1)
+            y0 = np.argmax(model.apply(x0), axis=1)[0]
 
             if not self.__solve_robustness(model, spec, x0, y0):
                 print('The model is unsatisfied with global robustness.')
@@ -217,20 +212,22 @@ class SPRT():
 
 
     def __solve_robustness(self, model, spec, x0, y0):
+        lower = model.lower
+        upper = model.upper
+
+        eps = ast.literal_eval(read(spec['eps']))
+
         if spec['distance'] == 'd0':
             dfunc = d0
         elif spec['distance'] == 'd2':
             dfunc = d2
         elif spec['distance'] == 'di':
             dfunc = di
-
-        eps = ast.literal_eval(read(spec['eps']))
-
-        lower = model.lower
-        upper = model.upper
+            lower = np.maximum(lower, x0 - eps)
+            upper = np.minimum(upper, x0 + eps)
 
         if 'fairness' in spec:
-            for index in np.array(ast.literal_eval(read(spec['x0']))):
+            for index in np.array(ast.literal_eval(read(spec['fairness']))):
                 lower[index] = x0[index]
                 upper[index] = x0[index]
 
