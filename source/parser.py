@@ -212,16 +212,16 @@ def parse_assertion(spec):
 
 
 def parse_solver(spec):
-    name = spec['name']
+    algorithm = spec['algorithm']
 
-    if name == 'optimize':
+    if algorithm == 'optimize':
         display = True if 'display' in spec and spec['display'] == 'on' else False
         mean = np.array(ast.literal_eval(read(spec['mean']))) if 'mean' in spec else np.empty(0)
         std = np.array(ast.literal_eval(read(spec['std']))) if 'std' in spec else np.empty(0)
         resolution = np.array(ast.literal_eval(read(spec['resolution']))) if 'resolution' in spec else np.empty(0)
 
         solver = Optimize(display, mean, std, resolution)
-    if name == 'sprt':
+    if algorithm == 'sprt':
         threshold = ast.literal_eval(read(spec['threshold']))
         alpha = ast.literal_eval(read(spec['alpha']))
         beta = ast.literal_eval(read(spec['beta']))
