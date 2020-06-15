@@ -67,14 +67,14 @@ class AssertionVisitor(ParseTreeVisitor):
                     vars1.append(Var(ctx.VAR(0).getText()))
 
                     idx1 = ast.literal_eval(ctx.INT(0).getText())
-                    lhs = Function(partial(index, idx1), vars1)
+                    lhs = Function(wrapped_partial(index, i=idx1), vars1)
 
                     if ctx.VAR(1):
                         vars2 = list()
                         vars2.append(Var(ctx.VAR(1).getText()))
 
                         idx2 = ast.literal_eval(ctx.INT(1).getText())
-                        rhs = Function(partial(index, idx2), vars2)
+                        rhs = Function(wrapped_partial(index, i=idx2), vars2)
                     elif ctx.num():
                         rhs = Num(ast.literal_eval(ctx.num().getText()))
 
@@ -111,12 +111,12 @@ class AssertionVisitor(ParseTreeVisitor):
         elif ctx.LIN_INP():
             vars.append(Var(ctx.VAR(0).getText()))
             array = np.array(ast.literal_eval(ctx.array().getText()))
-            return Function(wrapped_partial(lin_inp, array), vars)
+            return Function(wrapped_partial(lin_inp, coefs=array), vars)
 
         elif ctx.LIN_OUT():
             vars.append(Var(ctx.VAR(0).getText()))
             array = np.array(ast.literal_eval(ctx.array().getText()))
-            return Function(wrapped_partial(lin_out, array), vars)
+            return Function(wrapped_partial(lin_out, coefs=array), vars)
 
         else:
             return None

@@ -36,18 +36,18 @@ def arg_max(x):
 def arg_min(x):
     return np.argmin(apply_model(x), axis=1)[0]
 
-def lin_inp(coefs, x):
+def lin_inp(x, coefs):
     res = 0
     for i in range(x.size):
         res = res + coefs[i] * x[i]
     return res
 
-def lin_out(coefs, x):
+def lin_out(x, coefs):
     res = 0
     out = apply_model(x)
     for i in range(out.size):
         res = res + coefs[i] * out[0][i]
     return res
 
-def index(i, x):
+def index(x, i):
     return x[i]

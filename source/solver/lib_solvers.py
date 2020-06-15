@@ -157,6 +157,7 @@ class Optimize():
             return self.__solve_syntactic_sugar(model, assertion)
 
         x = np.zeros(np.prod(model.shape) * len(assertion.vars))
+
         args = (model, assertion)
         bounds = Bounds(model.lower, model.upper)
         jac = grad(self.__obj_func) if model.layers != None else None
