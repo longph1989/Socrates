@@ -36,11 +36,11 @@ def get_func(name, params):
     elif name == 'softmax':
         return None
     elif name == 'reshape':
-        # import numpy as rnp
-        return wrapped_partial(np.reshape, newshape=params[0])
+        import numpy as rnp
+        return wrapped_partial(rnp.reshape, newshape=params)
     elif name == 'transpose':
-        # import numpy as rnp
-        return wrapped_partial(np.transpose, axes=params[0])
+        import numpy as rnp
+        return wrapped_partial(rnp.transpose, axes=params)
     else:
         raise NameError('Not support yet!')
 
