@@ -112,7 +112,7 @@ class Optimize():
         bounds = Bounds(lower, upper)
         jac = grad(self.__obj_robustness) if model.layers != None else None
 
-        res = minimize(self.__obj_robustness, x, args=args, bounds=bounds, jac=jac)
+        res = minimize(self.__obj_robustness, x, args=args, jac=jac, bounds=bounds)
 
         if res.fun == 0: # an adversarial sample is generated
             print('The model is not robust around x0 with x = {}'.format(res.x))
@@ -162,7 +162,7 @@ class Optimize():
         bounds = Bounds(model.lower, model.upper)
         jac = grad(self.__obj_func) if model.layers != None else None
 
-        res = minimize(self.__obj_func, x, args=args, bounds=bounds, jac=jac)
+        res = minimize(self.__obj_func, x, args=args, jac=jac, bounds=bounds)
 
         if res.fun == 0:
             print('The assertion is unsatisfied with x = {}.'.format(res.x))
