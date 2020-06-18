@@ -30,7 +30,7 @@ def add_solver(args, spec):
     spec['solver'] = solver
 
 
-def update_bounds(args, model, x0):
+def update_bounds(args, model, x0, lower, upper):
     eps = np.full(x0.shape, args.eps)
 
     if args.dataset == 'cifar_conv':
@@ -40,8 +40,8 @@ def update_bounds(args, model, x0):
     elif args.dataset == 'mnist_conv':
         eps = eps / 0.3081
 
-    model.lower = np.maximum(model.lower, x0 - eps)
-    model.upper = np.minimum(model.upper, x0 + eps)
+    model.lower = np.maximum(lower, x0 - eps)
+    model.upper = np.minimum(upper, x0 + eps)
 
 
 def main():
@@ -68,6 +68,8 @@ def main():
     add_solver(args, spec)
 
     model, assertion, solver = parse(spec)
+    lower = model.lower
+    upper = model.upper
 
     if args.dataset == 'cifar_conv':
         pathX = 'benchmark/eran/data/cifar_conv/'
@@ -92,7 +94,7 @@ def main():
         lbl_x0 = np.argmax(output_x0, axis=1)[0]
 
         if lbl_x0 == y0[i]:
-            update_bounds(args, model, x0)
+            update_bounds(args, model, x0, lower, upper)
             print('Run at data {}'.format(i))
             solver.solve(model, assertion)
         else:
