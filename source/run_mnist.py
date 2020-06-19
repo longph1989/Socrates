@@ -65,7 +65,7 @@ def main():
         pathY = 'benchmark/mnist_challenge/x_y/y' + str(i) + '.txt'
 
         x0s = np.array(ast.literal_eval(read(pathX)))
-        y0 = np.array(ast.literal_eval(read(pathY)))
+        y0s = np.array(ast.literal_eval(read(pathY)))
 
         for j in range(200):
             x0 = x0s[j]
@@ -74,9 +74,15 @@ def main():
             output_x0 = model.apply(x0)
             lbl_x0 = np.argmax(output_x0, axis=1)[0]
 
-            if lbl_x0 == y0[j]:
+            print('Data {}\n'.format(i * 200 + j))
+            print('x0 = {}'.format(x0))
+            print('output_x0 = {}'.format(output_x0))
+            print('lbl_x0 = {}'.format(lbl_x0))
+            print('y0 = {}\n'.format(y0s[j]))
+
+            if lbl_x0 == y0s[j]:
                 update_bounds(args, model, x0, lower, upper)
-                print('Run at data {}'.format(i * 200 + j))
+                print('Run at data {}\n'.format(i * 200 + j))
                 solver.solve(model, assertion)
             else:
                 print('Skip at data {}'.format(i * 200 + j))

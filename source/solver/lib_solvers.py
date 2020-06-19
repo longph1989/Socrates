@@ -115,7 +115,15 @@ class Optimize():
         res = minimize(self.__obj_robustness, x, args=args, jac=jac, bounds=bounds)
 
         if res.fun == 0: # an adversarial sample is generated
-            print('The model is not robust around x0 with x = {}'.format(res.x))
+            print('The model is not robust around x0.')
+
+            output_x = model.apply(res.x)
+            lbl_x = np.argmax(output_x, axis=1)[0]
+
+            print('x = {}'.format(res.x))
+            print('output_x = {}'.format(output_x))
+            print('lbl_x = {}'.format(lbl_x))
+
             return False, res.x
         else:
             print('The model is probably robust around x0.')
@@ -165,7 +173,13 @@ class Optimize():
         res = minimize(self.__obj_func, x, args=args, jac=jac, bounds=bounds)
 
         if res.fun == 0:
-            print('The assertion is unsatisfied with x = {}.'.format(res.x))
+            print('The assertion is unsatisfied.'.format(res.x))
+
+            output_x = model.apply(res.x)
+            lbl_x = np.argmax(output_x, axis=1)[0]
+
+            print('x = {}'.format(res.x))
+            print('output_x = {}'.format(output_x))
         else:
             print('The assertion is probably satisfied.')
 

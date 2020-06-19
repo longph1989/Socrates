@@ -84,7 +84,7 @@ def main():
         pathX = 'benchmark/eran/data/mnist_fc/'
         pathY = 'benchmark/eran/data/labels/y_mnist.txt'
 
-    y0 = np.array(ast.literal_eval(read(pathY)))
+    y0s = np.array(ast.literal_eval(read(pathY)))
 
     for i in range(100):
         assertion['x0'] = pathX + 'data' + str(i) + '.txt'
@@ -93,9 +93,15 @@ def main():
         output_x0 = model.apply(x0)
         lbl_x0 = np.argmax(output_x0, axis=1)[0]
 
-        if lbl_x0 == y0[i]:
+        print('Data {}\n'.format(i))
+        print('x0 = {}'.format(x0))
+        print('output_x0 = {}'.format(output_x0))
+        print('lbl_x0 = {}'.format(lbl_x0))
+        print('y0 = {}\n'.format(y0s[i]))
+
+        if lbl_x0 == y0s[i]:
             update_bounds(args, model, x0, lower, upper)
-            print('Run at data {}'.format(i))
+            print('Run at data {}\n'.format(i))
             solver.solve(model, assertion)
         else:
             print('Skip at data {}'.format(i))
