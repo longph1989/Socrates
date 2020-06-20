@@ -7,13 +7,13 @@ from parser import parse
 
 def add_solver(args, spec):
     solver = dict()
-    
+
     solver['algorithm'] = args.algorithm
     if args.algorithm == 'sprt':
         solver['threshold'] = str(args.threshold)
-        solver['alpha'] = "0.05"
-        solver['beta'] = "0.05"
-        solver['delta'] = "0.005"
+        solver['alpha'] = '0.05'
+        solver['beta'] = '0.05'
+        solver['delta'] = '0.005'
 
     spec['solver'] = solver
 
