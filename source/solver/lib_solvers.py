@@ -1,5 +1,4 @@
 import autograd.numpy as np
-import matplotlib.pyplot as plt
 import ast
 
 from scipy.optimize import minimize
@@ -10,65 +9,22 @@ from utils import *
 
 
 class Optimize():
-    def __init__(self, display, mean, std, resolution):
-        self.display = display
-        self.mean = mean
-        self.std = std
-        self.resolution = resolution
-
-
-    def __denormalize(self, x):
-        step = int(x.size / len(self.mean))
-
-        for i in range(len(self.mean)):
-            x[i * step : (i + 1) * step] = x[i * step : (i + 1) * step] * self.std[i] + self.mean[i]
-
-        x = (x * 255).astype('uint8')
-
-        if np.prod(self.resolution) == x.size:
-            x = x.reshape(self.resolution)
-        else:
-            new_shape = (x.size / np.prod(self.resolution), *self.resolution)
-            x = x.reshape(new_shape).transpose(1, 2, 0)
-
-        return x
-
-
-    def __display(self, model, x0, y0, x, y):
-        x0 = self.__denormalize(x0)
-        x = self.__denormalize(x)
-
-        fig, ax = plt.subplots(1, 2)
-
-        ax[0].set(title='Original. Label is {}'.format(y0))
-        ax[1].set(title='Adv. sample. Label is {}'.format(y))
-
-        if len(x.shape) == 2:
-            ax[0].imshow(x0, cmap='gray')
-            ax[1].imshow(x, cmap='gray')
-        else:
-            ax[0].imshow(x0)
-            ax[1].imshow(x)
-
-        plt.show()
-
-
-    def __solve_syntactic_sugar(self, model, spec):
+    def __solve_syntactic_sugar(self, model, spec, display):
         if spec['robustness'] == 'local':
-            self.__solve_local_robustness(model, spec)
+            self.__solve_local_robustness(model, spec, display)
         elif spec['robustness'] == 'global':
             self.__solve_global_robustness(model, spec)
 
 
-    def __solve_local_robustness(self, model, spec):
+    def __solve_local_robustness(self, model, spec, display):
         x0 = np.array(ast.literal_eval(read(spec['x0'])))
         y0 = np.argmax(model.apply(x0), axis=1)[0]
 
         res, x = self.__solve_robustness(model, spec, x0, y0)
 
-        if not res and self.display:
+        if not res and display:
             y = np.argmax(model.apply(x), axis=1)[0]
-            self.__display(model, x0, y0, x, y)
+            display.show(model, x0, y0, x, y)
 
 
     def __solve_global_robustness(self, model, spec):
@@ -160,9 +116,9 @@ class Optimize():
         return assertion.neg_num_value(vars_dict) + np.sum(x - x)
 
 
-    def solve(self, model, assertion):
+    def solve(self, model, assertion, display):
         if isinstance(assertion, dict):
-            return self.__solve_syntactic_sugar(model, assertion)
+            return self.__solve_syntactic_sugar(model, assertion, display)
 
         x = np.zeros(np.prod(model.shape) * len(assertion.vars))
 
@@ -176,7 +132,6 @@ class Optimize():
             print('The assertion is unsatisfied.'.format(res.x))
 
             output_x = model.apply(res.x)
-            lbl_x = np.argmax(output_x, axis=1)[0]
 
             print('x = {}'.format(res.x))
             print('output_x = {}'.format(output_x))
@@ -265,7 +220,7 @@ class SPRT():
             if dfunc(x, x0) <= eps:
                 no = no + 1
 
-                y = np.argmax(model.apply(x), axis=1)
+                y = np.argmax(model.apply(x), axis=1)[0]
 
                 if y == y0:
                     pr = pr * p1 / p0
@@ -280,7 +235,7 @@ class SPRT():
                     return False
 
 
-    def solve(self, model, assertion):
+    def solve(self, model, assertion, display):
         if isinstance(assertion, dict):
             return self.__solve_syntactic_sugar(model, assertion)
 

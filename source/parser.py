@@ -11,6 +11,7 @@ from model.lib_layers import *
 from assertion.lib_functions import set_model
 from solver.lib_solvers import *
 from utils import *
+from display import *
 
 
 def parse_layers(spec):
@@ -215,12 +216,7 @@ def parse_solver(spec):
     algorithm = spec['algorithm']
 
     if algorithm == 'optimize':
-        display = True if 'display' in spec and spec['display'] == 'on' else False
-        mean = np.array(ast.literal_eval(read(spec['mean']))) if 'mean' in spec else np.empty(0)
-        std = np.array(ast.literal_eval(read(spec['std']))) if 'std' in spec else np.empty(0)
-        resolution = np.array(ast.literal_eval(read(spec['resolution']))) if 'resolution' in spec else np.empty(0)
-
-        solver = Optimize(display, mean, std, resolution)
+        solver = Optimize()
     if algorithm == 'sprt':
         threshold = ast.literal_eval(read(spec['threshold']))
         alpha = ast.literal_eval(read(spec['alpha']))
@@ -232,11 +228,22 @@ def parse_solver(spec):
     return solver
 
 
+def parse_display(spec):
+    mean = np.array(ast.literal_eval(read(spec['mean']))) if 'mean' in spec else np.array([0])
+    std = np.array(ast.literal_eval(read(spec['std']))) if 'std' in spec else np.array([1])
+    resolution = np.array(ast.literal_eval(read(spec['resolution']))) if 'resolution' in spec else np.empty(0)
+
+    display = Display(mean, std, resolution)
+
+    return display
+
+
 def parse(spec):
     model = parse_model(spec['model'])
     assertion = parse_assertion(spec['assert'])
     solver = parse_solver(spec['solver'])
+    display = parse_display(spec['display']) if 'display' in spec else None
 
     set_model(model)
 
-    return model, assertion, solver
+    return model, assertion, solver, display
