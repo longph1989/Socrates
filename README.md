@@ -1,5 +1,7 @@
-# nsolver
+# nSolve
 
-virtualenv -p python3 nsolver_venv
-source nsolver_venv/bin/activate
+virtualenv -p python3 nsolve_venv
+
+source nsolve_venv/bin/activate
+
 pip install numpy scipy matplotlib torch tensorflow
