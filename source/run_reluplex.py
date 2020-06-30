@@ -36,7 +36,7 @@ def main():
 
     add_solver(args, spec)
 
-    model, assertion, solver = parse(spec)
+    model, assertion, solver, display = parse(spec)
     solver.solve(model, assertion)
 
 

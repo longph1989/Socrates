@@ -59,9 +59,11 @@ class Optimize():
             upper = np.minimum(upper, x0 + eps)
 
         if 'fairness' in spec:
-            for index in np.array(ast.literal_eval(read(spec['fairness']))):
-                lower[index] = x0[index]
-                upper[index] = x0[index]
+            sensitive = np.array(ast.literal_eval(read(spec['fairness'])))
+            for index in range(x0.size):
+                if not (index in sensitive):
+                    lower[index] = x0[index]
+                    upper[index] = x0[index]
 
         x = x0.copy()
         args = (model, x0, y0, dfunc, eps)
@@ -116,7 +118,7 @@ class Optimize():
         return assertion.neg_num_value(vars_dict) + np.sum(x - x)
 
 
-    def solve(self, model, assertion, display):
+    def solve(self, model, assertion, display=None):
         if isinstance(assertion, dict):
             return self.__solve_syntactic_sugar(model, assertion, display)
 
@@ -201,9 +203,11 @@ class SPRT():
             upper = np.minimum(upper, x0 + eps)
 
         if 'fairness' in spec:
-            for index in np.array(ast.literal_eval(read(spec['fairness']))):
-                lower[index] = x0[index]
-                upper[index] = x0[index]
+            sensitive = np.array(ast.literal_eval(read(spec['fairness'])))
+            for index in range(x0.size):
+                if not (index in sensitive):
+                    lower[index] = x0[index]
+                    upper[index] = x0[index]
 
         p0 = self.threshold + self.delta
         p1 = self.threshold - self.delta
@@ -235,7 +239,7 @@ class SPRT():
                     return False
 
 
-    def solve(self, model, assertion, display):
+    def solve(self, model, assertion, display=None):
         if isinstance(assertion, dict):
             return self.__solve_syntactic_sugar(model, assertion)
 

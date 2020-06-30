@@ -67,7 +67,7 @@ def main():
     add_assertion(args, spec)
     add_solver(args, spec)
 
-    model, assertion, solver = parse(spec)
+    model, assertion, solver, display = parse(spec)
     lower = model.lower
     upper = model.upper
 
