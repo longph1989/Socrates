@@ -25,10 +25,12 @@ class Implication(Formula):
         return not self.get_bool_value(vars_dict)
 
     def get_num_value(self, vars_dict):
-        if self.neg_pre_num_value(vars_dict) == 0:
+        neg_pre_num_value = self.neg_pre_num_value(vars_dict)
+        
+        if neg_pre_num_value == 0:
             return 0
         else:
-            return pre_num_value * self.get_post_num_value(vars_dict)
+            return neg_pre_num_value * self.get_post_num_value(vars_dict)
 
     def neg_num_value(self, vars_dict):
         return self.get_pre_num_value(vars_dict) + self.neg_post_num_value(vars_dict)
