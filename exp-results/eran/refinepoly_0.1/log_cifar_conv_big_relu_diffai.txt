@@ -1,0 +1,253 @@
+2020-07-09 23:15:21.719606: I tensorflow/core/platform/cpu_feature_guard.cc:143] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2020-07-09 23:15:21.743701: I tensorflow/core/platform/profile_utils/cpu_utils.cc:102] CPU Frequency: 3096000000 Hz
+2020-07-09 23:15:21.744584: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x4e09540 initialized for platform Host (this does not guarantee that XLA will be used). Devices:
+2020-07-09 23:15:21.744596: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): Host, Default Version
+2020-07-09 23:15:21.745915: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcuda.so.1
+2020-07-09 23:15:22.896590: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-09 23:15:22.906188: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-09 23:15:22.906567: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x4ed94b0 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+2020-07-09 23:15:22.906578: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): GeForce RTX 2080 Ti, Compute Capability 7.5
+2020-07-09 23:15:22.906582: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (1): GeForce RTX 2080 Ti, Compute Capability 7.5
+2020-07-09 23:15:22.906749: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-09 23:15:22.907053: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 0 with properties: 
+pciBusID: 0000:01:00.0 name: GeForce RTX 2080 Ti computeCapability: 7.5
+coreClock: 1.635GHz coreCount: 68 deviceMemorySize: 10.76GiB deviceMemoryBandwidth: 573.69GiB/s
+2020-07-09 23:15:22.907082: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-09 23:15:22.907380: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 1 with properties: 
+pciBusID: 0000:03:00.0 name: GeForce RTX 2080 Ti computeCapability: 7.5
+coreClock: 1.635GHz coreCount: 68 deviceMemorySize: 10.76GiB deviceMemoryBandwidth: 573.69GiB/s
+2020-07-09 23:15:22.907451: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcudart.so.10.1'; dlerror: libcudart.so.10.1: cannot open shared object file: No such file or directory
+2020-07-09 23:15:22.908288: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcublas.so.10
+2020-07-09 23:15:22.909143: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcufft.so.10
+2020-07-09 23:15:22.909277: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcurand.so.10
+2020-07-09 23:15:22.910144: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusolver.so.10
+2020-07-09 23:15:22.910627: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusparse.so.10
+2020-07-09 23:15:22.912487: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudnn.so.7
+2020-07-09 23:15:22.912497: W tensorflow/core/common_runtime/gpu/gpu_device.cc:1598] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+2020-07-09 23:15:22.912546: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1102] Device interconnect StreamExecutor with strength 1 edge matrix:
+2020-07-09 23:15:22.912553: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1108]      0 1 
+2020-07-09 23:15:22.912557: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1121] 0:   N N 
+2020-07-09 23:15:22.912560: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1121] 1:   N N 
+netname  ../nets/cifar_convBigRELU__DiffAI.pyt  epsilon  0.1  domain  refinepoly  dataset  cifar10 args complete  False  complete  False  timeout_lp  1
+W shape (3, 3, 3, 32)
+Conv2D {'filters': 32, 'kernel_size': [3, 3], 'input_shape': [32, 32, 3], 'stride': [1, 1], 'padding': 1} W.shape: (3, 3, 3, 32) b.shape: (32,)
+	OutShape:  (1, 32, 32, 32)
+W shape (4, 4, 32, 32)
+Conv2D {'filters': 32, 'kernel_size': [4, 4], 'input_shape': [32, 32, 32], 'stride': [2, 2], 'padding': 1} W.shape: (4, 4, 32, 32) b.shape: (32,)
+	OutShape:  (1, 16, 16, 32)
+W shape (3, 3, 32, 64)
+Conv2D {'filters': 64, 'kernel_size': [3, 3], 'input_shape': [16, 16, 32], 'stride': [1, 1], 'padding': 1} W.shape: (3, 3, 32, 64) b.shape: (64,)
+	OutShape:  (1, 16, 16, 64)
+W shape (4, 4, 64, 64)
+Conv2D {'filters': 64, 'kernel_size': [4, 4], 'input_shape': [16, 16, 64], 'stride': [2, 2], 'padding': 1} W.shape: (4, 4, 64, 64) b.shape: (64,)
+	OutShape:  (1, 8, 8, 64)
+ReLU
+	OutShape:  (1, 512)
+	WShape:  (4096, 512)
+	BShape:  (512,)
+ReLU
+	OutShape:  (1, 512)
+	WShape:  (512, 512)
+	BShape:  (512,)
+Affine
+	OutShape:  (1, 10)
+	WShape:  (512, 10)
+	BShape:  (10,)
+WARNING:tensorflow:From ./tensorflow_translator.py:109: convert_variables_to_constants (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.compat.v1.graph_util.convert_variables_to_constants`
+WARNING:tensorflow:From /home/long/eran/eran_venv/lib/python3.6/site-packages/tensorflow/python/framework/graph_util_impl.py:359: extract_sub_graph (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.compat.v1.graph_util.extract_sub_graph`
+WARNING:tensorflow:From ./tensorflow_translator.py:110: remove_training_nodes (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.compat.v1.graph_util.remove_training_nodes`
+2020-07-09 23:15:30.174506: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-09 23:15:30.174849: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 0 with properties: 
+pciBusID: 0000:01:00.0 name: GeForce RTX 2080 Ti computeCapability: 7.5
+coreClock: 1.635GHz coreCount: 68 deviceMemorySize: 10.76GiB deviceMemoryBandwidth: 573.69GiB/s
+2020-07-09 23:15:30.174886: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-09 23:15:30.175188: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 1 with properties: 
+pciBusID: 0000:03:00.0 name: GeForce RTX 2080 Ti computeCapability: 7.5
+coreClock: 1.635GHz coreCount: 68 deviceMemorySize: 10.76GiB deviceMemoryBandwidth: 573.69GiB/s
+2020-07-09 23:15:30.175252: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcudart.so.10.1'; dlerror: libcudart.so.10.1: cannot open shared object file: No such file or directory
+2020-07-09 23:15:30.175266: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcublas.so.10
+2020-07-09 23:15:30.175275: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcufft.so.10
+2020-07-09 23:15:30.175283: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcurand.so.10
+2020-07-09 23:15:30.175297: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusolver.so.10
+2020-07-09 23:15:30.175305: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusparse.so.10
+2020-07-09 23:15:30.175313: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudnn.so.7
+2020-07-09 23:15:30.175317: W tensorflow/core/common_runtime/gpu/gpu_device.cc:1598] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+2020-07-09 23:15:30.175537: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1102] Device interconnect StreamExecutor with strength 1 edge matrix:
+2020-07-09 23:15:30.175546: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1108]      
+This network has 62464 neurons.
+concrete  [-1.8951785210880188, -2.229582624523296, -0.4537499358634132, -0.9040225436129137, -0.8569241743196209, -1.1874834191075359, 0.17077746339844915, -2.7666563706784935, -1.8214071477993568, -2.015599276243788]
+img 0 not considered, correct_label 3 classified label  6
+concrete  [-1.2510293643655293, 0.31264447472927936, -7.2173076151581785, -10.598945014127544, -6.417614999821172, -10.208982121638433, -7.824060254366122, -8.298225365176053, 1.9564017458213014, 0.5877044155995104]
+Using license file /home/long/gurobi.lic
+Academic license - for non-commercial use only
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+nlb  [-54.65621387121665, -104.59911055181415, -67.80013046429184, -118.78689465983034, -78.24831204045518, -100.42226215827411, -93.03816145533592, -98.54093941277067, -46.814694927706924, -99.18675682032242]  nub  [27.407639422762465, 19.155007706684668, 18.344528768176026, 8.91933000920387, 18.750625503692163, 13.333785669443628, 15.683872320566936, 25.054882712445234, 24.160963083874876, 14.250921666627965]
+img 1 Failed
+214.09881401062012 seconds
+concrete  [0.17318617398373734, -0.4923023175561695, -3.2387168212606983, -3.613945830745636, -3.9114747552938334, -4.253151115120405, -7.02409566847408, -3.785865788956529, 1.380347006115354, -0.9864349023905472]
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+nlb  [-57.58291716281781, -127.08656575754564, -82.2795918531264, -142.68633509030585, -95.17767456036471, -120.9417584216221, -125.40935211905631, -117.78475154345288, -62.52850271193417, -124.61739079817622]  nub  [36.340426072916635, 22.46255199133139, 21.84520497142648, 10.097409856072725, 24.2486106465579, 15.791941779975385, 20.658242350719583, 32.92152708488407, 34.339009697278414, 15.843438318745534]
+img 2 Failed
+255.8472239971161 seconds
+concrete  [1.1289752146805714, -2.513899495322333, -1.9516823214121217, -7.076248255297243, -1.9771063931679227, -6.768977031350672, -5.956535212201803, -2.175212087895707, 0.8382532874921611, -1.539819302232018]
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+nlb  [-56.62133031054224, -114.79115670746042, -77.78180616320752, -138.17926366742464, -88.79417242360648, -115.59128593783213, -116.42752999984819, -112.60250457653467, -57.0688352217624, -113.37988382465551]  nub  [32.2098661509439, 22.49295354489143, 20.055701051841517, 9.30262338986068, 21.52781551441216, 15.618873514072842, 19.84280844488427, 30.121466057005012, 30.481779333253872, 15.637836426679366]
+img 3 Failed
+214.19294047355652 seconds
+concrete  [-3.1463562531840887, -2.7550374903606487, -0.5469895883678308, 0.17643968509595606, -1.1426656330613036, -0.2849135818877613, 0.3442087476866868, -2.6236225954303856, -2.9371247621287986, -3.047851825872801]
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+nlb  [-72.37737638765093, -138.8379520136061, -98.70901111930885, -160.00475426458777, -105.77569661145243, -137.5535860881051, -138.90964358661085, -134.10160964158405, -73.1652608189294, -139.68285787711676]  nub  [40.83155977060776, 26.74722039799252, 24.979537612763856, 11.390892179218309, 26.500576319120363, 19.06083152085433, 24.9513893710895, 35.4022955604411, 35.00457770785744, 19.090318845754595]
+img 4 Failed
+309.5915901660919 seconds
+concrete  [-2.845357031485308, -2.043429043942539, -0.885630059489148, -2.5466861554116718, -0.6099125669832184, -2.0090881401518392, 0.9994072516408693, -2.8820407667684833, -4.175158003052302, -2.3917357936364403]
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+nlb  [-100.49291599597058, -186.73187771316253, -132.02794909030217, -230.11656471433517, -149.81267626986926, -194.4223048932937, -201.1523385868647, -188.48377392576947, -101.7329227242657, -189.45999744592888]  nub  [55.45142023706063, 38.38870531642783, 33.10496689011513, 15.186008942488693, 34.895674969372664, 26.088307912093292, 32.92870995394205, 46.84096412973081, 47.721398175438566, 26.071494511291135]
+img 5 Failed
+267.81503891944885 seconds
+concrete  [-2.92238462898585, -2.1482710160048697, -4.091815918497515, -2.3289476609416155, -4.368074485265467, -2.0961884444031407, -3.1317101168211336, -5.082407606309768, -5.325821801042249, -5.5254464968465395]
+img 6 not considered, correct_label 1 classified label  5
+concrete  [-1.6229789750118222, -3.3068738788493617, -0.8189148385011359, -0.8037466938331367, 0.31230722004338907, -1.033414323471803, 0.501915347723903, -0.3558912110857491, -3.88004206782291, -3.754046270452455]
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+nlb  [-47.73665901227866, -89.67939412677772, -67.21245212832386, -114.45807608329254, -73.0551350766341, -93.36015334958938, -100.53459647532635, -89.76812533393156, -50.048407392495704, -93.27783920756727]  nub  [24.573885386740958, 18.34219614780135, 16.663009603209897, 7.658311951328923, 17.94091517892127, 13.102431891320782, 16.349685620719324, 27.235275137401565, 23.421156886821276, 12.691040971811818]
+img 7 Failed
+247.10138201713562 seconds
+concrete  [-3.362315134175525, -2.5463737689460735, -2.5635506654720404, 0.1473244217790199, -0.35520922330968396, -0.2878601511480173, -1.468960574613814, -0.5781866230249989, -3.708669235423612, -4.126292965174353]
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+nlb  [-58.97505547275718, -113.3671546545104, -76.63480879905221, -124.51668989835315, -84.43485470369998, -104.96159097594182, -113.17095048947536, -103.78281814746055, -59.52232020674656, -113.73854746664064]  nub  [33.77395431153596, 20.476597259119366, 19.90638277187485, 9.062803974829471, 21.644328230225447, 14.680654917010044, 20.41654336615251, 28.133892866687606, 27.57030508667258, 14.596989172688096]
+img 8 Failed
+274.49613547325134 seconds
+concrete  [-1.917542496754419, 0.39028175171579027, -3.3278239735206494, -5.892711848450143, -2.6114867984103545, -5.236659459547799, -3.366033429975679, -2.886983841527667, 0.19172419199619242, -0.31221886272029276]
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+nlb  [-76.21963622395926, -157.1693969682522, -104.84077873226184, -188.5603524311211, -120.072823368379, -160.93675333675293, -160.17267910746716, -152.32826940708009, -71.44576803968084, -156.01485065373302]  nub  [42.962958751348935, 31.809291765849494, 28.253885899931706, 13.305616779522126, 30.066283691522226, 21.24771464939407, 27.42537662764857, 40.462942674667964, 41.077107560844524, 20.865085882953405]
+img 9 Failed
+236.7522165775299 seconds
+concrete  [0.9134770912513404, -4.422054970854233, 0.0020433871016484846, -2.51502111106701, -1.5191682535896869, -2.8958770479037033, -2.803247083129869, -2.917034342342534, -0.050535359393228035, -3.410908716103098]
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+nlb  [-55.840164805102525, -113.57542141684002, -70.79917378195292, -122.11244208602095, -83.10057007385291, -105.80197000522351, -110.06678411614004, -102.25174661071874, -55.77274370840359, -110.49719191457689]  nub  [33.3925567395773, 19.81657058356643, 19.805757104068384, 9.160856194428803, 20.70283157106489, 14.939420326925166, 19.846567178215604, 25.69680433745032, 29.218753363638765, 14.128674536498359]
+img 10 Failed
+312.2017538547516 seconds
+concrete  [-3.4485913568834388, 0.7127505294901998, -4.702075671174106, -5.314195257655876, -4.540787747594799, -4.588874466332366, -5.610528326407225, -4.149155705189124, -0.35320151491467877, 0.9926807807972129]
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+nlb  [-68.80169972188693, -135.5262257102791, -89.50583195425091, -161.4177113201426, -105.07804675372525, -136.76553145880192, -138.4522937506678, -131.00375742578797, -65.19777237949823, -138.2162492649559]  nub  [39.68175734487462, 25.653448854884648, 23.717206170302962, 10.968387892465486, 25.933992158547568, 18.341055738398268, 23.861029352679424, 36.08048733536077, 34.82482039455241, 18.184333782717854]
+img 11 Failed
+266.27754282951355 seconds
+concrete  [-2.9431686158490615, -0.5163353050017061, -1.975598861882216, -2.442985413408437, -1.2383620895688552, -1.4896802061981045, -2.2108025785831047, -1.4629587378444202, -4.641107906059869, -2.4668479176058695]
+img 12 not considered, correct_label 5 classified label  1
+concrete  [-3.582166121901576, -3.059168983417144, -2.8602319808525776, -4.388729239885918, -2.9669315688144877, -0.9110998871461999, -2.5734762940418188, 2.4756715052084552, -6.875416184446081, -5.03689455937128]
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+nlb  [-41.852477403325054, -59.280043048216285, -50.58777380140319, -81.31917126770452, -51.864009376388, -69.29601576584045, -67.99752928895488, -66.43501633489178, -39.758409251346855, -60.17742561148225]  nub  [14.653753310340973, 12.815473748523504, 11.8409179707036, 5.540263033395538, 12.947780390964384, 8.348514197805976, 10.952041126316855, 20.983199154166527, 15.101764480267827, 9.825553481137153]
+img 13 Failed
+196.00766706466675 seconds
+concrete  [-4.3092518800700645, 0.051897848824003584, -3.7262191347296394, -3.1775569759399844, -6.073316118764395, -3.185507181549327, -0.7527220665794072, -4.046057569083161, -2.3678700179562586, 1.2550087317279939]
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
+Model failed to solve, 9
