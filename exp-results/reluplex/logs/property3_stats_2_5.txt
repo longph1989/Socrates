@@ -1,0 +1,280 @@
+Num layers in use: 8
+Output layer size: 5
+Output constraint variables: 4
+Input nodes = 5, relu nodes = 300, output nodes = 5
+Float Utils: default epsilon = 0.000000000100000
+Almost-broken nuking marging: 0.001000000000000
+Bounds for input 0: [ -0.3284228772, 0.6798577687 ]. Unnoralized: [ 0.0000000000, 60760.0000000000 ]
+Bounds for input 1: [ -0.5000000551, 0.5000000551 ]. Unnoralized: [ -3.1415930000, 3.1415930000 ]
+Bounds for input 2: [ -0.5000000551, 0.5000000551 ]. Unnoralized: [ -3.1415930000, 3.1415930000 ]
+Bounds for input 3: [ -0.5000000000, 0.5000000000 ]. Unnoralized: [ 100.0000000000, 1200.0000000000 ]
+Bounds for input 4: [ -0.5000000000, 0.5000000000 ]. Unnoralized: [ 0.0000000000, 1200.0000000000 ]
+Number of auxiliary variables: 305
+
+Reluplex input ranges are:
+Bounds for input 0: [ 1500.00, 1800.00 ]. Normalized: [ -0.3035311561, -0.2985528119 ]
+Bounds for input 1: [ -0.06, 0.06 ]. Normalized: [ -0.0095492966, 0.0095492966 ]
+Bounds for input 2: [ 3.10, 3.14 ]. Normalized: [ 0.4933803236, 0.5000000551 ]
+Bounds for input 3: [ 980.00, 1200.00 ]. Normalized: [ 0.3000000000, 0.5000000000 ]
+Bounds for input 4: [ 960.00, 1200.00 ]. Normalized: [ 0.3000000000, 0.5000000000 ]
+
+
+
+15:15:45 Statistics update:
+	Calls to 'progress': 0. Total time: 0 milli. Average: 0 milli
+	Pivot operations: 0. Total pivot time: 0 milli.
+	Average pivot time: 0 milli
+	Average time per calcuation in pivot: 0.00000 milli
+	Average number of calculations in pivot: 0
+	Average number of broken relues per 'progress': 0
+	Broken Relus Fixed: 0 (Fs: 0, Bs: 0, fix-by-pivot: 0, fix-by-update: 0)
+	Relu-to-OOB step ratio: 0 / 0 = 0.000000%. Avg oob steps per relu: 0.00.
+	Almost broken relus encountered: 0. Nuked: 0
+	Time in TightenAllBounds: 0 milli. Bounds tightened: 0
+	Relu pairs dissolved: 0. Num splits: 0. Num merges: 0 (remaining: 300 / 300)
+	Num LP solver invocations: 0. Found solution: 0. No Solution: 0. Failed: 0. Incorrect assignments: 0.
+		Total time in LP solver: 0 milli. Max: 0 milli. Avg per invocation: 0 milli
+		Number of pivots in LP solver: 0. Average time per LP pivot operation: 0 milli
+		Total time extracting tableaus after LP solved: 0 milli. Average: 0 milli.
+		Total time evaulating GLPK rows: 0
+		Glpk bound reports: 0. On slacks: 0 (= 0%). Ignored due to small coefficients: 0. Used: 0.00%
+		Number of GLPK-derived bounds: 0. On slacks: 0 (= 0.00%). Time: 0 milli. Relus consequently dissolved: 0
+		Fix-relu-invariant hook invocations: 0. Actual repairs: 0 (= 0%). Ignore to prevent cycles: 0
+	Average number of broken relu pairs after glpk invocation: 0.000000. Max: 0. Broken and non-basic pairs: 0
+	Vars with infinite bounds: 609 / 920
+	Eliminated vars: 0
+	Stack: Current depth is: 0 (maximal = 0, min second phase = 0).
+	       So far: 0 splits, 0 merges, 0 pops. Total visited states: 0
+		Pops caused by conflict analysis: 0
+		Total time in smtCore: 0 milli
+	Current degradation: 0.0000000000. Time spent checking: 0 milli. Max measured: 0.0000000000.
+	Number of restorations: 0. Total time: 0 milli. Average: 0.000000
+
+
+	Summary: Total: 0 milli
+		1. GLPK: 0 milli (0%) 
+		2. Extraction + Postprocessing: 0 milli (0%)
+		3. Tightening bounds: 0 milli (0%)
+		4. Stack operations: 0 milli (0%)
+		5. Tableau restoration operations: 0 milli (0%)
+		6. Unaccounted for: 0 milli (0%)
+
+
+15:15:45 Statistics update:
+	Calls to 'progress': 0. Total time: 0 milli. Average: 0 milli
+	Pivot operations: 0. Total pivot time: 0 milli.
+	Average pivot time: 0 milli
+	Average time per calcuation in pivot: 0.00000 milli
+	Average number of calculations in pivot: 0
+	Average number of broken relues per 'progress': 0
+	Broken Relus Fixed: 0 (Fs: 0, Bs: 0, fix-by-pivot: 0, fix-by-update: 0)
+	Relu-to-OOB step ratio: 0 / 0 = 0.000000%. Avg oob steps per relu: 0.00.
+	Almost broken relus encountered: 0. Nuked: 0
+	Time in TightenAllBounds: 0 milli. Bounds tightened: 0
+	Relu pairs dissolved: 74. Num splits: 45. Num merges: 29 (remaining: 226 / 300)
+	Num LP solver invocations: 0. Found solution: 0. No Solution: 0. Failed: 0. Incorrect assignments: 0.
+		Total time in LP solver: 0 milli. Max: 0 milli. Avg per invocation: 0 milli
+		Number of pivots in LP solver: 0. Average time per LP pivot operation: 0 milli
+		Total time extracting tableaus after LP solved: 0 milli. Average: 0 milli.
+		Total time evaulating GLPK rows: 0
+		Glpk bound reports: 0. On slacks: 0 (= 0%). Ignored due to small coefficients: 0. Used: 0.00%
+		Number of GLPK-derived bounds: 0. On slacks: 0 (= 0.00%). Time: 0 milli. Relus consequently dissolved: 0
+		Fix-relu-invariant hook invocations: 0. Actual repairs: 0 (= 0%). Ignore to prevent cycles: 0
+	Average number of broken relu pairs after glpk invocation: 0.000000. Max: 0. Broken and non-basic pairs: 0
+	Vars with infinite bounds: 0 / 920
+	Eliminated vars: 0
+	Stack: Current depth is: 0 (maximal = 0, min second phase = 0).
+	       So far: 0 splits, 0 merges, 0 pops. Total visited states: 0
+		Pops caused by conflict analysis: 0
+		Total time in smtCore: 0 milli
+	Current degradation: 0.0000000000. Time spent checking: 0 milli. Max measured: 0.0000000000.
+	Number of restorations: 0. Total time: 0 milli. Average: 0.000000
+
+
+	Summary: Total: 0 milli
+		1. GLPK: 0 milli (0%) 
+		2. Extraction + Postprocessing: 0 milli (0%)
+		3. Tightening bounds: 0 milli (0%)
+		4. Stack operations: 0 milli (0%)
+		5. Tableau restoration operations: 0 milli (0%)
+		6. Unaccounted for: 0 milli (0%)
+
+
+After reluplex initialization, output ranges are:
+Bounds for output 0: [ -414.2481349332, 1322.5758707928 ]. Normalized: [ -154900.54, 494584.66 ]
+Bounds for output 1: [ -211.3228376222, 328.9423766370 ]. Normalized: [ -79016.64, 123015.49 ]
+Bounds for output 2: [ -132.7841202189, 356.7007992954 ]. Normalized: [ -49647.09, 133395.75 ]
+Bounds for output 3: [ -202.3987198289, 456.3568297417 ]. Normalized: [ -75679.47, 170662.12 ]
+Bounds for output 4: [ -157.0514098233, 370.4003469071 ]. Normalized: [ -58721.84, 138518.70 ]
+
+
+eliminateIfPossible called for a non fixed-at-zero variable
+eliminateIfPossible called for a non fixed-at-zero variable
+eliminateIfPossible called for a non fixed-at-zero variable
+eliminateIfPossible called for a non fixed-at-zero variable
+Initialization steps over.
+
+15:15:45 Statistics update:
+	Calls to 'progress': 0. Total time: 0 milli. Average: 0 milli
+	Pivot operations: 309. Total pivot time: 1 milli.
+	Average pivot time: 0 milli
+	Average time per calcuation in pivot: 0.00000 milli
+	Average number of calculations in pivot: 11557
+	Average number of broken relues per 'progress': 0
+	Broken Relus Fixed: 0 (Fs: 0, Bs: 0, fix-by-pivot: 0, fix-by-update: 0)
+	Relu-to-OOB step ratio: 0 / 0 = 0.000000%. Avg oob steps per relu: 0.00.
+	Almost broken relus encountered: 0. Nuked: 0
+	Time in TightenAllBounds: 0 milli. Bounds tightened: 0
+	Relu pairs dissolved: 74. Num splits: 45. Num merges: 29 (remaining: 226 / 300)
+	Num LP solver invocations: 0. Found solution: 0. No Solution: 0. Failed: 0. Incorrect assignments: 0.
+		Total time in LP solver: 0 milli. Max: 0 milli. Avg per invocation: 0 milli
+		Number of pivots in LP solver: 0. Average time per LP pivot operation: 0 milli
+		Total time extracting tableaus after LP solved: 0 milli. Average: 0 milli.
+		Total time evaulating GLPK rows: 0
+		Glpk bound reports: 0. On slacks: 0 (= 0%). Ignored due to small coefficients: 0. Used: 0.00%
+		Number of GLPK-derived bounds: 0. On slacks: 0 (= 0.00%). Time: 0 milli. Relus consequently dissolved: 0
+		Fix-relu-invariant hook invocations: 0. Actual repairs: 0 (= 0%). Ignore to prevent cycles: 0
+	Average number of broken relu pairs after glpk invocation: 0.000000. Max: 0. Broken and non-basic pairs: 0
+	Vars with infinite bounds: 0 / 920
+	Eliminated vars: 305
+	Stack: Current depth is: 0 (maximal = 0, min second phase = 0).
+	       So far: 0 splits, 0 merges, 0 pops. Total visited states: 0
+		Pops caused by conflict analysis: 0
+		Total time in smtCore: 0 milli
+	Current degradation: 0.0000000000. Time spent checking: 0 milli. Max measured: 0.0000000000.
+	Number of restorations: 0. Total time: 0 milli. Average: 0.000000
+
+
+	Summary: Total: 0 milli
+		1. GLPK: 0 milli (0%) 
+		2. Extraction + Postprocessing: 0 milli (0%)
+		3. Tightening bounds: 0 milli (0%)
+		4. Stack operations: 0 milli (0%)
+		5. Tableau restoration operations: 0 milli (0%)
+		6. Unaccounted for: 0 milli (0%)
+
+Starting the main loop
+
+15:16:05 Statistics update:
+	Calls to 'progress': 500. Total time: 0 milli. Average: 0 milli
+	Pivot operations: 1227. Total pivot time: 2411 milli.
+	Average pivot time: 1 milli
+	Average time per calcuation in pivot: 0.00003 milli
+	Average number of calculations in pivot: 59924
+	Average number of broken relues per 'progress': 33
+	Broken Relus Fixed: 164 (Fs: 0, Bs: 164, fix-by-pivot: 137, fix-by-update: 27)
+	Relu-to-OOB step ratio: 164 / 308 = 0.532468%. Avg oob steps per relu: 1.88.
+	Almost broken relus encountered: 6. Nuked: 0
+	Time in TightenAllBounds: 8646 milli. Bounds tightened: 24792
+	Relu pairs dissolved: 214. Num splits: 154. Num merges: 60 (remaining: 86 / 300)
+	Num LP solver invocations: 308. Found solution: 296. No Solution: 12. Failed: 0. Incorrect assignments: 0.
+		Total time in LP solver: 6425 milli. Max: 45 milli. Avg per invocation: 20 milli
+		Number of pivots in LP solver: 65812. Average time per LP pivot operation: 0 milli
+		Total time extracting tableaus after LP solved: 1770 milli. Average: 5 milli.
+		Total time evaulating GLPK rows: 0
+		Glpk bound reports: 131442. On slacks: 11048 (= 8%). Ignored due to small coefficients: 0. Used: 100.00%
+		Number of GLPK-derived bounds: 4516. On slacks: 0 (= 0.00%). Time: 10290 milli. Relus consequently dissolved: 700
+		Fix-relu-invariant hook invocations: 0. Actual repairs: 0 (= 0%). Ignore to prevent cycles: 0
+	Average number of broken relu pairs after glpk invocation: 42.368243. Max: 88. Broken and non-basic pairs: 37
+	Vars with infinite bounds: 0 / 920
+	Eliminated vars: 305
+	Stack: Current depth is: 7 (maximal = 11, min second phase = 3).
+	       So far: 23 splits, 27 merges, 20 pops. Total visited states: 50
+		Pops caused by conflict analysis: 1
+		Total time in smtCore: 152 milli
+	Current degradation: 0.0000000000. Time spent checking: 0 milli. Max measured: 0.0000000000.
+	Number of restorations: 0. Total time: 0 milli. Average: 0.000000
+
+
+	Summary: Total: 0 milli
+		1. GLPK: 6425 milli (0%) 
+		2. Extraction + Postprocessing: 1770 milli (0%)
+		3. Tightening bounds: 10290 milli (0%)
+		4. Stack operations: 152 milli (0%)
+		5. Tableau restoration operations: 0 milli (0%)
+		6. Unaccounted for: 18446744073709532979 milli (0%)
+
+
+15:16:22 Statistics update:
+	Calls to 'progress': 1000. Total time: 0 milli. Average: 0 milli
+	Pivot operations: 2205. Total pivot time: 4755 milli.
+	Average pivot time: 2 milli
+	Average time per calcuation in pivot: 0.00003 milli
+	Average number of calculations in pivot: 66655
+	Average number of broken relues per 'progress': 37
+	Broken Relus Fixed: 332 (Fs: 0, Bs: 332, fix-by-pivot: 268, fix-by-update: 64)
+	Relu-to-OOB step ratio: 332 / 615 = 0.539837%. Avg oob steps per relu: 1.85.
+	Almost broken relus encountered: 8. Nuked: 0
+	Time in TightenAllBounds: 16514 milli. Bounds tightened: 60668
+	Relu pairs dissolved: 172. Num splits: 118. Num merges: 54 (remaining: 128 / 300)
+	Num LP solver invocations: 615. Found solution: 588. No Solution: 27. Failed: 0. Incorrect assignments: 0.
+		Total time in LP solver: 11848 milli. Max: 46 milli. Avg per invocation: 19 milli
+		Number of pivots in LP solver: 120772. Average time per LP pivot operation: 0 milli
+		Total time extracting tableaus after LP solved: 3635 milli. Average: 6 milli.
+		Total time evaulating GLPK rows: 0
+		Glpk bound reports: 241188. On slacks: 19043 (= 8%). Ignored due to small coefficients: 0. Used: 100.00%
+		Number of GLPK-derived bounds: 9778. On slacks: 0 (= 0.00%). Time: 19512 milli. Relus consequently dissolved: 1488
+		Fix-relu-invariant hook invocations: 0. Actual repairs: 0 (= 0%). Ignore to prevent cycles: 0
+	Average number of broken relu pairs after glpk invocation: 45.799320. Max: 88. Broken and non-basic pairs: 84
+	Vars with infinite bounds: 0 / 920
+	Eliminated vars: 305
+	Stack: Current depth is: 8 (maximal = 13, min second phase = 2).
+	       So far: 47 splits, 52 merges, 44 pops. Total visited states: 99
+		Pops caused by conflict analysis: 1
+		Total time in smtCore: 282 milli
+	Current degradation: 0.0000000000. Time spent checking: 0 milli. Max measured: 0.0000000000.
+	Number of restorations: 0. Total time: 0 milli. Average: 0.000000
+
+
+	Summary: Total: 0 milli
+		1. GLPK: 11848 milli (0%) 
+		2. Extraction + Postprocessing: 3635 milli (0%)
+		3. Tightening bounds: 19512 milli (0%)
+		4. Stack operations: 282 milli (0%)
+		5. Tableau restoration operations: 0 milli (0%)
+		6. Unaccounted for: 18446744073709516339 milli (0%)
+
+
+15:16:44 Statistics update:
+	Calls to 'progress': 1500. Total time: 0 milli. Average: 0 milli
+	Pivot operations: 3289. Total pivot time: 7580 milli.
+	Average pivot time: 2 milli
+	Average time per calcuation in pivot: 0.00003 milli
+	Average number of calculations in pivot: 69418
+	Average number of broken relues per 'progress': 36
+	Broken Relus Fixed: 487 (Fs: 0, Bs: 487, fix-by-pivot: 394, fix-by-update: 93)
+	Relu-to-OOB step ratio: 487 / 940 = 0.518085%. Avg oob steps per relu: 1.93.
+	Almost broken relus encountered: 10. Nuked: 0
+	Time in TightenAllBounds: 26921 milli. Bounds tightened: 94768
+	Relu pairs dissolved: 196. Num splits: 142. Num merges: 54 (remaining: 104 / 300)
+	Num LP solver invocations: 940. Found solution: 907. No Solution: 33. Failed: 0. Incorrect assignments: 0.
+		Total time in LP solver: 18193 milli. Max: 46 milli. Avg per invocation: 19 milli
+		Number of pivots in LP solver: 184511. Average time per LP pivot operation: 0 milli
+		Total time extracting tableaus after LP solved: 5680 milli. Average: 6 milli.
+		Total time evaulating GLPK rows: 0
+		Glpk bound reports: 368542. On slacks: 28577 (= 8%). Ignored due to small coefficients: 0. Used: 100.00%
+		Number of GLPK-derived bounds: 14411. On slacks: 0 (= 0.00%). Time: 32098 milli. Relus consequently dissolved: 2561
+		Fix-relu-invariant hook invocations: 0. Actual repairs: 0 (= 0%). Ignore to prevent cycles: 0
+	Average number of broken relu pairs after glpk invocation: 45.928335. Max: 88. Broken and non-basic pairs: 137
+	Vars with infinite bounds: 0 / 920
+	Eliminated vars: 305
+	Stack: Current depth is: 9 (maximal = 14, min second phase = 2).
+	       So far: 68 splits, 72 merges, 63 pops. Total visited states: 140
+		Pops caused by conflict analysis: 2
+		Total time in smtCore: 390 milli
+	Current degradation: 0.0000000000. Time spent checking: 0 milli. Max measured: 0.0000000000.
+	Number of restorations: 0. Total time: 0 milli. Average: 0.000000
+
+
+	Summary: Total: 0 milli
+		1. GLPK: 18193 milli (0%) 
+		2. Extraction + Postprocessing: 5680 milli (0%)
+		3. Tightening bounds: 32098 milli (0%)
+		4. Stack operations: 390 milli (0%)
+		5. Tableau restoration operations: 0 milli (0%)
+		6. Unaccounted for: 18446744073709495255 milli (0%)
+
+Got signal
+Reluplex not done (quit called?)
+Number of explored states: 1526
+Total run time: 60042 milli (00:01:00)

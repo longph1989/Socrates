@@ -1,0 +1,105 @@
+2020-07-09 10:21:11.515357: I tensorflow/core/platform/cpu_feature_guard.cc:143] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2020-07-09 10:21:11.539834: I tensorflow/core/platform/profile_utils/cpu_utils.cc:102] CPU Frequency: 3096000000 Hz
+2020-07-09 10:21:11.541725: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x512bed0 initialized for platform Host (this does not guarantee that XLA will be used). Devices:
+2020-07-09 10:21:11.541762: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): Host, Default Version
+2020-07-09 10:21:11.545308: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcuda.so.1
+2020-07-09 10:21:12.758636: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-09 10:21:12.775044: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-09 10:21:12.775481: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x51fbe20 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+2020-07-09 10:21:12.775495: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): GeForce RTX 2080 Ti, Compute Capability 7.5
+2020-07-09 10:21:12.775499: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (1): GeForce RTX 2080 Ti, Compute Capability 7.5
+2020-07-09 10:21:12.775734: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-09 10:21:12.776146: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 0 with properties: 
+pciBusID: 0000:01:00.0 name: GeForce RTX 2080 Ti computeCapability: 7.5
+coreClock: 1.635GHz coreCount: 68 deviceMemorySize: 10.76GiB deviceMemoryBandwidth: 573.69GiB/s
+2020-07-09 10:21:12.776178: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-09 10:21:12.776582: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 1 with properties: 
+pciBusID: 0000:03:00.0 name: GeForce RTX 2080 Ti computeCapability: 7.5
+coreClock: 1.635GHz coreCount: 68 deviceMemorySize: 10.76GiB deviceMemoryBandwidth: 573.69GiB/s
+2020-07-09 10:21:12.776654: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcudart.so.10.1'; dlerror: libcudart.so.10.1: cannot open shared object file: No such file or directory
+2020-07-09 10:21:12.777514: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcublas.so.10
+2020-07-09 10:21:12.778390: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcufft.so.10
+2020-07-09 10:21:12.778529: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcurand.so.10
+2020-07-09 10:21:12.779412: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusolver.so.10
+2020-07-09 10:21:12.779932: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusparse.so.10
+2020-07-09 10:21:12.781830: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudnn.so.7
+2020-07-09 10:21:12.781840: W tensorflow/core/common_runtime/gpu/gpu_device.cc:1598] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+2020-07-09 10:21:12.781889: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1102] Device interconnect StreamExecutor with strength 1 edge matrix:
+2020-07-09 10:21:12.781896: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1108]      0 1 
+2020-07-09 10:21:12.781900: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1121] 0:   N N 
+2020-07-09 10:21:12.781903: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1121] 1:   N N 
+netname  ../nets/cifar_convBigRELU__DiffAI.pyt  epsilon  0.1  domain  deepzono  dataset  cifar10 args complete  False  complete  False  timeout_lp  1
+W shape (3, 3, 3, 32)
+Conv2D {'filters': 32, 'kernel_size': [3, 3], 'input_shape': [32, 32, 3], 'stride': [1, 1], 'padding': 1} W.shape: (3, 3, 3, 32) b.shape: (32,)
+	OutShape:  (1, 32, 32, 32)
+W shape (4, 4, 32, 32)
+Conv2D {'filters': 32, 'kernel_size': [4, 4], 'input_shape': [32, 32, 32], 'stride': [2, 2], 'padding': 1} W.shape: (4, 4, 32, 32) b.shape: (32,)
+	OutShape:  (1, 16, 16, 32)
+W shape (3, 3, 32, 64)
+Conv2D {'filters': 64, 'kernel_size': [3, 3], 'input_shape': [16, 16, 32], 'stride': [1, 1], 'padding': 1} W.shape: (3, 3, 32, 64) b.shape: (64,)
+	OutShape:  (1, 16, 16, 64)
+W shape (4, 4, 64, 64)
+Conv2D {'filters': 64, 'kernel_size': [4, 4], 'input_shape': [16, 16, 64], 'stride': [2, 2], 'padding': 1} W.shape: (4, 4, 64, 64) b.shape: (64,)
+	OutShape:  (1, 8, 8, 64)
+ReLU
+	OutShape:  (1, 512)
+	WShape:  (4096, 512)
+	BShape:  (512,)
+ReLU
+	OutShape:  (1, 512)
+	WShape:  (512, 512)
+	BShape:  (512,)
+Affine
+	OutShape:  (1, 10)
+	WShape:  (512, 10)
+	BShape:  (10,)
+WARNING:tensorflow:From ./tensorflow_translator.py:109: convert_variables_to_constants (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.compat.v1.graph_util.convert_variables_to_constants`
+WARNING:tensorflow:From /home/long/eran/eran_venv/lib/python3.6/site-packages/tensorflow/python/framework/graph_util_impl.py:359: extract_sub_graph (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.compat.v1.graph_util.extract_sub_graph`
+WARNING:tensorflow:From ./tensorflow_translator.py:110: remove_training_nodes (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.compat.v1.graph_util.remove_training_nodes`
+2020-07-09 10:21:19.785106: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-09 10:21:19.785452: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 0 with properties: 
+pciBusID: 0000:01:00.0 name: GeForce RTX 2080 Ti computeCapability: 7.5
+coreClock: 1.635GHz coreCount: 68 deviceMemorySize: 10.76GiB deviceMemoryBandwidth: 573.69GiB/s
+2020-07-09 10:21:19.785497: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-09 10:21:19.785798: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 1 with properties: 
+pciBusID: 0000:03:00.0 name: GeForce RTX 2080 Ti computeCapability: 7.5
+coreClock: 1.635GHz coreCount: 68 deviceMemorySize: 10.76GiB deviceMemoryBandwidth: 573.69GiB/s
+2020-07-09 10:21:19.785860: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcudart.so.10.1'; dlerror: libcudart.so.10.1: cannot open shared object file: No such file or directory
+2020-07-09 10:21:19.785871: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcublas.so.10
+2020-07-09 10:21:19.785879: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcufft.so.10
+2020-07-09 10:21:19.785886: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcurand.so.10
+2020-07-09 10:21:19.785900: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusolver.so.10
+2020-07-09 10:21:19.785907: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusparse.so.10
+2020-07-09 10:21:19.785914: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudnn.so.7
+2020-07-09 10:21:19.785918: W tensorflow/core/common_runtime/gpu/gpu_device.cc:1598] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+2020-07-09 10:21:19.786129: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1102] Device interconnect StreamExecutor with strength 1 edge matrix:
+2020-07-09 10:21:19.786156: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1108]      
+This network has 62464 neurons.
+>> [C] cut off negative part....
+>> [C] cut off negative part....
+>> [C] cut off negative part....
+>> [C] cut off negative part....
+>> [C] cut off negative part....
+>> [C] cut off negative part....
+concrete  [-1.8951785210884675, -2.2295826245238035, -0.4537499358640293, -0.9040225436135567, -0.8569241743202223, -1.187483419108008, 0.1707774633979886, -2.7666563706789895, -1.8214071477998326, -2.015599276244325]
+img 0 not considered, correct_label 3 classified label  6
+>> [C] cut off negative part....
+>> [C] cut off negative part....
+>> [C] cut off negative part....
+>> [C] cut off negative part....
+>> [C] cut off negative part....
+>> [C] cut off negative part....
+concrete  [-1.251029364366145, 0.3126444747287223, -7.217307615159334, -10.598945014129459, -6.4176149998223675, -10.208982121639897, -7.824060254367246, -8.298225365177288, 1.9564017458209932, 0.5877044155987465]
+>> [C] cut off negative part....
+>> [C] cut off negative part....
+>> [C] cut off negative part....
+>> [C] cut off negative part....
+>> [C] cut off negative part....

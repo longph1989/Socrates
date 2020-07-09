@@ -1,0 +1,8 @@
+./nnet/ACASXU_run2a_1_1_batch_2000.nnet, TIMEOUT, 60023, 00:01:00, 29, 227
+./nnet/ACASXU_run2a_1_1_batch_2000.nnet, TIMEOUT, 60008, 00:01:00, 26, 220
+./nnet/ACASXU_run2a_1_1_batch_2000.nnet, TIMEOUT, 60037, 00:01:00, 28, 234
+./nnet/ACASXU_run2a_1_1_batch_2000.nnet, TIMEOUT, 60223, 00:01:00, 31, 241
+./nnet/ACASXU_run2a_1_1_batch_2000.nnet, TIMEOUT, 60000, 00:01:00, 30, 259
+./nnet/ACASXU_run2a_1_1_batch_2000.nnet, TIMEOUT, 59996, 00:00:59, 29, 225
+./nnet/ACASXU_run2a_1_1_batch_2000.nnet, TIMEOUT, 60007, 00:01:00, 27, 243
+./nnet/ACASXU_run2a_1_1_batch_2000.nnet, TIMEOUT, 60000, 00:01:00, 24, 229
