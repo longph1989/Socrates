@@ -1,0 +1,322 @@
+2020-07-10 08:39:30.977221: I tensorflow/core/platform/cpu_feature_guard.cc:143] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2020-07-10 08:39:30.999751: I tensorflow/core/platform/profile_utils/cpu_utils.cc:102] CPU Frequency: 3096000000 Hz
+2020-07-10 08:39:31.000774: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x5056540 initialized for platform Host (this does not guarantee that XLA will be used). Devices:
+2020-07-10 08:39:31.000804: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): Host, Default Version
+2020-07-10 08:39:31.002146: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcuda.so.1
+2020-07-10 08:39:32.142463: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-10 08:39:32.151919: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-10 08:39:32.152331: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x51264b0 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+2020-07-10 08:39:32.152345: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): GeForce RTX 2080 Ti, Compute Capability 7.5
+2020-07-10 08:39:32.152349: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (1): GeForce RTX 2080 Ti, Compute Capability 7.5
+2020-07-10 08:39:32.152581: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-10 08:39:32.152887: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 0 with properties: 
+pciBusID: 0000:01:00.0 name: GeForce RTX 2080 Ti computeCapability: 7.5
+coreClock: 1.635GHz coreCount: 68 deviceMemorySize: 10.76GiB deviceMemoryBandwidth: 573.69GiB/s
+2020-07-10 08:39:32.152917: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-10 08:39:32.153215: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 1 with properties: 
+pciBusID: 0000:03:00.0 name: GeForce RTX 2080 Ti computeCapability: 7.5
+coreClock: 1.635GHz coreCount: 68 deviceMemorySize: 10.76GiB deviceMemoryBandwidth: 573.69GiB/s
+2020-07-10 08:39:32.153285: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcudart.so.10.1'; dlerror: libcudart.so.10.1: cannot open shared object file: No such file or directory
+2020-07-10 08:39:32.154112: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcublas.so.10
+2020-07-10 08:39:32.154957: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcufft.so.10
+2020-07-10 08:39:32.155091: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcurand.so.10
+2020-07-10 08:39:32.155964: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusolver.so.10
+2020-07-10 08:39:32.156439: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusparse.so.10
+2020-07-10 08:39:32.158272: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudnn.so.7
+2020-07-10 08:39:32.158283: W tensorflow/core/common_runtime/gpu/gpu_device.cc:1598] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+2020-07-10 08:39:32.158332: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1102] Device interconnect StreamExecutor with strength 1 edge matrix:
+2020-07-10 08:39:32.158340: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1108]      0 1 
+2020-07-10 08:39:32.158344: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1121] 0:   N N 
+2020-07-10 08:39:32.158347: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1121] 1:   N N 
+netname  ../nets/cifar_relu_6_100.tf  epsilon  0.1  domain  refinezono  dataset  cifar10 args complete  False  complete  False  timeout_lp  1
+ReLU
+	OutShape:  (1, 100)
+	WShape:  (3072, 100)
+	BShape:  (100,)
+ReLU
+	OutShape:  (1, 100)
+	WShape:  (100, 100)
+	BShape:  (100,)
+ReLU
+	OutShape:  (1, 100)
+	WShape:  (100, 100)
+	BShape:  (100,)
+ReLU
+	OutShape:  (1, 100)
+	WShape:  (100, 100)
+	BShape:  (100,)
+ReLU
+	OutShape:  (1, 100)
+	WShape:  (100, 100)
+	BShape:  (100,)
+ReLU
+	OutShape:  (1, 100)
+	WShape:  (100, 100)
+	BShape:  (100,)
+ReLU
+	OutShape:  (1, 10)
+	WShape:  (100, 10)
+	BShape:  (10,)
+WARNING:tensorflow:From ./tensorflow_translator.py:109: convert_variables_to_constants (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.compat.v1.graph_util.convert_variables_to_constants`
+WARNING:tensorflow:From /home/long/eran/eran_venv/lib/python3.6/site-packages/tensorflow/python/framework/graph_util_impl.py:359: extract_sub_graph (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.compat.v1.graph_util.extract_sub_graph`
+WARNING:tensorflow:From ./tensorflow_translator.py:110: remove_training_nodes (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.compat.v1.graph_util.remove_training_nodes`
+2020-07-10 08:39:32.953798: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-10 08:39:32.954145: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 0 with properties: 
+pciBusID: 0000:01:00.0 name: GeForce RTX 2080 Ti computeCapability: 7.5
+coreClock: 1.635GHz coreCount: 68 deviceMemorySize: 10.76GiB deviceMemoryBandwidth: 573.69GiB/s
+2020-07-10 08:39:32.954191: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-10 08:39:32.954493: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 1 with properties: 
+pciBusID: 0000:03:00.0 name: GeForce RTX 2080 Ti computeCapability: 7.5
+coreClock: 1.635GHz coreCount: 68 deviceMemorySize: 10.76GiB deviceMemoryBandwidth: 573.69GiB/s
+2020-07-10 08:39:32.954559: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcudart.so.10.1'; dlerror: libcudart.so.10.1: cannot open shared object file: No such file or directory
+2020-07-10 08:39:32.954574: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcublas.so.10
+2020-07-10 08:39:32.954583: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcufft.so.10
+2020-07-10 08:39:32.954591: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcurand.so.10
+2020-07-10 08:39:32.954599: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusolver.so.10
+2020-07-10 08:39:32.954607: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusparse.so.10
+2020-07-10 08:39:32.954616: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudnn.so.7
+2020-07-10 08:39:32.954620: W tensorflow/core/common_runtime/gpu/gpu_device.cc:1598] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+2020-07-10 08:39:32.954822: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1102] Device interconnect StreamExecutor with strength 1 edge matrix:
+2020-07-10 08:39:32.954831: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1108]      
+This network has 610 neurons.
+concrete  [-0.0, 29.488638613342403, -0.0, -0.0, -0.0, -0.0, 2.9935154459645927, -0.0, 6.15465080571237, 13.735987589584724]
+img 0 not considered, correct_label 3 classified label  1
+concrete  [9.820681343234176, 0.18509324704004237, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 5.538153826565808, -0.0]
+img 1 not considered, correct_label 8 classified label  0
+concrete  [1.2882273913308353, 11.459110730690758, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 13.537073957060487, 8.142517310206667]
+nlb  [-625917.5872006918, -575998.1068116829, -670600.0071075795, -724035.9810409619, -676842.4690841978, -660710.8846843645, -602832.8184009849, -586996.0160616528, -602948.0075748943, -629794.767648384]  nub  [1266245.1297087576, 1145899.4447242126, 1437993.4235771836, 1492351.517865985, 1320276.9109369053, 1301101.4107447485, 1155149.4137766054, 1202648.5707721228, 1173261.8161671811, 1236799.0983492294]
+img 2 Failed
+7.962793588638306 seconds
+concrete  [8.439541474669362, 2.0444040263611494, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 24.969841601222686, 6.699966041161017]
+img 3 not considered, correct_label 0 classified label  8
+concrete  [17.936184981421825, -0.0, 15.83137951030222, -0.0, 1.4506720073899426, -0.0, -0.0, -0.0, -0.0, -0.0]
+img 4 not considered, correct_label 6 classified label  0
+concrete  [2.2707687192612522, -0.0, -0.0, 4.732062660627331, -0.0, -0.0, 4.974811820187424, -0.0, -0.0, 1.4557979082729344]
+nlb  [-640634.8324567566, -589548.5811594013, -686366.4661046631, -741063.8669965366, -692786.4545034532, -676254.647434346, -617033.7657038001, -600823.0198421282, -617131.7484979669, -644631.9112315709]  nub  [1296017.4224477184, 1172852.0965954638, 1471809.9085785858, 1527421.0171388753, 1351371.5657186122, 1331685.9923528451, 1182376.2411134248, 1230960.542014036, 1200855.4274869259, 1265954.3342312735]
+img 5 Failed
+8.071937561035156 seconds
+concrete  [-0.0, 7.483513917096241, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 18.97220469635111]
+img 6 not considered, correct_label 1 classified label  9
+concrete  [3.0392532733861155, 17.969768868082703, -0.0, -0.0, -0.0, -0.0, 2.393380173374921, -0.0, 9.044949653481458, 5.905847006255064]
+img 7 not considered, correct_label 6 classified label  1
+concrete  [1.2318349515713622, 13.330692262406611, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 2.988500676643781, 4.013954116985213]
+img 8 not considered, correct_label 3 classified label  1
+concrete  [0.7646957255678236, -0.0, -0.0, -0.0, -0.0, 4.012107737091067, -0.0, -0.0, 9.846926523468186, 1.3399563543647834]
+img 9 not considered, correct_label 1 classified label  8
+concrete  [3.162069354515045, -0.0, 2.8506538262824543, -0.0, 15.317846844261618, 0.5414829407815347, -0.0, 11.930606609516675, 0.93315137060478, -0.0]
+img 10 not considered, correct_label 0 classified label  4
+concrete  [6.199297450297724, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 3.440100828479214, 2.1005724022495658]
+img 11 not considered, correct_label 9 classified label  0
+concrete  [21.89543676184696, -0.0, -0.0, -0.0, 10.929577902984523, -0.0, -0.0, 6.737627445563583, -0.0, 3.87955026886656]
+img 12 not considered, correct_label 5 classified label  0
+concrete  [0.5839952473722123, 27.17092302455895, 1.3153305462970786, -0.0, -0.0, -0.0, -0.0, -0.0, 9.797277112955353, 12.9687542838311]
+img 13 not considered, correct_label 7 classified label  1
+concrete  [3.735632852022945, -0.0, 1.8795007215554744, 2.3045531064652, 8.240763193021287, -0.0, -0.0, 9.666705057504425, -0.0, -0.0]
+img 14 not considered, correct_label 9 classified label  7
+concrete  [18.635773709042507, 1.6953282760188086, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 4.666485555896715, 1.9576307979184557]
+img 15 not considered, correct_label 8 classified label  0
+concrete  [42.82918868348767, 5.579153064917773, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 1.4255389964163185, 3.8200589698507432]
+img 16 not considered, correct_label 5 classified label  0
+concrete  [23.996458889936253, 0.8153680465169049, 2.4858310757684783, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0]
+img 17 not considered, correct_label 7 classified label  0
+concrete  [17.12684431042353, 10.880288887424664, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 40.113752202053284, 5.7502283178109295]
+nlb  [-550360.2017020439, -506468.2715045058, -589642.4503110565, -636626.4507198655, -595147.8474816009, -580931.4745993183, -530041.5741491871, -516159.3329376161, -530165.2646155476, -553765.94788788]  nub  [1113460.0952974195, 1007608.2140947273, 1264360.1537555384, 1312149.5004686431, 1160930.96421271, 1143936.6180303667, 1015626.7230480376, 1057535.1891050416, 1031660.9721504209, 1087538.8012024679]
+img 18 Failed
+8.301401853561401 seconds
+concrete  [8.923670266284406, 3.6357285876916157, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 2.216185275801555]
+img 19 not considered, correct_label 6 classified label  0
+concrete  [6.701322712542514, -0.0, 3.6760706075724365, 2.158646854175852, 12.608418477705921, -0.0, -0.0, 23.883285439775744, 6.660659497806828, 13.526330862399915]
+nlb  [-622634.1957820955, -572965.4889138683, -667068.486594542, -720247.199134042, -673313.7157328769, -657264.2018279859, -599673.8977802147, -583952.2429317326, -599791.9359491195, -626501.3723007462]  nub  [1259606.1311889915, 1139854.4819353332, 1430418.5796186626, 1484568.2220594145, 1313417.3684883127, 1294348.9704546349, 1149091.9190255802, 1196443.5917944536, 1167128.9586532263, 1230328.5388588991]
+img 20 Failed
+8.506231307983398 seconds
+concrete  [2.9916291012880154, -0.0, -0.0, 16.879681575966, -0.0, -0.0, -0.0, 7.7513287993686095, 24.866891433954883, 8.38789173594189]
+img 21 not considered, correct_label 0 classified label  8
+concrete  [-0.0, 0.11628924484790204, -0.0, -0.0, -0.0, -0.0, 1.6328942225392757, -0.0, 1.6853144753384126, -0.0]
+img 22 not considered, correct_label 4 classified label  8
+concrete  [4.940870245262146, -0.0, -0.0, -0.0, 3.680862204255602, 4.823002714480797, 3.045740741637829, -0.0, 3.6342579617415405, -0.0]
+img 23 not considered, correct_label 9 classified label  0
+concrete  [4.79110972772557, 2.4879065066310404, -0.0, -0.0, -0.0, 3.52719480971235, -0.0, -0.0, 7.549788987712123, 0.3298386945865641]
+img 24 not considered, correct_label 5 classified label  8
+concrete  [6.449594035771135, -0.0, -0.0, -0.0, -0.0, 2.184449741759696, -0.0, -0.0, 1.5164520522903653, 0.63517864931619]
+img 25 not considered, correct_label 2 classified label  0
+concrete  [9.735166052997611, 8.676390294085818, 4.160974322511708, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 2.53279675038572]
+img 26 not considered, correct_label 4 classified label  0
+concrete  [14.9772239507046, 26.918771036763687, -0.0, -0.0, -0.0, -0.0, 3.4348428883206266, -0.0, 24.251678170774913, 5.021632955038968]
+img 27 not considered, correct_label 0 classified label  1
+concrete  [3.0864691000618234, -0.0, 11.307620030533096, 2.201398709651052, 3.2845401892977075, 8.158607613469151, -0.0, 35.73551355856696, -0.0, -0.0]
+img 28 not considered, correct_label 9 classified label  7
+concrete  [0.5096077412680514, -0.0, 6.0422857412899456, -0.0, -0.0, -0.0, -0.0, 3.143673930476156, -0.0, -0.0]
+img 29 not considered, correct_label 6 classified label  2
+concrete  [-0.0, -0.0, -0.0, 14.310263010862824, 0.2238413563961562, -0.0, 0.6744174858346415, 3.7423506037682195, 1.8609098941337137, -0.0]
+img 30 not considered, correct_label 6 classified label  3
+concrete  [3.891419443295435, -0.0, -0.0, 2.16602721985121, -0.0, -0.0, -0.0, -0.0, 5.0277778538700355, 3.618804705808163]
+img 31 not considered, correct_label 5 classified label  8
+concrete  [18.499663276679396, 2.75996070393143, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 0.8121963851246541]
+img 32 not considered, correct_label 4 classified label  0
+concrete  [9.776215334718977, -0.0, -0.0, 10.794160309307278, 3.3139248949223385, 3.5218868590803036, -0.0, 20.345734793496835, 4.182844884714173, 3.696275600372261]
+img 33 not considered, correct_label 5 classified label  7
+concrete  [2.7957935846528894, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 17.452320261122487, 5.517836236019174]
+img 34 not considered, correct_label 9 classified label  8
+concrete  [15.869955303357557, 34.575594185344855, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 9.967936619991995, 10.798475506471203]
+img 35 not considered, correct_label 2 classified label  1
+concrete  [-0.0, 0.5801598897601381, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 4.540388865004303, 1.1491487706412205]
+img 36 not considered, correct_label 4 classified label  8
+concrete  [9.38467624506948, 2.7882013132371144, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 17.206398796363946, -0.0]
+img 37 not considered, correct_label 1 classified label  8
+concrete  [-0.0, -0.0, -0.0, -0.0, -0.0, 8.333311014657141, -0.0, -0.0, -0.0, 7.4139700157814294]
+img 38 not considered, correct_label 9 classified label  5
+concrete  [-0.0, -0.0, -0.0, -0.0, -0.0, 6.5369606912141585, -0.0, -0.0, -0.0, 11.62948451404327]
+img 39 not considered, correct_label 5 classified label  9
+concrete  [-0.0, 11.034880788253973, 10.608378303406464, 11.123822972697008, -0.0, 2.8235249060708445, -0.0, 10.477357679398011, -0.0, -0.0]
+img 40 not considered, correct_label 4 classified label  3
+concrete  [0.4969832963639904, 1.8002942628641532, -0.0, 6.764114621534562, 0.8193362940019195, 2.2977048918118816, 5.427954885886137, -0.0, 8.009247536781887, -0.0]
+img 41 not considered, correct_label 6 classified label  8
+concrete  [-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 14.555363126464808, -0.0, 8.813694333980354]
+img 42 not considered, correct_label 5 classified label  7
+concrete  [17.24891361547388, 3.8238898078623382, -0.0, -0.0, -0.0, -0.0, -0.0, 1.6989695880376274, -0.0, 0.5568569792827311]
+img 43 not considered, correct_label 6 classified label  0
+concrete  [2.3799296641324164, 18.07190519440975, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 10.829690871012746, 5.329271645546259]
+img 44 not considered, correct_label 0 classified label  1
+concrete  [-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 30.797158757403317, -0.0]
+img 45 not considered, correct_label 9 classified label  8
+concrete  [-0.0, -0.0, -0.0, 6.420184418456593, 0.2693959412722613, 19.856580646366297, -0.0, -0.0, -0.0, -0.0]
+img 46 not considered, correct_label 3 classified label  5
+concrete  [2.0602825387508985, -0.0, -0.0, 5.383928505887918, 10.240643581691556, 1.395336986909112, 1.6454757798336819, 4.238377016301208, -0.0, -0.0]
+img 47 not considered, correct_label 9 classified label  4
+concrete  [7.0917219358462615, 4.112262316494462, 5.245243494064156, -0.0, -0.0, -0.0, -0.0, 11.401592578005681, -0.0, 2.344505436559212]
+nlb  [-644891.5348509129, -593453.7088869882, -690917.747011718, -745981.6082851196, -697386.0567817341, -680748.7384169037, -621116.5632666362, -604807.2247035179, -621227.840213144, -648914.2540113971]  nub  [1304625.770766548, 1180620.8448895472, 1481546.486103822, 1537567.1395835648, 1360349.5881326415, 1340551.2446078658, 1190184.7769620034, 1239128.0622554873, 1208839.4219926505, 1274365.2676784059]
+img 48 Failed
+8.771881341934204 seconds
+concrete  [5.674110197730095, -0.0, -0.0, -0.0, 1.2240562692011878, -0.0, -0.0, -0.0, 11.887555825032145, 1.0548260008379815]
+img 49 not considered, correct_label 6 classified label  8
+concrete  [1.1601101663979088, 2.4319862207808356, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 0.9525322513609948, 8.490302775522943]
+nlb  [-608751.1808448755, -560191.7937015768, -652197.3873145505, -704167.283602125, -658287.3997680957, -642588.8089745922, -586301.3940220057, -570916.2567966834, -586402.7885112303, -612520.5233406448]  nub  [1231535.2262766343, 1114465.0360947016, 1398557.634174224, 1451379.486829057, 1284090.633866607, 1265398.8485876382, 1123466.0214170257, 1169708.9006995219, 1141065.8105482957, 1202879.4820512584]
+img 50 Failed
+9.007529497146606 seconds
+concrete  [2.336653794613377, 11.237867085084249, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 5.449525234930265, 4.890226218381815]
+img 51 not considered, correct_label 8 classified label  1
+concrete  [36.54914713413037, 2.281025101890855, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 2.4437895680042283, -0.0]
+nlb  [-643305.6146599437, -591993.9899172907, -689222.1472945226, -744141.9689033264, -695671.4163513368, -679075.0002123684, -619596.8828550294, -603315.2843063371, -619705.0463585792, -647309.4889743481]  nub  [1301400.6615533384, 1177702.7440036135, 1477916.2127636666, 1533750.5314426844, 1357011.7331349386, 1337261.9435223644, 1187280.6448913666, 1236068.869936598, 1205872.6335101319, 1271189.5144651174]
+img 52 Failed
+9.22600269317627 seconds
+concrete  [-0.0, 3.5484103898336166, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 9.121555502253763]
+img 53 not considered, correct_label 3 classified label  9
+concrete  [13.856644385905208, 34.68579998010859, -0.0, -0.0, -0.0, -0.0, 1.6849368433698313, -0.0, 11.490940621311374, 10.360717550545925]
+img 54 not considered, correct_label 8 classified label  1
+concrete  [7.042882513038196, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 14.286109562947946, 8.156997175963356]
+nlb  [-644154.9644079268, -592777.8565752943, -690134.7647831701, -745134.4465268501, -696577.4850944121, -679968.7115876215, -620406.178267336, -604112.0730179296, -620513.9072942226, -648154.1033687529]  nub  [1303144.9320718057, 1179280.2515612291, 1479893.4736607852, 1535837.425598708, 1358783.2735498934, 1339023.6210946033, 1188832.6916242728, 1237713.7055468413, 1207438.4118691855, 1272849.5038244298]
+img 55 Failed
+9.407495260238647 seconds
+concrete  [-0.0, 9.801188969085482, -0.0, -0.0, -0.0, 15.575155646293386, -0.0, -0.0, -0.0, 25.286237698350092]
+img 56 not considered, correct_label 7 classified label  9
+concrete  [-0.0, 26.1897280489188, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 26.5202457728965]
+img 57 not considered, correct_label 7 classified label  9
+concrete  [9.357096732110529, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 13.384033450156336, 1.371889264423345]
+img 58 not considered, correct_label 4 classified label  8
+concrete  [-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 9.182053452235717]
+img 59 not considered, correct_label 6 classified label  9
+concrete  [0.802499428003583, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 10.451508232562885, 0.20240833863809715]
+img 60 not considered, correct_label 7 classified label  8
+concrete  [-0.0, 5.041365978361459, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 24.873352653253235]
+img 61 not considered, correct_label 3 classified label  9
+concrete  [0.27229916287391354, 13.593559182228324, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 5.523030074678861, 11.287747931675014]
+img 62 not considered, correct_label 6 classified label  1
+concrete  [26.632588468427034, 7.368446697861563, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 1.4155552572811836, 2.1825683195699757]
+img 63 not considered, correct_label 3 classified label  0
+concrete  [7.715771611688767, -0.0, 14.151629865105265, -0.0, 3.5826372586184774, -0.0, -0.0, 9.462220869921756, -0.0, -0.0]
+img 64 not considered, correct_label 6 classified label  2
+concrete  [-0.0, 4.642462676496777, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 14.290029235514366]
+img 65 not considered, correct_label 2 classified label  9
+concrete  [18.358642608905946, 8.772393247240002, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 8.479057758758122, 0.9455098056498248]
+img 66 not considered, correct_label 1 classified label  0
+concrete  [-0.0, -0.0, 9.487687246445894, -0.0, 17.319001542878897, 1.387239624057538, 0.5081299218092377, 1.070473560912886, -0.0, -0.0]
+img 67 not considered, correct_label 2 classified label  4
+concrete  [-0.0, -0.0, -0.0, 0.16219312261894236, -0.0, -0.0, -0.0, 2.160326156420631, 10.966254428142491, 2.1092084011164838]
+img 68 not considered, correct_label 3 classified label  8
+concrete  [8.992058257695525, 16.879795249614148, -0.0, 1.2486864866939404, -0.0, -0.0, 2.403682151516818, -0.0, 3.4609951047815213, 5.040843594557944]
+img 69 not considered, correct_label 7 classified label  1
+concrete  [1.3060185903693258, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 11.368494378856324, -0.0]
+img 70 not considered, correct_label 2 classified label  8
+concrete  [0.15582172482167211, 13.472764470958271, -0.0, 0.03845421834310958, -0.0, -0.0, -0.0, -0.0, -0.0, 5.048617363110815]
+img 71 not considered, correct_label 6 classified label  1
+concrete  [14.13136451938986, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 2.5869405086449975, -0.0]
+img 72 not considered, correct_label 8 classified label  0
+concrete  [2.227850654019774, 4.537923251482321, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 8.283859267502462, 3.0906495925272437]
+nlb  [-644693.1831281112, -593271.5499168402, -690714.2927561938, -745761.0129954924, -697159.8893133715, -680544.2325403083, -620934.4045324454, -604611.8905978436, -621035.3454414665, -648696.804601712]  nub  [1304200.7493685654, 1180254.1725424915, 1481123.2659503666, 1537132.3671377324, 1359917.5252731242, 1340171.1313301704, 1189862.0733507706, 1238730.4108426513, 1208453.948834674, 1273905.9007460275]
+img 73 Failed
+9.566919565200806 seconds
+concrete  [11.267580169190515, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 11.901494444842186, -0.0]
+img 74 not considered, correct_label 0 classified label  8
+concrete  [0.6882412290867789, -0.0, -0.0, 9.105167565111111, -0.0, -0.0, -0.0, 1.546438623288124, -0.0, 6.82171008388264]
+img 75 not considered, correct_label 2 classified label  3
+concrete  [22.27894815960274, 8.354710273227852, -0.0, -0.0, 2.619838015908959, -0.0, 4.399982109686245, -0.0, 2.2204376143930187, 1.1137612620128277]
+img 76 not considered, correct_label 9 classified label  0
+concrete  [15.55002284754408, -0.0, -0.0, 21.583080698397886, -0.0, 8.409995886137722, -0.0, -0.0, -0.0, -0.0]
+nlb  [-638285.8199482571, -587367.5641740116, -683841.8406297674, -738358.276794558, -690239.690068854, -673791.2229705186, -614759.9927881084, -598590.0127194388, -614865.0159757754, -642261.102843336]  nub  [1291223.041439295, 1168502.453251661, 1466327.7211283608, 1521895.680466968, 1346414.8085002596, 1326887.2399342437, 1178017.0506742168, 1226364.6078152375, 1196444.4498186938, 1261280.623947026]
+img 77 Failed
+9.826208591461182 seconds
+concrete  [-0.0, -0.0, -0.0, 5.9756854261071615, -0.0, 12.576631311066082, 2.512132551390547, -0.0, -0.0, -0.0]
+img 78 not considered, correct_label 3 classified label  5
+concrete  [22.580013692436683, 3.5710797471460705, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 2.602928517526798, 1.7107781363064314]
+img 79 not considered, correct_label 8 classified label  0
+concrete  [5.405825736442427, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 20.442476346031388, -0.0]
+nlb  [-623074.6427832333, -573374.401338254, -667544.5737873658, -720733.9089567041, -673765.7084972353, -657705.6859891659, -600085.453706136, -584323.7743685223, -600207.313322645, -626927.6087893414]  nub  [1260502.4984105623, 1140687.2928361131, 1431421.5853752946, 1485536.933925245, 1314292.7254564743, 1295172.5295557654, 1149889.2171888205, 1197182.1504917527, 1167937.8449749327, 1231167.842636603]
+img 80 Failed
+10.043853521347046 seconds
+concrete  [-0.0, 38.064929601375326, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 4.61009974906209, 12.850553016471096]
+nlb  [-555141.1335474901, -510869.0565576551, -594772.9495843983, -642169.4154374619, -600333.6560199861, -586016.5436010464, -534681.8942873456, -520636.65688821947, -534776.5181186792, -558602.7403353635]  nub  [1123030.6499446256, 1016323.4769361152, 1275370.170380061, 1323579.5468619717, 1171039.4179762925, 1154007.6544708181, 1024555.0591435261, 1066675.1346721041, 1040606.9370187196, 1096997.9631538638]
+img 81 Failed
+10.321326494216919 seconds
+concrete  [3.2721235750374955, -0.0, -0.0, -0.0, -0.0, 7.113239657817797, -0.0, -0.0, -0.0, -0.0]
+img 82 not considered, correct_label 1 classified label  5
+concrete  [10.413655773273206, -0.0, 3.3904404787288187, 4.075576157978558, -0.0, 2.4139017739364457, -0.0, -0.0, 0.4920716235390824, -0.0]
+img 83 not considered, correct_label 7 classified label  0
+concrete  [2.093065999871488, -0.0, 1.8089614179182163, -0.0, -0.0, -0.0, -0.0, -0.0, 5.104844579272778, -0.0]
+img 84 not considered, correct_label 2 classified label  8
+concrete  [-0.0, 8.090675024052171, -0.0, -0.0, 1.3241280490652556, 6.868718791945607, -0.0, 4.723588277241103, -0.0, 16.3487493263741]
+img 85 not considered, correct_label 5 classified label  9
+concrete  [8.364000293674943, 4.494724729738428, -0.0, 14.770096993297228, -0.0, 2.640811461851243, 0.2494208286403715, -0.0, 1.9909289251118527, 2.54332249514742]
+img 86 not considered, correct_label 2 classified label  3
+concrete  [16.509445065508903, 17.44259883145124, -0.0, -0.0, -0.0, -0.0, 0.2080344922980969, -0.0, 21.091252975730434, 3.605944416454191]
+img 87 not considered, correct_label 7 classified label  8
+concrete  [-0.0, 4.176522929918632, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 22.635884839209513, 2.6125913486059136]
+nlb  [-623682.4799758104, -573945.8849560432, -668202.1058630181, -721444.5384610711, -674429.7196257134, -658354.6637274157, -600688.7332687746, -584909.9991183218, -600803.4652029948, -627555.3788913081]  nub  [1261730.0837208107, 1141834.3074700607, 1432821.9158453278, 1486992.9476034152, 1315568.50055293, 1296442.8881497832, 1151053.7095339156, 1198359.035260396, 1169102.077759071, 1232424.359939127]
+img 88 Failed
+10.619186162948608 seconds
+concrete  [20.269404728096468, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 3.335449490739688, 2.2420614064813944]
+img 89 not considered, correct_label 9 classified label  0
+concrete  [25.246660817362166, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 1.359655214653461, -0.0]
+nlb  [-640358.5669372275, -589274.8249252136, -686063.2422492015, -740745.1642197765, -692470.1768279916, -675971.1888826037, -616745.8789997018, -600552.2468322912, -616859.5264111287, -644333.0792685878]  nub  [1295448.3033461745, 1172300.9410554885, 1471144.5205339654, 1526799.5405236867, 1350772.9726697565, 1331166.390218553, 1181815.9988816727, 1230427.68905653, 1200331.6586439505, 1265339.8893180783]
+img 90 Failed
+10.859249830245972 seconds
+concrete  [8.576753377232443, 2.6746093067008685, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 4.9936705495493126, 0.44510886035839614]
+img 91 not considered, correct_label 3 classified label  0
+concrete  [2.083871343973296, 3.1330888823484013, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 28.470454807705927, 11.653159691261559]
+nlb  [-595317.2562646011, -547834.8960263523, -637816.0712315243, -688649.7757521754, -643759.6752394077, -628421.9671383549, -573358.5314161342, -558308.5458471408, -573469.9749404144, -599007.1963509591]  nub  [1204336.5826935621, 1089870.3473408855, 1367694.1613090525, 1419426.749539661, 1255753.3069217093, 1237519.3742721854, 1098672.8935233434, 1143873.1464244446, 1115896.9590588245, 1176338.6239263723]
+img 92 Failed
+11.139982461929321 seconds
+concrete  [-0.0, 11.710906563994378, -0.0, -0.0, -0.0, -0.0, 0.9576407831262465, -0.0, 8.718708654358146, 2.22799719282487]
+img 93 not considered, correct_label 6 classified label  1
+concrete  [5.809284378657334, -0.0, -0.0, 5.413274130412435, -0.0, -0.0, -0.0, 1.6611300201823096, -0.0, 0.5359388848346625]
+img 94 not considered, correct_label 4 classified label  0
+concrete  [-0.0, -0.0, -0.0, -0.0, -0.0, 2.216345482857478, 3.308941837635342, -0.0, -0.0, 3.2321895664770985]
+nlb  [-641554.465438178, -590376.1180019702, -687345.8293361544, -742121.573954354, -693776.7048567282, -677228.9627981677, -617901.9257894664, -601675.2044698675, -618011.679737427, -645543.8322695371]  nub  [1297851.2105820018, 1174485.9993630175, 1473872.9854522957, 1529624.891180615, 1353329.2149706162, 1333627.5642823356, 1184041.1845188707, 1232722.293008387, 1202571.150886847, 1267731.1315137034]
+img 95 Failed
+11.28836703300476 seconds
+concrete  [2.9044559734543176, 1.321888899779907, -0.0, -0.0, -0.0, 0.055964791137245395, -0.0, -0.0, 4.9075437356121085, 0.9034582711093124]
+img 96 not considered, correct_label 6 classified label  8
+concrete  [-0.0, -0.0, 5.929100133022054, 2.2083064046525362, 10.622885248416537, 0.3384981570770801, -0.0, -0.0, -0.0, -0.0]
+img 97 not considered, correct_label 0 classified label  4
+concrete  [3.6302487665739958, -0.0, -0.0, 28.337896947489362, 2.911658065864707, -0.0, -0.0, 2.6186127189104775, 14.457178142684482, 4.903966256645383]
+img 98 not considered, correct_label 0 classified label  3
+concrete  [0.8353999990820581, 5.448134637461501, 0.6926015150671099, -0.0, -0.0, -0.0, -0.0, 4.1072179184407815, -0.0, 7.951086675887954]
+img 99 not considered, correct_label 7 classified label  9
+analysis precision  0 /  16
