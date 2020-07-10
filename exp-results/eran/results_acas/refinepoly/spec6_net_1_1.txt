@@ -1,0 +1,39 @@
+2020-07-10 21:30:10.742246: I tensorflow/core/platform/cpu_feature_guard.cc:143] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2020-07-10 21:30:10.767675: I tensorflow/core/platform/profile_utils/cpu_utils.cc:102] CPU Frequency: 3096000000 Hz
+2020-07-10 21:30:10.768425: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x3a55e90 initialized for platform Host (this does not guarantee that XLA will be used). Devices:
+2020-07-10 21:30:10.768462: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): Host, Default Version
+2020-07-10 21:30:10.769730: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcuda.so.1
+2020-07-10 21:30:11.914856: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-10 21:30:11.924192: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-10 21:30:11.924626: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x3b25df0 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+2020-07-10 21:30:11.924638: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): GeForce RTX 2080 Ti, Compute Capability 7.5
+2020-07-10 21:30:11.924642: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (1): GeForce RTX 2080 Ti, Compute Capability 7.5
+2020-07-10 21:30:11.924823: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-10 21:30:11.925132: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 0 with properties: 
+pciBusID: 0000:01:00.0 name: GeForce RTX 2080 Ti computeCapability: 7.5
+coreClock: 1.635GHz coreCount: 68 deviceMemorySize: 10.76GiB deviceMemoryBandwidth: 573.69GiB/s
+2020-07-10 21:30:11.925161: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-07-10 21:30:11.925461: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 1 with properties: 
+pciBusID: 0000:03:00.0 name: GeForce RTX 2080 Ti computeCapability: 7.5
+coreClock: 1.635GHz coreCount: 68 deviceMemorySize: 10.76GiB deviceMemoryBandwidth: 573.69GiB/s
+2020-07-10 21:30:11.925529: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcudart.so.10.1'; dlerror: libcudart.so.10.1: cannot open shared object file: No such file or directory
+2020-07-10 21:30:11.926386: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcublas.so.10
+2020-07-10 21:30:11.927244: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcufft.so.10
+2020-07-10 21:30:11.927381: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcurand.so.10
+2020-07-10 21:30:11.928306: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusolver.so.10
+2020-07-10 21:30:11.928780: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusparse.so.10
+2020-07-10 21:30:11.930677: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudnn.so.7
+2020-07-10 21:30:11.930687: W tensorflow/core/common_runtime/gpu/gpu_device.cc:1598] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+2020-07-10 21:30:11.930736: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1102] Device interconnect StreamExecutor with strength 1 edge matrix:
+2020-07-10 21:30:11.930743: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1108]      0 1 
+2020-07-10 21:30:11.930747: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1121] 0:   N N 
+2020-07-10 21:30:11.930749: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1121] 1:   N N 
+netname  ../data/acasxu/nets/ACASXU_run2a_1_1_batch_2000.onnx  specnumber  6  domain  refinepoly  dataset  acasxu args complete  False  complete  False  timeout_lp  1
+{'W0': (50, 5), 'B0': (50,), 'W1': (50, 50), 'B1': (50,), 'W2': (50, 50), 'B2': (50,), 'W3': (50, 50), 'B3': (50,), 'W4': (50, 50), 'B4': (50,), 'W5': (50, 50), 'B5': (50,), 'W6': (5, 50), 'B6': (5,), 'X': [5], 'M0': [50, 1], 'H0': [50, 1], 'R0': [50, 1], 'M1': [50, 1], 'H1': [50, 1], 'R1': [50, 1], 'M2': [50, 1], 'H2': [50, 1], 'R2': [50, 1], 'M3': [50, 1], 'H3': [50, 1], 'R3': [50, 1], 'M4': [50, 1], 'H4': [50, 1], 'R4': [50, 1], 'M5': [50, 1], 'H5': [50, 1], 'R5': [50, 1], 'M6': [5, 1], 'y_out': [5, 1]}
+This network has 300 neurons.
+AcasXu property 6 Failed for Box 0 out of 2 because of an exception  daemonic processes are not allowed to have children
+0.21198821067810059 seconds
+AcasXu property 6 Failed for Box 1 out of 2 because of an exception  daemonic processes are not allowed to have children
+0.21509861946105957 seconds
+Total time needed: 0.42720460891723633 seconds
