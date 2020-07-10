@@ -17,3 +17,5 @@
 ./scripts/eran_sprt_099_01.sh
 ./scripts/fairness_sprt_099.sh
 ./scripts/rnn_sprt_099_01.sh
+
+echo DONE
