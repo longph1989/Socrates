@@ -1,0 +1,5 @@
+The assertion is probably satisfied.
+
+real	0m0.699s
+user	0m1.172s
+sys	0m2.128s

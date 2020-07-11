@@ -1,0 +1,5 @@
+Accept H0. The assertion is satisfied with p >= 0.905 after 316 tests.
+
+real	0m0.661s
+user	0m1.129s
+sys	0m2.133s

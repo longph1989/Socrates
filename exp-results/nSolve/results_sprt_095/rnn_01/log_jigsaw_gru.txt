@@ -1,0 +1,1389 @@
+Data 0
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 4.21982354 -3.90206487]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 0
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 1
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 4.70789056 -4.53364055]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 1
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 2
+
+x0 = [-0.080576    0.53088999  0.090476   ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.11348241 -4.90794333]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 2
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 3
+
+x0 = [-0.17587     1.35080004 -0.18159001 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[-0.09485726  0.21491237]]
+lbl_x0 = 1
+y0 = 0
+
+Skip at data 3
+
+============================
+
+Data 4
+
+x0 = [-0.55080003  0.84467     0.038512   ...  0.10069408  0.00653003
+  0.01685157]
+output_x0 = [[ 5.30890286 -5.04504093]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 4
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 5
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 4.60686852 -4.3713109 ]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 5
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 6
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 1.01244295 -0.73937735]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 6
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 7
+
+x0 = [-0.17587     1.35080004 -0.18159001 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.42209416 -5.1345735 ]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 7
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 8
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.043905   -0.22285999
+  1.69229996]
+output_x0 = [[ 4.93713178 -4.625317  ]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 8
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 9
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.043905   -0.22285999
+  1.69229996]
+output_x0 = [[ 5.49655717 -5.19885495]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 9
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 10
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 0.54451697 -0.28731486]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 10
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 11
+
+x0 = [ 0.53074002  0.40116999 -0.40785    ... -1.03989995  0.34450999
+ -0.18970001]
+output_x0 = [[ 3.06072323 -3.04159124]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 11
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 12
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 1.81147247 -1.46586278]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 12
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 13
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 1.94080935 -1.63693557]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 13
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 14
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.32194     1.0395
+  0.42791   ]
+output_x0 = [[ 3.19682874 -3.1664654 ]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 14
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 15
+
+x0 = [-1.19379997  1.17320001  0.82236999 ... -1.23380005  0.46715
+  0.78858   ]
+output_x0 = [[ 4.87161395 -4.67710646]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 15
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 16
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[0.05087896 0.15774278]]
+lbl_x0 = 1
+y0 = 1
+
+Run at data 16
+
+Accept H1. The model is robust around x0 with p <= 0.945 after 38 tests.
+
+============================
+
+Data 17
+
+x0 = [-0.43395999  0.73992002  0.78403002 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 1.67976053 -1.49804325]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 17
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 18
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.46241751 -5.17395903]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 18
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 19
+
+x0 = [ 0.11891   0.15255  -0.082073 ... -0.35652   0.016413  0.10216 ]
+output_x0 = [[-1.1062638   1.19377857]]
+lbl_x0 = 1
+y0 = 1
+
+Run at data 19
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 20
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.56656998  0.044691
+  0.30392   ]
+output_x0 = [[ 1.83057707 -1.39430302]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 20
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 21
+
+x0 = [-1.59930003  1.01540005  0.86822999 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 3.68437466 -3.48098829]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 21
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 22
+
+x0 = [-1.19379997  1.17320001  0.82236999 ... -0.41468     0.11054
+  1.1681    ]
+output_x0 = [[ 0.80674043 -0.59228976]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 22
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 23
+
+x0 = [ 0.15164     0.30177    -0.16763    ...  0.035561   -0.50661999
+ -1.1487    ]
+output_x0 = [[ 0.83010777 -0.58235685]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 23
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 24
+
+x0 = [-0.17587     1.35080004 -0.18159001 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 3.65843748 -3.30618826]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 24
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 25
+
+x0 = [ 0.061308    0.43572     0.31270999 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.44163053 -5.15537628]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 25
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 26
+
+x0 = [-0.79021001  0.42818001  0.34843001 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 2.26840773 -2.19414478]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 26
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 27
+
+x0 = [-0.17587     1.35080004 -0.18159001 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 1.1340743  -0.83000922]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 27
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 28
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 5.41600965 -5.13414163]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 28
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 29
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ...  0.10069408  0.00653003
+  0.01685157]
+output_x0 = [[ 0.95979982 -0.83273631]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 29
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 30
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[-0.78928541  0.91118112]]
+lbl_x0 = 1
+y0 = 1
+
+Run at data 30
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 31
+
+x0 = [ 0.88387001 -0.14199001  0.13565999 ... -0.24982999  0.19310001
+  0.85457999]
+output_x0 = [[ 5.56378177 -5.25901623]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 31
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 32
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 5.4174318  -5.13234361]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 32
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 33
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.10069408  0.00653003
+  0.01685157]
+output_x0 = [[ 0.47839946 -0.23767522]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 33
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 381 tests.
+
+============================
+
+Data 34
+
+x0 = [-0.17587     1.35080004 -0.18159001 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 4.27930017 -4.14488028]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 34
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 35
+
+x0 = [ 0.80486    -0.62427998  1.06429994 ...  0.2764      0.84988999
+  1.35790002]
+output_x0 = [[ 2.8412414  -2.92623013]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 35
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 36
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.043905   -0.22285999
+  1.69229996]
+output_x0 = [[ 3.11199715 -2.75342645]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 36
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 37
+
+x0 = [ 0.25233999  0.92939001 -0.68426001 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.55984528 -5.25626101]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 37
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 38
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.043905   -0.22285999
+  1.69229996]
+output_x0 = [[ 3.58745886 -3.19829926]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 38
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 39
+
+x0 = [ 0.41800001  0.24968    -0.41242    ... -0.41468     0.11054
+  1.1681    ]
+output_x0 = [[ 4.79771039 -4.50462578]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 39
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 40
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ...  0.10069408  0.00653003
+  0.01685157]
+output_x0 = [[ 3.00987549 -2.82000108]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 40
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 41
+
+x0 = [ 0.11891     0.15255    -0.082073   ... -0.56656998  0.044691
+  0.30392   ]
+output_x0 = [[ 2.10270009 -1.74377709]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 41
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 42
+
+x0 = [ 0.35934001 -0.26570001 -0.046477   ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.31543322 -5.07260111]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 42
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 43
+
+x0 = [-1.26359999  0.12616     0.57810003 ... -1.23380005  0.46715
+  0.78858   ]
+output_x0 = [[-3.0023122   2.81943592]]
+lbl_x0 = 1
+y0 = 1
+
+Run at data 43
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 44
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.69590002  0.14553
+  0.37338999]
+output_x0 = [[ 4.72059431 -4.44598649]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 44
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 45
+
+x0 = [ 0.41800001  0.24968    -0.41242    ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 4.16181834 -3.83143814]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 45
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 46
+
+x0 = [-1.19379997  1.17320001  0.82236999 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.54818336 -5.24497099]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 46
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 47
+
+x0 = [-0.17587     1.35080004 -0.18159001 ... -1.23380005  0.46715
+  0.78858   ]
+output_x0 = [[ 3.04907122 -2.92295993]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 47
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 48
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.56656998  0.044691
+  0.30392   ]
+output_x0 = [[ 4.36225715 -4.0473027 ]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 48
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 49
+
+x0 = [ 0.11891     0.15255    -0.082073   ... -1.23380005  0.46715
+  0.78858   ]
+output_x0 = [[-2.32313496  2.16266113]]
+lbl_x0 = 1
+y0 = 0
+
+Skip at data 49
+
+============================
+
+Data 50
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.45985438 -5.17198541]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 50
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 51
+
+x0 = [-0.17587     1.35080004 -0.18159001 ... -0.32194     1.0395
+  0.42791   ]
+output_x0 = [[-3.83737585  3.55058624]]
+lbl_x0 = 1
+y0 = 1
+
+Run at data 51
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 52
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -1.23380005  0.46715
+  0.78858   ]
+output_x0 = [[ 3.10062662 -3.02366988]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 52
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 53
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 5.30710776 -5.02226022]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 53
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 54
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.49607168 -5.19975695]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 54
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 55
+
+x0 = [ 0.80486    -0.62427998  1.06429994 ... -1.09969997  0.85172999
+  0.04412   ]
+output_x0 = [[ 1.25031897 -1.29075828]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 55
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 56
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 4.26735733 -3.93694419]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 56
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 57
+
+x0 = [0.31369001 0.73732001 0.27500999 ... 0.10069408 0.00653003 0.01685157]
+output_x0 = [[ 3.73757067 -3.67727664]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 57
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 58
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -1.23380005  0.46715
+  0.78858   ]
+output_x0 = [[ 1.03465018 -0.67606544]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 58
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 59
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.30862001  0.30893001
+  0.11023   ]
+output_x0 = [[ 4.32470148 -4.14227187]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 59
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 60
+
+x0 = [ 0.70480001  0.22261     0.086997   ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 4.38484953 -4.09840956]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 60
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 61
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 1.74591437 -1.44178587]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 61
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 62
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.043905   -0.22285999
+  1.69229996]
+output_x0 = [[ 5.54904324 -5.24782703]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 62
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 63
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 1.60045384 -1.33234921]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 63
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 64
+
+x0 = [ 0.68937999 -0.10644     0.17083    ... -1.23380005  0.46715
+  0.78858   ]
+output_x0 = [[-0.03576563  0.05062308]]
+lbl_x0 = 1
+y0 = 1
+
+Run at data 64
+
+Accept H1. The model is robust around x0 with p <= 0.945 after 44 tests.
+
+============================
+
+Data 65
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 3.61218152 -3.25547145]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 65
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 66
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 0.34417834 -0.0778985 ]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 66
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 381 tests.
+
+============================
+
+Data 67
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ...  0.10069408  0.00653003
+  0.01685157]
+output_x0 = [[ 1.53073051 -1.38183291]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 67
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 68
+
+x0 = [-0.17587     1.35080004 -0.18159001 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[-3.4773949   3.26570445]]
+lbl_x0 = 1
+y0 = 1
+
+Run at data 68
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 69
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ...  0.10069408  0.00653003
+  0.01685157]
+output_x0 = [[ 0.25673328 -0.10691101]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 69
+
+Accept H1. The model is robust around x0 with p <= 0.945 after 172 tests.
+
+============================
+
+Data 70
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[-0.06025507  0.20647362]]
+lbl_x0 = 1
+y0 = 0
+
+Skip at data 70
+
+============================
+
+Data 71
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 4.99090163 -4.69487925]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 71
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 72
+
+x0 = [-1.19379997  1.17320001  0.82236999 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[-0.32016944  0.43320193]]
+lbl_x0 = 1
+y0 = 0
+
+Skip at data 72
+
+============================
+
+Data 73
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.043905   -0.22285999
+  1.69229996]
+output_x0 = [[ 5.42935682 -5.12746276]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 73
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 74
+
+x0 = [-0.17587     1.35080004 -0.18159001 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 2.49066577 -2.1366895 ]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 74
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 75
+
+x0 = [-0.17587     1.35080004 -0.18159001 ... -0.30862001  0.30893001
+  0.11023   ]
+output_x0 = [[ 4.12506043 -3.82194238]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 75
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 76
+
+x0 = [-1.04419994  0.317      -0.39162999 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.52576701 -5.22569808]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 76
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 77
+
+x0 = [ 0.61183    -0.22071999 -0.10898    ... -0.41468     0.11054
+  1.1681    ]
+output_x0 = [[ 4.55873182 -4.2529003 ]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 77
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 78
+
+x0 = [ 0.62573999 -0.14607     0.29300001 ...  0.43303001  0.98545998
+  0.61927998]
+output_x0 = [[ 4.70257498 -4.47383087]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 78
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 79
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 3.41033662 -3.08333822]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 79
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 80
+
+x0 = [ 0.13696   0.18173  -0.359    ... -0.35652   0.016413  0.10216 ]
+output_x0 = [[-0.0106662   0.20411632]]
+lbl_x0 = 1
+y0 = 1
+
+Run at data 80
+
+Accept H1. The model is robust around x0 with p <= 0.945 after 46 tests.
+
+============================
+
+Data 81
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 5.09458698 -4.85911557]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 81
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 82
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 5.3623237  -5.09435548]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 82
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 83
+
+x0 = [-0.17587     1.35080004 -0.18159001 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.53420738 -5.23378219]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 83
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 84
+
+x0 = [-0.17587     1.35080004 -0.18159001 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 2.4429158  -2.10004492]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 84
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 85
+
+x0 = [-0.47725001 -0.23364     0.91601998 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 0.25438902 -0.09847046]]
+lbl_x0 = 0
+y0 = 1
+
+Skip at data 85
+
+============================
+
+Data 86
+
+x0 = [-0.17587     1.35080004 -0.18159001 ...  0.58823001  0.22046
+  0.31513   ]
+output_x0 = [[ 5.15498122 -4.93710023]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 86
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 87
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ...  0.93268001  0.093011
+  0.0043653 ]
+output_x0 = [[ 5.51820054 -5.22296482]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 87
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 88
+
+x0 = [-1.19379997  1.17320001  0.82236999 ... -0.69590002  0.14553
+  0.37338999]
+output_x0 = [[ 5.55575972 -5.25230172]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 88
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 89
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 5.49724642 -5.20491415]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 89
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 90
+
+x0 = [-1.63699996  0.29545999  1.98399997 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 1.72627899 -1.37102339]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 90
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 91
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.56656998  0.044691
+  0.30392   ]
+output_x0 = [[-0.27983487  0.35732399]]
+lbl_x0 = 1
+y0 = 0
+
+Skip at data 91
+
+============================
+
+Data 92
+
+x0 = [ 0.53074002  0.40116999 -0.40785    ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.43920914 -5.1674556 ]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 92
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 93
+
+x0 = [-1.19379997  1.17320001  0.82236999 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.48347912 -5.20063546]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 93
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 94
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.18464306 -4.89042095]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 94
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 95
+
+x0 = [-0.54777002  0.85859001  0.76287001 ... -1.23380005  0.46715
+  0.78858   ]
+output_x0 = [[-1.36674928  1.35321565]]
+lbl_x0 = 1
+y0 = 1
+
+Run at data 95
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 96
+
+x0 = [-0.0010919   0.33324     0.35743001 ... -0.35652     0.016413
+  0.10216   ]
+output_x0 = [[ 5.51284352 -5.21668091]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 96
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 97
+
+x0 = [ 0.12817     0.15858001 -0.38843    ...  0.088184   -0.22215
+  1.4971    ]
+output_x0 = [[ 4.83743013 -4.64820137]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 97
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 98
+
+x0 = [ 0.80486    -0.62427998  1.06429994 ... -0.69590002  0.14553
+  0.37338999]
+output_x0 = [[ 5.19809948 -4.98197457]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 98
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+Data 99
+
+x0 = [-0.12920076 -0.28866628 -0.01224866 ...  0.11082     0.11009
+ -0.27094001]
+output_x0 = [[ 1.31706438 -0.92499215]]
+lbl_x0 = 0
+y0 = 0
+
+Run at data 99
+
+Accept H0. The model is robust around x0 with p >= 0.955 after 280 tests.
+
+============================
+
+
+real	4m19.907s
+user	4m20.300s
+sys	0m2.193s

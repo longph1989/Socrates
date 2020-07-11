@@ -1,0 +1,7 @@
+The assertion is unsatisfied.
+x = [ 0.6   0.    0.    0.45 -0.45]
+output_x = [[ 0.02060239 -0.01849016  0.01981457 -0.01870532  0.02059076]]
+
+real	0m0.612s
+user	0m1.100s
+sys	0m2.115s
