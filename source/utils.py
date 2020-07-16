@@ -27,18 +27,21 @@ def tanh(x):
 def get_func(name, params):
     if name == None:
         return None
-    elif name == 'relu':
+    elif name.lower() == 'relu':
         return relu
-    elif name == 'sigmoid':
+    elif name.lower() == 'sigmoid':
         return sigmoid
-    elif name == 'tanh':
+    elif name.lower() == 'tanh':
         return tanh
-    elif name == 'softmax':
+    elif name.lower() == 'softmax':
+        # normally softmax only uses in the last layer to return the probabilities
+        # between different labels, which is not necessary for our problems for now,
+        # will change it later if we have the problems which need the real softmax
         return None
-    elif name == 'reshape':
+    elif name.lower() == 'reshape':
         import numpy as rnp
         return wrapped_partial(rnp.reshape, newshape=params)
-    elif name == 'transpose':
+    elif name.lower() == 'transpose':
         import numpy as rnp
         return wrapped_partial(rnp.transpose, axes=params)
     else:
