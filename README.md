@@ -1,7 +1,7 @@
-# nSolve
+# Socrates
 
-virtualenv -p python3 nsolve_venv
+virtualenv -p python3 socrates_venv
 
-source nsolve_venv/bin/activate
+source socrates_venv/bin/activate
 
 pip install numpy scipy matplotlib torch autograd antlr4-python3-runtime
