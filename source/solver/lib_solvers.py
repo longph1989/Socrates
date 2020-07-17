@@ -1,5 +1,6 @@
 from solver.optimize_impl import OptimizeImpl
 from solver.sprt_impl import SPRTImpl
+from solver.dtmc_impl import DTMCImpl
 
 
 class Optimize():
@@ -17,4 +18,13 @@ class SPRT():
 
     def solve(self, model, assertion, display=None):
         impl = SPRTImpl(self.threshold, self.alpha, self.beta, self.delta)
+        impl.solve(model, assertion, display)
+
+
+class DTMC():
+    def __init__(self):
+        pass
+
+    def solve(self, model, assertion, display=None):
+        impl = DTMCImpl()
         impl.solve(model, assertion, display)
