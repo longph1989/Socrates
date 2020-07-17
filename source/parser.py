@@ -217,13 +217,15 @@ def parse_solver(spec):
 
     if algorithm == 'optimize':
         solver = Optimize()
-    if algorithm == 'sprt':
+    elif algorithm == 'sprt':
         threshold = ast.literal_eval(read(spec['threshold']))
         alpha = ast.literal_eval(read(spec['alpha']))
         beta = ast.literal_eval(read(spec['beta']))
         delta = ast.literal_eval(read(spec['delta']))
 
         solver = SPRT(threshold, alpha, beta, delta)
+    elif algorithm == 'dtmc':
+        solver = DTMC()
 
     return solver
 
