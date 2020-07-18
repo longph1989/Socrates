@@ -7,7 +7,7 @@ class Layer:
         return x
 
     def reset(self):
-        return
+        pass
 
 
 class Function(Layer):
@@ -31,37 +31,23 @@ class Linear(Layer):
             return self.func(x @ self.weights + self.bias)
 
 
-class ReluRNN(Layer):
-    def __init__(self, weights, bias, h0):
+class BasicRNN(Layer):
+    def __init__(self, weights, bias, h0, name):
         self.weights = weights.transpose(1, 0)
         self.bias = bias.reshape(-1, bias.size)
 
         self.h_0 = h0.reshape(-1, h0.size)
         self.h_t = h0.reshape(-1, h0.size)
 
-    def apply(self, x):
-        x = np.concatenate((x, self.h_t), axis=1)
-
-        self.h_t = relu(x @ self.weights + self.bias)
-
-        return self.h_t
-
-    def reset(self):
-        self.h_t = self.h_0
-
-
-class TanhRNN(Layer):
-    def __init__(self, weights, bias, h0):
-        self.weights = weights.transpose(1, 0)
-        self.bias = bias.reshape(-1, bias.size)
-
-        self.h_0 = h0.reshape(-1, h0.size)
-        self.h_t = h0.reshape(-1, h0.size)
+        self.func = get_func(name, None)
 
     def apply(self, x):
         x = np.concatenate((x, self.h_t), axis=1)
 
-        self.h_t = tanh(x @ self.weights + self.bias)
+        if self.func == None:
+            self.h_t = x @ self.weights + self.bias
+        else:
+            self.h_t = self.func(x @ self.weights + self.bias)
 
         return self.h_t
 

@@ -18,7 +18,9 @@ def parse_layers(spec):
     layers = list()
 
     for layer in spec:
-        if layer['type'] == 'linear':
+        type = layer['type'].lower()
+
+        if type == 'linear':
 
             weights = np.array(ast.literal_eval(read(layer['weights'])))
             bias = np.array(ast.literal_eval(read(layer['bias'])))
@@ -26,8 +28,8 @@ def parse_layers(spec):
 
             layers.append(Linear(weights, bias, name))
 
-        elif layer['type'] == 'conv1d' or layer['type'] == 'conv2d' \
-            or layer['type'] == 'conv3d':
+        elif type == 'conv1d' or type == 'conv2d' \
+            or type == 'conv3d':
 
             filters = np.array(ast.literal_eval(read(layer['filters'])))
             bias = np.array(ast.literal_eval(read(layer['bias'])))
@@ -35,29 +37,29 @@ def parse_layers(spec):
             stride = ast.literal_eval(read(layer['stride']))
             padding = ast.literal_eval(read(layer['padding']))
 
-            if layer['type'] == 'conv1d':
+            if type == 'conv1d':
                 layers.append(Conv1d(filters, bias, stride, padding))
-            elif layer['type'] == 'conv2d':
+            elif type == 'conv2d':
                 layers.append(Conv2d(filters, bias, stride, padding))
-            elif layer['type'] == 'conv3d':
+            elif type == 'conv3d':
                 layers.append(Conv3d(filters, bias, stride, padding))
 
-        elif layer['type'] == 'maxpool1d' or layer['type'] == 'maxpool2d' \
-            or layer['type'] == 'maxpool3d':
+        elif type == 'maxpool1d' or type == 'maxpool2d' \
+            or type == 'maxpool3d':
 
             kernel = np.array(ast.literal_eval(read(layer['kernel'])))
 
             stride = ast.literal_eval(read(layer['stride']))
             padding = ast.literal_eval(read(layer['padding']))
 
-            if layer['type'] == 'maxpool1d':
+            if type == 'maxpool1d':
                 layers.append(MaxPool1d(kernel, stride, padding))
-            elif layer['type'] == 'maxpool2d':
+            elif type == 'maxpool2d':
                 layers.append(MaxPool2d(kernel, stride, padding))
-            elif layer['type'] == 'maxpool3d':
+            elif type == 'maxpool3d':
                 layers.append(MaxPool3d(kernel, stride, padding))
 
-        elif layer['type'] == 'resnet2l':
+        elif type == 'resnet2l':
 
             filters1 = np.array(ast.literal_eval(read(layer['filters1'])))
             bias1 = np.array(ast.literal_eval(read(layer['bias1'])))
@@ -83,7 +85,7 @@ def parse_layers(spec):
                 layers.append(ResNet2l(filters1, bias1, stride1, padding1,
                     filters2, bias2, stride2, padding2))
 
-        elif layer['type'] == 'resnet3l':
+        elif type == 'resnet3l':
 
             filters1 = np.array(ast.literal_eval(read(layer['filters1'])))
             bias1 = np.array(ast.literal_eval(read(layer['bias1'])))
@@ -115,22 +117,16 @@ def parse_layers(spec):
                     filters2, bias2, stride2, padding2,
                     filters3, bias3, stride3, padding3))
 
-        elif layer['type'] == 'relurnn' or layer['type'] == 'tanhrnn':
+        elif type == 'rnn':
 
-            weights_ih = np.array(ast.literal_eval(read(layer['weights_ih'])))
-            weights_hh = np.array(ast.literal_eval(read(layer['weights_hh'])))
-
-            bias_ih = np.array(ast.literal_eval(read(layer['bias_ih'])))
-            bias_hh = np.array(ast.literal_eval(read(layer['bias_hh'])))
-
+            weights = np.array(ast.literal_eval(read(layer['weights'])))
+            bias = np.array(ast.literal_eval(read(layer['bias'])))
             h0 = np.array(ast.literal_eval(read(layer['h0'])))
+            name = layer['func'] if 'func' in layer else None
 
-            if layer['type'] == 'relurnn':
-                layers.append(ReluRNN(weights_ih, weights_hh, bias_ih, bias_hh, h0))
-            elif layer['type'] == 'tanhrnn':
-                layers.append(TanhRNN(weights_ih, weights_hh, bias_ih, bias_hh, h0))
+            layers.append(BasicRNN(weights, bias, h0, name))
 
-        elif layer['type'] == 'lstm':
+        elif type == 'lstm':
 
             weights = np.array(ast.literal_eval(read(layer['weights'])))
             bias = np.array(ast.literal_eval(read(layer['bias'])))
@@ -140,7 +136,7 @@ def parse_layers(spec):
 
             layers.append(LSTM(weights, bias, h0, c0))
 
-        elif layer['type'] == 'gru':
+        elif type == 'gru':
 
             gate_weights = np.array(ast.literal_eval(read(layer['gate_weights'])))
             candidate_weights = np.array(ast.literal_eval(read(layer['candidate_weights'])))
@@ -152,8 +148,8 @@ def parse_layers(spec):
 
             layers.append(GRU(gate_weights, candidate_weights, gate_bias, candidate_bias, h0))
 
-        elif layer['type'] == 'function':
-            name = layer['func']
+        elif type == 'function':
+            name = layer['func'].lower()
 
             if name == 'reshape':
                 ns = ast.literal_eval(read(layer['newshape']))
