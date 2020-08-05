@@ -2,7 +2,9 @@
 
 **SOCRATES** is a unified platform for neural network verification developed by Sun Jun's team at SMU.
 
-Unlike most existing approaches which are scattered (i.e., each approach tackles some restricted classes of neural networks against certain particular properties), incomparable (i.e., each approach has its own assumptions and input format) and thus hard to apply, reuse or extend. **SOCRATES** aims at providing a unified platform for neural network verificaiton via supporting a standardized format for a variety of neural network models, an asseration language for property specification as well as two novel algorithms for verifying or falsifying neural network models.
+Unlike most existing neural network verification approaches which are scattered (i.e., each approach tackles some restricted classes of neural networks against certain particular properties), incomparable (i.e., each approach has its own assumptions and input format) and thus hard to apply, reuse or extend, **SOCRATES** aims at providing a unified platform for neural network verification. Specifically, it supports a standardized format for a variety of neural network models, an asseration language for property specification as well as two novel algorithms for verifying or falsifying neural network models.
+
+**SOCRATES** is still in active development. Any suggestions and collaborations are welcomed.
 
 ## Installation:
 
@@ -27,4 +29,4 @@ pip install numpy scipy matplotlib torch autograd antlr4-python3-runtime
 ## Contact:
 
 - You may use github system to raise new issues or suggestions.
-- For collaboration, you may reach us via email addresses.
+- For collaborations, you may reach us via email addresses.
