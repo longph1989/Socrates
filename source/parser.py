@@ -222,6 +222,8 @@ def parse_solver(spec):
         solver = SPRT(threshold, alpha, beta, delta)
     elif algorithm == 'dtmc':
         solver = DTMC()
+    elif algorithm == 'zono':
+        solver = Zono()
 
     return solver
 

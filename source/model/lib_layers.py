@@ -30,6 +30,22 @@ class Linear(Layer):
         else:
             return self.func(x @ self.weights + self.bias)
 
+    def apply_zonotope(self, x):
+        # x = (1,784,785)
+        # weights = (784,50)
+        # bias = (1,50)
+        # res = (1,50,785)
+
+        res = np.zeros(1,len(self.bias[0]),len(x[0,0]))
+
+        for i in len(self.weights[0]):
+            for j in len(self.weights):
+                res[0,i] = res[0,i] + x[0,j] * self.weights[j,i]
+
+            res[0,i,-1] = res[0,i,-1] + self.bias[0,i]
+
+        return res
+
 
 class BasicRNN(Layer):
     def __init__(self, weights, bias, h0, name):
