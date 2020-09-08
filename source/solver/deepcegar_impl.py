@@ -10,14 +10,15 @@ class DeepCegarImpl():
         x0 = np.array(ast.literal_eval(read(spec['x0'])))
         y0 = np.argmax(model.apply(x0), axis=1)[0]
 
-        res, x = self.__validate(model, spec, x0, y0)
+        fromIdx = 0
+        res, x = self.__validate(model, spec, x0, y0, fromIdx)
 
         if not res and display:
             y = np.argmax(model.apply(x), axis=1)[0]
             display.show(model, x0, y0, x, y)
 
 
-    def __validate(self, model, spec, x0, y0):
+    def __validate(self, model, spec, x0, y0, fromIdx):
         lower = model.lower
         upper = model.upper
 
@@ -33,7 +34,7 @@ class DeepCegarImpl():
             upper = np.minimum(upper, x0 + eps)
 
         x = x0.copy()
-        args = (model, x0, y0, dfunc, eps)
+        args = (model, x0, y0, dfunc, eps, fromIdx)
         bounds = Bounds(lower, upper)
         jac = grad(self.__obj_func) if model.layers != None else None
 
@@ -55,11 +56,11 @@ class DeepCegarImpl():
             return True, np.empty(0)
 
 
-    def __obj_func(self, x, model, x0, y0, dfunc, eps):
+    def __obj_func(self, x, model, x0, y0, dfunc, eps, fromIdx):
         loss1 = dfunc(x, x0)
         loss1 = 0 if loss1 <= eps else loss1 - eps
 
-        output = model.apply(x)
+        output = model.apply_from(x, fromIdx)
         y0_score = output[0][y0]
 
         output = output - np.eye(output[0].size)[y0] * 1e9

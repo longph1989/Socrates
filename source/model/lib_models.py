@@ -41,7 +41,11 @@ class Model:
 
         return output
 
-    def apply_zonotope(self, x):
+    def apply_from(self, x, fromIdx):
+        if self.layers == None:
+            # only work when layers is not None
+            raise NameError('Not support yet!')
+
         shape_i = [1, *self.shape[1:]]
         size_i = np.prod(shape_i)
 
@@ -50,8 +54,10 @@ class Model:
         for i in range(len):
             x_i = x[size_i * i : size_i * (i + 1)].reshape(shape_i)
             output = x_i
-            for layer in self.layers:
-                output = layer.apply_zonotope(output)
+            for j in range(len(self.layers)):
+                if j >= fromIdx:
+                    layer = self.layers[j]
+                    output = layer.apply(output)
 
         for layer in self.layers:
             layer.reset()
