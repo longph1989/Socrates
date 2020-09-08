@@ -220,10 +220,8 @@ def parse_solver(spec):
         delta = ast.literal_eval(read(spec['delta']))
 
         solver = SPRT(threshold, alpha, beta, delta)
-    elif algorithm == 'dtmc':
-        solver = DTMC()
-    elif algorithm == 'zono':
-        solver = Zono()
+    elif algorithm == 'deepcegar':
+        solver = DeepCegar()
 
     return solver
 

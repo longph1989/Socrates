@@ -1,7 +1,6 @@
 from solver.optimize_impl import OptimizeImpl
 from solver.sprt_impl import SPRTImpl
-from solver.dtmc_impl import DTMCImpl
-from solver.zono_impl import ZonoImpl
+from solver.deepcegar_impl import DeepCegarImpl
 
 
 class Optimize():
@@ -22,18 +21,10 @@ class SPRT():
         impl.solve(model, assertion, display)
 
 
-class DTMC():
+class DeepCegar():
     def __init__(self):
         pass
 
     def solve(self, model, assertion, display=None):
-        impl = DTMCImpl()
-        impl.solve(model, assertion, display)
-
-class Zono():
-    def __init__(self):
-        pass
-
-    def solve(self, model, assertion, display=None):
-        impl = ZonoImpl()
+        impl = DeepCegarImpl()
         impl.solve(model, assertion, display)
