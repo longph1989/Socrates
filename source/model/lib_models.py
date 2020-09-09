@@ -64,6 +64,7 @@ class Model:
 
         return output
 
+    # need to make it work with poly
     def apply_to(self, x, toIdx):
         if self.layers == None:
             # only work when layers is not None
