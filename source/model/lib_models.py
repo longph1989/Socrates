@@ -11,6 +11,7 @@ class Model:
         if layers == None and path != None:
             self.ptmodel = torch.load(path)
 
+
     def __apply_ptmodel(self, x):
         x = torch.from_numpy(x).view(self.shape.tolist())
 
@@ -20,6 +21,7 @@ class Model:
         output = output.numpy()
 
         return output
+
 
     def apply(self, x):
         if self.layers == None:
@@ -40,6 +42,7 @@ class Model:
             layer.reset()
 
         return output
+
 
     def apply_from(self, x, fromIdx):
         if self.layers == None:
@@ -64,7 +67,7 @@ class Model:
 
         return output
 
-    # need to make it work with poly
+
     def apply_to(self, x, toIdx):
         if self.layers == None:
             # only work when layers is not None
@@ -85,5 +88,15 @@ class Model:
 
         for layer in self.layers:
             layer.reset()
+
+        return output
+
+
+    def apply_to_poly(self, x, toIdx):
+        if self.layers == None:
+            # only work when layers is not None
+            raise NameError('Not support yet!')
+
+        # need to make it work with poly
 
         return output

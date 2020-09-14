@@ -28,10 +28,11 @@ class DeepCegarImpl():
         x0_poly = Poly(x0, eps, model.lower, model.upper)
 
         for idx in range(len(model.layers)):
-            xt_poly = model.apply_to(x0_poly, idx)
-            res, x = self.__validate(model, spec, xt_poly, y0, idx)
+            xi_poly = model.apply_to_poly(x0_poly, idx)
+            res, x = self.__validate(model, spec, x0_poly, xi_poly, y0, idx)
 
             if not res:
+                x = x[len(x0_poly.lw):-1]
                 y = np.argmax(model.apply(x), axis=1)[0]
                 if y0 != y:
                     print('True adversarial sample found!')
@@ -51,17 +52,29 @@ class DeepCegarImpl():
         return fun
 
 
-    def __validate(self, model, spec, xt_poly, y0, idx):
-        x = np.zeros(len(xt_poly.lw))
-        args = (model, y0, idx)
-        bounds = Bounds(xt_poly.lw, xt_poly.up)
+    def __validate(self, model, spec, x0_poly, xi_poly, y0, idx):
+        len0 = len(x0_poly.lw)
+        leni = len(xi_poly.lw)
+
+        x = np.zeros(len0 + leni)
+        args = (model, leni, y0, idx)
         jac = grad(self.__obj_func)
 
+        lw = np.concatenate([xi_poly.lw, x0_poly.lw])
+        up = np.concatenate([xi_poly.up, x0_poly.up])
+        bounds = Bounds(lw, up)
+
+        lt = np.eye(leni)
+        gt = np.eye(leni)
+
+        lt = np.concatenate([lt, xi_poly.lt], axis=1)
+        gt = np.concatenate([gt, xi_poly.gt], axis=1)
+
         constraints = list()
-        for coefs in xt_poly.lt:
+        for coefs in lt:
             fun = self.__generate_constrains(coefs * (-1))
             constraints.append({'type': 'ineq', 'fun': fun})
-        for coefs in xt_poly.gt:
+        for coefs in gt:
             fun = self.__generate_constrains(coefs)
             constraints.append({'type': 'ineq', 'fun': fun})
 
@@ -73,8 +86,9 @@ class DeepCegarImpl():
             return True, np.empty(0)
 
 
-    def __obj_func(self, x, model, y0, idx):
-        output = model.apply_from(x, idx) # seem problem
+    def __obj_func(self, x, model, leni, y0, idx):
+        xi = x[0:leni]
+        output = model.apply_from(xi, idx)
         y0_score = output[0][y0]
 
         output = output - np.eye(output[0].size)[y0] * 1e9
