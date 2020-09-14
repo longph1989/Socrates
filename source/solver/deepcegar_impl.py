@@ -8,11 +8,8 @@ class Poly():
         self.lw = np.maximum(lower, x0 - eps)
         self.up = np.minimum(upper, x0 + eps)
 
-        lt = np.eye(len(x0))
-        self.lt = np.concatenate([lt, lw.reshape(-1, len(lw)).transpose() * (-1)], axis=1)
-
-        gt = np.eye(len(x0))
-        self.gt = np.concatenate([gt, up.reshape(-1, len(lw)).transpose() * (-1)], axis=1)
+        self.lt = np.eye(len(x0) + 1)[0:-1]
+        self.gt = np.eye(len(x0) + 1)[0:-1]
 
 
 class DeepCegarImpl():
@@ -27,18 +24,55 @@ class DeepCegarImpl():
         eps = ast.literal_eval(read(spec['eps']))
         x0_poly = Poly(x0, eps, model.lower, model.upper)
 
-        for idx in range(len(model.layers)):
+        res, x = self.__validate_x0(model, x0_poly, y0)
+        if not res:
+            print('True adversarial sample found!')
+            return
+
+        for idx in range(1, len(model.layers)):
             xi_poly = model.apply_to_poly(x0_poly, idx)
             res, x = self.__validate(model, spec, x0_poly, xi_poly, y0, idx)
 
             if not res:
-                x = x[len(x0_poly.lw):-1]
+                len0 = len(x0_poly.lw)
+                
+                x = x[-len0:]
                 y = np.argmax(model.apply(x), axis=1)[0]
+
                 if y0 != y:
                     print('True adversarial sample found!')
                     break
                 else:
                     print('Fake adversarial sample found!')
+
+
+    def __validate_x0(model, x0_poly, y0):
+        len0 = len(x0_poly.lw)
+
+        x = np.zeros(len0)
+        args = (model, y0)
+        jac = grad(self.__obj_func_x0)
+
+        bounds = Bounds(x0_poly.lw, x0_poly.up)
+
+        res = minimize(self.__obj_func_x0, x, args=args, jac=jac, bounds=bounds)
+
+        if res.fun == 0: # an adversarial sample is generated
+            return False, res.x
+        else:
+            return True, np.empty(0)
+
+
+    def __obj_func_x0(self, x, model, y0):
+        output = model.apply(x)
+        y0_score = output[0][y0]
+
+        output = output - np.eye(output[0].size)[y0] * 1e9
+        max_score = np.max(output)
+
+        loss = 0 if y0_score < max_score else y0_score - max_score + 1e-9
+
+        return loss + np.sum(x - x)
 
 
     def __generate_constrains(coefs):
@@ -87,7 +121,7 @@ class DeepCegarImpl():
 
 
     def __obj_func(self, x, model, leni, y0, idx):
-        xi = x[0:leni]
+        xi = x[:leni]
         output = model.apply_from(xi, idx)
         y0_score = output[0][y0]
 
