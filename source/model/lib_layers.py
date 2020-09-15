@@ -30,19 +30,42 @@ class Linear(Layer):
         else:
             return self.func(x @ self.weights + self.bias)
 
-    def apply_zonotope(self, x):
-        # x = (1,784,785)
+    def apply_poly(self, x, x0_poly):
+        # x = (784,785)
         # weights = (784,50)
         # bias = (1,50)
-        # res = (1,50,785)
+        # res = (50,785)
 
-        res = np.zeros(1,len(self.bias[0]),len(x[0,0]))
+        res = Poly()
 
-        for i in len(self.weights[0]):
-            for j in len(self.weights):
-                res[0,i] = res[0,i] + x[0,j] * self.weights[j,i]
+        no_features = len(x0_poly.lt[0])
+        no_neurons = len(self.weights[0])
 
-            res[0,i,-1] = res[0,i,-1] + self.bias[0,i]
+        res.lw = np.zeros(no_neurons)
+        res.up = np.zeros(no_neurons)
+
+        res.lt = np.zeros([no_neurons, no_features])
+        res.gt = np.zeros([no_neurons, no_features])
+
+        for i in range(no_neurons): # 0 to 50
+            for j in range(no_features - 1): # 0 to 784
+                res.lt[i] = res.lt[i] + x.lt[j] * self.weights[j,i]
+                res.gt[i] = res.gt[i] + x.gt[j] * self.weights[j,i]
+
+            res.lt[i,-1] = res.lt[i,-1] + self.bias[0,i]
+            res.gt[i,-1] = res.gt[i,-1] + self.bias[0,i]
+
+        for i in range(no_neurons):
+            for j in range(no_features):
+                if res.gt[i,j] > 0:
+                    res.lw[i] = res.lw[i] + res.gt[i,j] * x0_poly.lw[j]
+                else:
+                    res.lw[i] = res.lw[i] + res.gt[i,j] * x0_poly.up[j]
+
+                if res.lt[i,j] > 0:
+                    res.up[i] = res.up[i] + res.lt[i,j] * x0_poly.up[j]
+                else:
+                    res.up[i] = res.up[i] + res.lt[i,j] * x0_poly.lw[j]
 
         return res
 

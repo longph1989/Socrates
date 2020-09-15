@@ -4,12 +4,12 @@ from assertion.lib_functions import di
 
 
 class Poly():
-    def __init__(x0, eps, lower, upper):
-        self.lw = np.maximum(lower, x0 - eps)
-        self.up = np.minimum(upper, x0 + eps)
+    def __init__():
+        self.lw = None
+        self.up = None
 
-        self.lt = np.eye(len(x0) + 1)[0:-1]
-        self.gt = np.eye(len(x0) + 1)[0:-1]
+        self.lt = None
+        self.gt = None
 
 
 class DeepCegarImpl():
@@ -22,7 +22,14 @@ class DeepCegarImpl():
         y0 = np.argmax(model.apply(x0), axis=1)[0]
 
         eps = ast.literal_eval(read(spec['eps']))
-        x0_poly = Poly(x0, eps, model.lower, model.upper)
+
+        x0_poly = Poly()
+
+        x0_poly.lw = np.maximum(model.lower, x0 - eps)
+        x0_poly.up = np.minimum(model.upper, x0 + eps)
+
+        x0_poly.lt = np.eye(len(x0) + 1)[0:-1]
+        x0_poly.gt = np.eye(len(x0) + 1)[0:-1]
 
         res, x = self.__validate_x0(model, x0_poly, y0)
         if not res:
@@ -30,12 +37,12 @@ class DeepCegarImpl():
             return
 
         for idx in range(1, len(model.layers)):
-            xi_poly = model.apply_to_poly(x0_poly, idx)
+            xi_poly = model.apply_to_poly(x0_poly, idx, x0_poly)
             res, x = self.__validate(model, spec, x0_poly, xi_poly, y0, idx)
 
             if not res:
                 len0 = len(x0_poly.lw)
-                
+
                 x = x[-len0:]
                 y = np.argmax(model.apply(x), axis=1)[0]
 
