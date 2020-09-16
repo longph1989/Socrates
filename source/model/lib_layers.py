@@ -44,18 +44,60 @@ class Function(Layer):
                     # choose lambda = 0
                     res.lt[i] = x.up[i] * (x.lt[i] - x.lw[i]) / (x.up[i] - x.lw[i])
                     res.up[i] = x.up[i]
-        elif self.func == sigmoid:
-            res.lt = sigmoid(x.lt)
-            res.gt = sigmoid(x.gt)
 
+        elif self.func == sigmoid:
             res.lw = sigmoid(x.lw)
             res.up = sigmoid(x.up)
-        elif self.func == tanh:
-            res.lt = tanh(x.lt)
-            res.gt = tanh(x.gt)
 
+            for i in range(no_neurons):
+                if res.lw[i] == res.up[i]:
+                    res.lt[i][no_features - 1] = res.lw[i]
+                    res.gt[i][no_features - 1] = res.lw[i]
+                else:
+                    if res.lw[i] > 0:
+                        lam = (res.up[i] - res.lw[i]) / (x.up[i] - x.lw[i])
+                        res.gt[i] = res.lw[i] + lam * (x.gt[i] - x.lw[i])
+                    else:
+                        ll = sigmoid(x.lw[i]) * (1 - sigmoid(x.lw[i]))
+                        uu = sigmoid(x.up[i]) * (1 - sigmoid(x.up[i]))
+                        lam = min(ll, uu)
+                        res.gt[i] = res.lw[i] + lam * (x.gt[i] - x.lw[i])
+
+                    if res.up[i] <= 0:
+                        lam = (res.up[i] - res.lw[i]) / (x.up[i] - x.lw[i])
+                        res.lt[i] = res.up[i] + lam * (x.lt[i] - x.up[i])
+                    else:
+                        ll = sigmoid(x.lw[i]) * (1 - sigmoid(x.lw[i]))
+                        uu = sigmoid(x.up[i]) * (1 - sigmoid(x.up[i]))
+                        lam = min(ll, uu)
+                        res.lt[i] = res.up[i] + lam * (x.lt[i] - x.up[i])
+
+        elif self.func == tanh:
             res.lw = tanh(x.lw)
             res.up = tanh(x.up)
+
+            for i in range(no_neurons):
+                if res.lw[i] == res.up[i]:
+                    res.lt[i][no_features - 1] = res.lw[i]
+                    res.gt[i][no_features - 1] = res.lw[i]
+                else:
+                    if res.lw[i] > 0:
+                        lam = (res.up[i] - res.lw[i]) / (x.up[i] - x.lw[i])
+                        res.gt[i] = res.lw[i] + lam * (x.gt[i] - x.lw[i])
+                    else:
+                        ll = 1 - pow(tanh(x.lw[i]), 2)
+                        uu = 1 - pow(tanh(x.up[i]), 2)
+                        lam = min(ll, uu)
+                        res.gt[i] = res.lw[i] + lam * (x.gt[i] - x.lw[i])
+
+                    if res.up[i] <= 0:
+                        lam = (res.up[i] - res.lw[i]) / (x.up[i] - x.lw[i])
+                        res.lt[i] = res.up[i] + lam * (x.lt[i] - x.up[i])
+                    else:
+                        ll = 1 - pow(tanh(x.lw[i]), 2)
+                        uu = 1 - pow(tanh(x.up[i]), 2)
+                        lam = min(ll, uu)
+                        res.lt[i] = res.up[i] + lam * (x.lt[i] - x.up[i])
 
 
 class Linear(Layer):
