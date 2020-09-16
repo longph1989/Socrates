@@ -49,8 +49,15 @@ class Linear(Layer):
 
         for i in range(no_neurons): # 0 to 50
             for j in range(no_features - 1): # 0 to 784
-                res.lt[i] = res.lt[i] + x.lt[j] * self.weights[j,i]
-                res.gt[i] = res.gt[i] + x.gt[j] * self.weights[j,i]
+                if self.weights[j,i] > 0:
+                    res.lt[i] = res.lt[i] + x.lt[j] * self.weights[j,i]
+                else:
+                    res.lt[i] = res.lt[i] + x.gt[j] * self.weights[j,i]
+
+                if self.weights[j,i] > 0:
+                    res.gt[i] = res.gt[i] + x.gt[j] * self.weights[j,i]
+                else:
+                    res.gt[i] = res.gt[i] + x.lt[j] * self.weights[j,i]
 
             res.lt[i,-1] = res.lt[i,-1] + self.bias[0,i]
             res.gt[i,-1] = res.gt[i,-1] + self.bias[0,i]
