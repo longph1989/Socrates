@@ -17,6 +17,38 @@ class Function(Layer):
     def apply(self, x):
         return self.func(x)
 
+    def apply_poly(self, x, x0_poly):
+        # x = (50,785)
+        res = Poly()
+
+        no_features = len(x0_poly.lt[0])
+        no_neurons = len(x.lw)
+
+        res.lt = np.zeros([no_neurons, no_features])
+        res.gt = np.zeros([no_neurons, no_features])
+
+        res.lw = np.zeros(no_neurons)
+        res.up = np.zeros(no_neurons)
+
+        if self.func == relu:
+            for i in range(no_neurons):
+                if x.up[i] <= 0:
+                    pass
+                elif x.lw[i] >= 0:
+                    res.lt[i] = x.lt[i]
+                    res.gt[i] = x.gt[i]
+
+                    res.lw[i] = x.lw[i]
+                    res.up[i] = x.up[i]
+                else:
+                    # choose lambda = 0
+                    res.lt[i] = x.up[i] * (x.lt[i] - x.lw[i]) / (x.up[i] - x.lw[i])
+                    res.up[i] = x.up[i]
+        elif self.func == tanh:
+
+        elif self.func == sigmoid:
+
+
 
 class Linear(Layer):
     def __init__(self, weights, bias, name):
@@ -41,11 +73,11 @@ class Linear(Layer):
         no_features = len(x0_poly.lt[0])
         no_neurons = len(self.weights[0])
 
-        res.lw = np.zeros(no_neurons)
-        res.up = np.zeros(no_neurons)
-
         res.lt = np.zeros([no_neurons, no_features])
         res.gt = np.zeros([no_neurons, no_features])
+
+        res.lw = np.zeros(no_neurons)
+        res.up = np.zeros(no_neurons)
 
         for i in range(no_neurons): # 0 to 50
             for j in range(no_features - 1): # 0 to 784
@@ -73,6 +105,16 @@ class Linear(Layer):
                     res.up[i] = res.up[i] + res.lt[i,j] * x0_poly.up[j]
                 else:
                     res.up[i] = res.up[i] + res.lt[i,j] * x0_poly.lw[j]
+
+        if self.func != None:
+            if self.func == relu:
+                func = Function('relu', None)
+            elif self.func == sigmoid:
+                func = Function('sigmoid', None)
+            elif self.func == tanh:
+                func = Function('tanh', None)
+
+            res = func.apply_poly(res, x0_poly)
 
         return res
 
