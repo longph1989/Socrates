@@ -22,7 +22,7 @@ pip install numpy scipy matplotlib torch autograd antlr4-python3-runtime
 
 ## Contributors:
 
-- Long H. Pham
+- [Long H. Pham](https://longph1989.bitbucket.io/)
 - [Jiaying Li](http://jiaying.li)
 - [Jun Sun](http://sunjun.site)
 
