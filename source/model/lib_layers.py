@@ -44,10 +44,18 @@ class Function(Layer):
                     # choose lambda = 0
                     res.lt[i] = x.up[i] * (x.lt[i] - x.lw[i]) / (x.up[i] - x.lw[i])
                     res.up[i] = x.up[i]
-        elif self.func == tanh:
-
         elif self.func == sigmoid:
+            res.lt = sigmoid(x.lt)
+            res.gt = sigmoid(x.gt)
 
+            res.lw = sigmoid(x.lw)
+            res.up = sigmoid(x.up)
+        elif self.func == tanh:
+            res.lt = tanh(x.lt)
+            res.gt = tanh(x.gt)
+
+            res.lw = tanh(x.lw)
+            res.up = tanh(x.up)
 
 
 class Linear(Layer):
