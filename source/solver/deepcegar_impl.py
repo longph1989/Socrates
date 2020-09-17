@@ -52,6 +52,22 @@ class DeepCegarImpl():
                 else:
                     print('Fake adversarial sample found!')
 
+        res = self.__verify(xi_poly, y0)
+        if res:
+            print('The network is robust around x0!')
+        else:
+            print('Unknown!')
+
+
+    def __verify(x, y0):
+        for i in range(x.up):
+            if i != y0:
+                if x.lw[y0] <= x.up[i]:
+                    # need to call solver
+                    return False
+
+        return True
+
 
     def __validate_x0(model, x0_poly, y0):
         len0 = len(x0_poly.lw)
