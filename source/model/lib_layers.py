@@ -120,17 +120,17 @@ class Linear(Layer):
 
         res = Poly()
 
-        no_features = len(x0_poly.lt[0])
+        no_features = len(x0_poly.lw)
         no_neurons = len(self.weights[0])
 
-        res.lt = np.zeros([no_neurons, no_features])
-        res.gt = np.zeros([no_neurons, no_features])
+        res.lt = np.zeros([no_neurons, no_features + 1])
+        res.gt = np.zeros([no_neurons, no_features + 1])
 
         res.lw = np.zeros(no_neurons)
         res.up = np.zeros(no_neurons)
 
         for i in range(no_neurons): # 0 to 50
-            for j in range(no_features - 1): # 0 to 784
+            for j in range(no_features): # 0 to 784
                 if self.weights[j,i] > 0:
                     res.lt[i] = res.lt[i] + x.lt[j] * self.weights[j,i]
                 else:
@@ -155,6 +155,9 @@ class Linear(Layer):
                     res.up[i] = res.up[i] + res.lt[i,j] * x0_poly.up[j]
                 else:
                     res.up[i] = res.up[i] + res.lt[i,j] * x0_poly.lw[j]
+
+            res.lw[i] = res.lw[i] + res.gt[i,-1]
+            res.up[i] = res.up[i] + res.lt[i,-1]
 
         if self.func != None:
             if self.func == relu:

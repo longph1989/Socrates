@@ -59,12 +59,23 @@ class DeepCegarImpl():
             print('Unknown!')
 
 
-    def __verify(x, y0):
+    def __verify(x, x0_poly, y0):
+        no_features = len(x0_poly.lw)
+
         for i in range(x.up):
-            if i != y0:
-                if x.lw[y0] <= x.up[i]:
-                    # need to call solver
-                    return False
+            if i != y0 and x.lw[y0] <= x.up[i]:
+                coefs = x.gt[y0] - x.lt[i]
+                lower = 0
+
+                for i in range(no_features):
+                    if coefs[i] > 0:
+                        lower = lower + coefs[i] * x0_poly.lw[i]
+                    else:
+                        lower = lower + coefs[i] * x0_poly.up[i]
+
+                lower = lower + coefs[-1]
+
+                if lower < 0: return False
 
         return True
 
