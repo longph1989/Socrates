@@ -74,16 +74,42 @@ class DeepCegarImpl():
                 len0 = len(x0_poly_curr.lw)
 
                 x = x[-len0:]
-                y = np.argmax(model.apply(x), axis=1)[0]
+                # y = np.argmax(model.apply(x), axis=1)[0]
+                x_tmp = model.apply_to(x)
+                y = np.argmax(model.apply_from(x_tmp), axis=1)[0]
 
                 if y0 != y:
                     print('True adversarial sample found!')
                     self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1)
                 else:
                     print('Fake adversarial sample found!')
-                    xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev)
+                    g = grad(model.apply_from)(x_tmp)
+                    ref_idx = np.argmax(g, axis=1)[0]
+
+                    xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, x_tmp, ref_idx)
                     self.__verify(model, x0_poly, y0, xi_poly_prev1, idx)
                     self.__verify(model, x0_poly, y0, xi_poly_prev2, idx)
+
+
+    def __refine(x_poly, x, idx):
+        # try for relu first
+
+        x1_poly = Poly()
+        x1_poly.lw = x_poly.lw
+        x1_poly.up = x_poly.up
+        x1_poly.lt = x_poly.lt
+        x1_poly.gt = x_poly.gt
+
+        x2_poly = Poly()
+        x2_poly.lw = x_poly.lw
+        x2_poly.up = x_poly.up
+        x2_poly.lt = x_poly.lt
+        x2_poly.gt = x_poly.gt
+
+        x1_poly.up[idx] = 0
+        x2_poly.lw[idx] = 0
+
+        return x1_poly, x2_poly
 
 
     def __validate_x0(model, x0_poly, y0):
