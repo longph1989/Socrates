@@ -36,48 +36,54 @@ class DeepCegarImpl():
             print('True adversarial sample found!')
             return
 
-        for idx in range(1, len(model.layers)):
-            xi_poly = model.apply_to_poly(x0_poly, idx, x0_poly)
-            res, x = self.__validate(model, spec, x0_poly, xi_poly, y0, idx)
+        xi_poly_prev = x0_poly
+        res = self.__verify(model, x0_poly, y0, xi_poly_prev, 1)
 
-            if not res:
-                len0 = len(x0_poly.lw)
-
-                x = x[-len0:]
-                y = np.argmax(model.apply(x), axis=1)[0]
-
-                if y0 != y:
-                    print('True adversarial sample found!')
-                    break
-                else:
-                    print('Fake adversarial sample found!')
-
-        res = self.__verify(xi_poly, y0)
         if res:
             print('The network is robust around x0!')
         else:
             print('Unknown!')
 
 
-    def __verify(x, x0_poly, y0):
-        no_features = len(x0_poly.lw)
+    def __verify(model, x0_poly, y0, xi_poly_prev, idx):
+        if idx == len(model.layers):
+            no_features = len(x0_poly.lw)
+            x = xi_poly_prev
 
-        for i in range(x.up):
-            if i != y0 and x.lw[y0] <= x.up[i]:
-                coefs = x.gt[y0] - x.lt[i]
-                lower = 0
+            for i in range(x.up):
+                if i != y0 and x.lw[y0] <= x.up[i]:
+                    coefs = x.gt[y0] - x.lt[i]
+                    lower = 0
 
-                for i in range(no_features):
-                    if coefs[i] > 0:
-                        lower = lower + coefs[i] * x0_poly.lw[i]
-                    else:
-                        lower = lower + coefs[i] * x0_poly.up[i]
+                    for i in range(no_features):
+                        if coefs[i] > 0:
+                            lower = lower + coefs[i] * x0_poly.lw[i]
+                        else:
+                            lower = lower + coefs[i] * x0_poly.up[i]
 
-                lower = lower + coefs[-1]
+                    lower = lower + coefs[-1]
 
-                if lower < 0: return False
+                    if lower < 0: return False
 
-        return True
+            return True
+        else:
+            xi_poly_curr = model.forward(xi_poly_prev, x0_poly, idx)
+
+            res, x = self.__validate(model, spec, x0_poly, xi_poly_curr, y0, idx)
+            if not res:
+                len0 = len(x0_poly_curr.lw)
+
+                x = x[-len0:]
+                y = np.argmax(model.apply(x), axis=1)[0]
+
+                if y0 != y:
+                    print('True adversarial sample found!')
+                    self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1)
+                else:
+                    print('Fake adversarial sample found!')
+                    xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev)
+                    self.__verify(model, x0_poly, y0, xi_poly_prev1, idx)
+                    self.__verify(model, x0_poly, y0, xi_poly_prev2, idx)
 
 
     def __validate_x0(model, x0_poly, y0):

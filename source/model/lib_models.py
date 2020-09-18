@@ -92,16 +92,17 @@ class Model:
         return output
 
 
-    def apply_to_poly(self, x, toIdx, x0_poly):
+    def forward(self, x, x0_poly, idx):
         if self.layers == None:
             # only work when layers is not None
             raise NameError('Not support yet!')
 
         output = x # no need for recurrent yet
         for j in range(len(self.layers)):
-            if j < toIdx:
+            if j == idx - 1:
                 layer = self.layers[j]
                 output = layer.apply_poly(output, x0_poly)
+                break
 
         for layer in self.layers:
             layer.reset()
