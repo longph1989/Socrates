@@ -203,6 +203,6 @@ class DeepCegarImpl():
         return loss + np.sum(x - x)
 
 
-    def solve(self, model, spec, display=None):
+    def solve(self, model, assertion, display=None):
         # only solve for local robustness
-        return self.__solve_local_robustness(model, spec, display)
+        return self.__solve_local_robustness(model, assertion, display)
