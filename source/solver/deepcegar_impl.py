@@ -1,10 +1,14 @@
-import numpy as np
+import autograd.numpy as np
+import ast
 
+from scipy.optimize import minimize
+from scipy.optimize import Bounds
+from autograd import grad
 from assertion.lib_functions import di
-
+from utils import *
 
 class Poly():
-    def __init__():
+    def __init__(self):
         self.lw = None
         self.up = None
 
@@ -112,7 +116,7 @@ class DeepCegarImpl():
         return x1_poly, x2_poly
 
 
-    def __validate_x0(model, x0_poly, y0):
+    def __validate_x0(self, model, x0_poly, y0):
         len0 = len(x0_poly.lw)
 
         x = np.zeros(len0)
@@ -199,6 +203,6 @@ class DeepCegarImpl():
         return loss + np.sum(x - x)
 
 
-    def solve(self, model, assertion, display=None):
+    def solve(self, model, spec, display=None):
         # only solve for local robustness
         return self.__solve_local_robustness(model, spec, display)
