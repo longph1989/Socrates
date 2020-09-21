@@ -1,4 +1,6 @@
 import autograd.numpy as np
+
+from solver.deepcegar_impl import Poly
 from utils import *
 
 
@@ -98,6 +100,8 @@ class Function(Layer):
                         uu = 1 - pow(tanh(x.up[i]), 2)
                         lam = min(ll, uu)
                         res.lt[i] = res.up[i] + lam * (x.lt[i] - x.up[i])
+
+        return res
 
 
 class Linear(Layer):

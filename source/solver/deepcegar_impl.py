@@ -41,7 +41,7 @@ class DeepCegarImpl():
             return
 
         xi_poly_prev = x0_poly
-        res = self.__verify(model, x0_poly, y0, xi_poly_prev, 1)
+        res = self.__verify(model, spec, x0_poly, y0, xi_poly_prev, 1)
 
         if res:
             print('The network is robust around x0!')
@@ -49,7 +49,7 @@ class DeepCegarImpl():
             print('Unknown!')
 
 
-    def __verify(model, x0_poly, y0, xi_poly_prev, idx):
+    def __verify(self, model, spec, x0_poly, y0, xi_poly_prev, idx):
         if idx == len(model.layers):
             no_features = len(x0_poly.lw)
             x = xi_poly_prev
@@ -78,21 +78,21 @@ class DeepCegarImpl():
                 len0 = len(x0_poly_curr.lw)
 
                 x = x[-len0:]
-                # y = np.argmax(model.apply(x), axis=1)[0]
                 x_tmp = model.apply_to(x)
                 y = np.argmax(model.apply_from(x_tmp), axis=1)[0]
 
                 if y0 != y:
                     print('True adversarial sample found!')
-                    self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1)
+                    return False
                 else:
                     print('Fake adversarial sample found!')
-                    g = grad(model.apply_from)(x_tmp)
-                    ref_idx = np.argmax(g, axis=1)[0]
-
-                    xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, x_tmp, ref_idx)
-                    self.__verify(model, x0_poly, y0, xi_poly_prev1, idx)
-                    self.__verify(model, x0_poly, y0, xi_poly_prev2, idx)
+                    return False
+                    # g = grad(model.apply_from)(x_tmp)
+                    # ref_idx = np.argmax(g, axis=1)[0]
+                    #
+                    # xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, x_tmp, ref_idx)
+                    # self.__verify(model, x0_poly, y0, xi_poly_prev1, idx)
+                    # self.__verify(model, x0_poly, y0, xi_poly_prev2, idx)
 
 
     def __refine(x_poly, x, idx):
@@ -145,13 +145,13 @@ class DeepCegarImpl():
         return loss + np.sum(x - x)
 
 
-    def __generate_constrains(coefs):
+    def __generate_constrains(self, coefs):
         def fun(x, coefs=coefs):
             res = 0
-            len = len(x)
-            for i in range(len):
+            lenx = len(x)
+            for i in range(lenx):
                 res = res + coefs[i] * x[i]
-            res = res + coefs[len]
+            res = res + coefs[lenx]
             return res
         return fun
 
