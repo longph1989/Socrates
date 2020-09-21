@@ -50,12 +50,6 @@ class DeepCegarImpl():
 
 
     def __verify(self, model, x0_poly, y0, xi_poly_prev, idx):
-        print(idx)
-        print(xi_poly_prev.lw.shape)
-        print(xi_poly_prev.up.shape)
-        print(xi_poly_prev.lt.shape)
-        print(xi_poly_prev.gt.shape)
-
         if idx == len(model.layers):
             no_features = len(x0_poly.lw)
             x = xi_poly_prev
@@ -78,7 +72,7 @@ class DeepCegarImpl():
             return True
         else:
             xi_poly_curr = model.forward(xi_poly_prev, x0_poly, idx)
-            res, x = self.__validate(model, x0_poly, y0, xi_poly_curr, idx)
+            res, x = self.__validate(model, x0_poly, y0, xi_poly_curr, idx + 1)
 
             if not res:
                 # a counter example is found, should be fake
@@ -99,7 +93,7 @@ class DeepCegarImpl():
                 g = grad(model.apply_from)(x_tmp, idx)
                 ref_idx = np.argmax(g, axis=1)[0]
 
-                xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, x_tmp, ref_idx)
+                xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_idx)
 
                 if self.__verify(model, x0_poly, y0, xi_poly_prev1, idx):
                     return self.__verify(model, x0_poly, y0, xi_poly_prev2, idx)
@@ -110,7 +104,7 @@ class DeepCegarImpl():
                 return self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1)
 
 
-    def __refine(x_poly, x, idx):
+    def __refine(x_poly, idx):
         # try for relu first
 
         x1_poly = Poly()
