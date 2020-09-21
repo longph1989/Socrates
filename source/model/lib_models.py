@@ -79,7 +79,7 @@ class Model:
 
         output = x # no need for recurrent yet
         for i in range(len(self.layers)):
-            if i == idx - 1:
+            if i == idx:
                 layer = self.layers[i]
                 output = layer.apply_poly(output, x0_poly)
                 break

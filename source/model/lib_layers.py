@@ -116,7 +116,7 @@ class Linear(Layer):
         else:
             return self.func(x @ self.weights + self.bias)
 
-    def apply_poly(self, x, x0_poly):
+    def apply_poly(self, x_poly, x0_poly):
         # x = (784,785)
         # weights = (784,50)
         # bias = (1,50)
@@ -126,6 +126,7 @@ class Linear(Layer):
 
         no_features = len(x0_poly.lw)
         no_neurons = len(self.weights[0])
+        no_prev_ns = len(x_poly.lw)
 
         res.lt = np.zeros([no_neurons, no_features + 1])
         res.gt = np.zeros([no_neurons, no_features + 1])
@@ -134,16 +135,16 @@ class Linear(Layer):
         res.up = np.zeros(no_neurons)
 
         for i in range(no_neurons): # 0 to 50
-            for j in range(no_features): # 0 to 784
+            for j in range(no_prev_ns): # 0 to 784
                 if self.weights[j,i] > 0:
-                    res.lt[i] = res.lt[i] + x.lt[j] * self.weights[j,i]
+                    res.lt[i] = res.lt[i] + x_poly.lt[j] * self.weights[j,i]
                 else:
-                    res.lt[i] = res.lt[i] + x.gt[j] * self.weights[j,i]
+                    res.lt[i] = res.lt[i] + x_poly.gt[j] * self.weights[j,i]
 
                 if self.weights[j,i] > 0:
-                    res.gt[i] = res.gt[i] + x.gt[j] * self.weights[j,i]
+                    res.gt[i] = res.gt[i] + x_poly.gt[j] * self.weights[j,i]
                 else:
-                    res.gt[i] = res.gt[i] + x.lt[j] * self.weights[j,i]
+                    res.gt[i] = res.gt[i] + x_poly.lt[j] * self.weights[j,i]
 
             res.lt[i,-1] = res.lt[i,-1] + self.bias[0,i]
             res.gt[i,-1] = res.gt[i,-1] + self.bias[0,i]

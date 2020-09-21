@@ -41,7 +41,7 @@ class DeepCegarImpl():
             return
 
         xi_poly_prev = x0_poly
-        res = self.__verify(model, spec, x0_poly, y0, xi_poly_prev, 1)
+        res = self.__verify(model, x0_poly, y0, xi_poly_prev, 0)
 
         if res:
             print('The network is robust around x0!')
@@ -49,12 +49,18 @@ class DeepCegarImpl():
             print('Unknown!')
 
 
-    def __verify(self, model, spec, x0_poly, y0, xi_poly_prev, idx):
+    def __verify(self, model, x0_poly, y0, xi_poly_prev, idx):
+        print(idx)
+        print(xi_poly_prev.lw.shape)
+        print(xi_poly_prev.up.shape)
+        print(xi_poly_prev.lt.shape)
+        print(xi_poly_prev.gt.shape)
+
         if idx == len(model.layers):
             no_features = len(x0_poly.lw)
             x = xi_poly_prev
 
-            for i in range(x.up):
+            for i in range(len(x.up)):
                 if i != y0 and x.lw[y0] <= x.up[i]:
                     coefs = x.gt[y0] - x.lt[i]
                     lower = 0
@@ -72,27 +78,36 @@ class DeepCegarImpl():
             return True
         else:
             xi_poly_curr = model.forward(xi_poly_prev, x0_poly, idx)
+            res, x = self.__validate(model, x0_poly, y0, xi_poly_curr, idx)
 
-            res, x = self.__validate(model, spec, x0_poly, xi_poly_curr, y0, idx)
             if not res:
+                # a counter example is found, should be fake
+                print('Fake adversarial sample found!')
+
                 len0 = len(x0_poly_curr.lw)
-
                 x = x[-len0:]
-                x_tmp = model.apply_to(x)
-                y = np.argmax(model.apply_from(x_tmp), axis=1)[0]
 
-                if y0 != y:
-                    print('True adversarial sample found!')
-                    return False
+                x_tmp = model.apply_to(x, idx)
+
+                # y = np.argmax(model.apply_from(x_tmp), axis=1)[0]
+                #
+                # if y0 != y:
+                #     print('True adversarial sample found!')
+                #     return False
+                # else:
+
+                g = grad(model.apply_from)(x_tmp, idx)
+                ref_idx = np.argmax(g, axis=1)[0]
+
+                xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, x_tmp, ref_idx)
+
+                if self.__verify(model, x0_poly, y0, xi_poly_prev1, idx):
+                    return self.__verify(model, x0_poly, y0, xi_poly_prev2, idx)
                 else:
-                    print('Fake adversarial sample found!')
                     return False
-                    # g = grad(model.apply_from)(x_tmp)
-                    # ref_idx = np.argmax(g, axis=1)[0]
-                    #
-                    # xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, x_tmp, ref_idx)
-                    # self.__verify(model, x0_poly, y0, xi_poly_prev1, idx)
-                    # self.__verify(model, x0_poly, y0, xi_poly_prev2, idx)
+            else:
+                # ok, continue
+                return self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1)
 
 
     def __refine(x_poly, x, idx):
@@ -156,7 +171,9 @@ class DeepCegarImpl():
         return fun
 
 
-    def __validate(self, model, spec, x0_poly, xi_poly, y0, idx):
+    def __validate(self, model, x0_poly, y0, xi_poly, idx):
+        return True, np.empty(0)
+
         len0 = len(x0_poly.lw)
         leni = len(xi_poly.lw)
 
