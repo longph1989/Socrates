@@ -5,7 +5,6 @@ from scipy.optimize import minimize
 from scipy.optimize import Bounds
 from autograd import grad
 from assertion.lib_functions import di
-# from model.lib_layers import Function
 from utils import *
 
 class Poly():
@@ -92,9 +91,10 @@ class DeepCegarImpl():
 
                     g = grad(model.apply_from)(x_tmp, idx, y0)
                     ref_idx = np.argmax(g, axis=1)[0]
-                    print(ref_idx)
 
-                    xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_idx)
+                    func = model.layers[idx].func
+
+                    xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_idx, x_tmp, func)
 
                     if self.__verify(model, x0_poly, y0, xi_poly_prev1, idx):
                         return self.__verify(model, x0_poly, y0, xi_poly_prev2, idx)
@@ -108,23 +108,29 @@ class DeepCegarImpl():
                 return self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1)
 
 
-    def __refine(self, x_poly, idx):
-        # try for relu first
-
+    def __refine(self, x_poly, idx, x_tmp, func):
         x1_poly = Poly()
+        x2_poly = Poly()
+
         x1_poly.lw = x_poly.lw
         x1_poly.up = x_poly.up
         x1_poly.lt = x_poly.lt
         x1_poly.gt = x_poly.gt
 
-        x2_poly = Poly()
         x2_poly.lw = x_poly.lw
         x2_poly.up = x_poly.up
         x2_poly.lt = x_poly.lt
         x2_poly.gt = x_poly.gt
 
-        x1_poly.up[idx] = 0
-        x2_poly.lw[idx] = 0
+        if func == relu:
+            x1_poly.up[idx] = 0
+            x2_poly.lw[idx] = 0
+        elif func == sigmoid:
+            x1_poly.up[idx] = x_tmp[idx]
+            x2_poly.lw[idx] = x_tmp[idx]
+        elif func == tanh:
+            x1_poly.up[idx] = x_tmp[idx]
+            x2_poly.lw[idx] = x_tmp[idx]
 
         return x1_poly, x2_poly
 
