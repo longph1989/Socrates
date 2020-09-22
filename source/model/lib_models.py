@@ -44,7 +44,7 @@ class Model:
         return output
 
 
-    def apply_from(self, x, fromIdx):
+    def apply_from(self, x, fromIdx, y0=None):
         if self.layers == None:
             # only work when layers is not None
             raise NameError('Not support yet!')
@@ -55,7 +55,10 @@ class Model:
                 layer = self.layers[i]
                 output = layer.apply(output)
 
-        return output
+        if y0 == None:
+            return output
+        else:
+            return output[0][y0]
 
 
     def apply_to(self, x, toIdx):

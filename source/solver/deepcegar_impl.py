@@ -5,6 +5,7 @@ from scipy.optimize import minimize
 from scipy.optimize import Bounds
 from autograd import grad
 from assertion.lib_functions import di
+# from model.lib_layers import Function
 from utils import *
 
 class Poly():
@@ -18,7 +19,7 @@ class Poly():
 
 class DeepCegarImpl():
     def __init__(self):
-        pass
+        self.count_ref = 0
 
 
     def __solve_local_robustness(self, model, spec, display):
@@ -78,33 +79,36 @@ class DeepCegarImpl():
                 # a counter example is found, should be fake
                 print('Fake adversarial sample found!')
 
-                len0 = len(x0_poly_curr.lw)
-                x = x[-len0:]
+                if not model.layers[idx].is_poly_exact():
+                    if self.count_ref >= 5:
+                        return False
+                    else:
+                        self.count_ref = self.count_ref + 1
 
-                x_tmp = model.apply_to(x, idx)
+                    len0 = len(x0_poly.lw)
+                    x = x[-len0:]
 
-                # y = np.argmax(model.apply_from(x_tmp), axis=1)[0]
-                #
-                # if y0 != y:
-                #     print('True adversarial sample found!')
-                #     return False
-                # else:
+                    x_tmp = model.apply_to(x, idx)
 
-                g = grad(model.apply_from)(x_tmp, idx)
-                ref_idx = np.argmax(g, axis=1)[0]
+                    g = grad(model.apply_from)(x_tmp, idx, y0)
+                    ref_idx = np.argmax(g, axis=1)[0]
+                    print(ref_idx)
 
-                xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_idx)
+                    xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_idx)
 
-                if self.__verify(model, x0_poly, y0, xi_poly_prev1, idx):
-                    return self.__verify(model, x0_poly, y0, xi_poly_prev2, idx)
+                    if self.__verify(model, x0_poly, y0, xi_poly_prev1, idx):
+                        return self.__verify(model, x0_poly, y0, xi_poly_prev2, idx)
+                    else:
+                        return False
                 else:
+                    # the computation is exact so no need to refine
                     return False
             else:
                 # ok, continue
                 return self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1)
 
 
-    def __refine(x_poly, idx):
+    def __refine(self, x_poly, idx):
         # try for relu first
 
         x1_poly = Poly()

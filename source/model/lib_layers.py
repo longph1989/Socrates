@@ -103,6 +103,9 @@ class Function(Layer):
 
         return res
 
+    def is_poly_exact(self):
+        return False
+
 
 class Linear(Layer):
     def __init__(self, weights, bias, name):
@@ -175,6 +178,9 @@ class Linear(Layer):
             res = func.apply_poly(res, x0_poly)
 
         return res
+
+    def is_poly_exact(self):
+        return True
 
 
 class BasicRNN(Layer):
