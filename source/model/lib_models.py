@@ -49,7 +49,9 @@ class Model:
             # only work when layers is not None
             raise NameError('Not support yet!')
 
-        output = x # no need for recurrent yet
+        shape_i = [1, *self.shape[1:]]
+
+        output = x.reshape(shape_i) # no need for recurrent yet
         for i in range(len(self.layers)):
             if i >= fromIdx:
                 layer = self.layers[i]
@@ -66,7 +68,9 @@ class Model:
             # only work when layers is not None
             raise NameError('Not support yet!')
 
-        output = x # no need for recurrent yet
+        shape_i = [1, *self.shape[1:]]
+
+        output = x.reshape(shape_i) # no need for recurrent yet
         for i in range(len(self.layers)):
             if i < toIdx:
                 layer = self.layers[i]
@@ -75,12 +79,12 @@ class Model:
         return output
 
 
-    def forward(self, x, x0_poly, idx):
+    def forward(self, x_poly, x0_poly, idx):
         if self.layers == None:
             # only work when layers is not None
             raise NameError('Not support yet!')
 
-        output = x # no need for recurrent yet
+        output = x_poly # no need for recurrent yet
         for i in range(len(self.layers)):
             if i == idx:
                 layer = self.layers[i]

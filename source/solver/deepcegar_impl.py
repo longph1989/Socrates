@@ -27,6 +27,9 @@ class DeepCegarImpl():
 
         eps = ast.literal_eval(read(spec['eps']))
 
+        print('x0 = {}'.format(x0))
+        print('y0 = {}'.format(y0))
+
         x0_poly = Poly()
 
         x0_poly.lw = np.maximum(model.lower, x0 - eps)
@@ -35,9 +38,20 @@ class DeepCegarImpl():
         x0_poly.lt = np.eye(len(x0) + 1)[0:-1]
         x0_poly.gt = np.eye(len(x0) + 1)[0:-1]
 
+        print('x0_poly.lw = {}'.format(x0_poly.lw))
+        print('x0_poly.up = {}'.format(x0_poly.up))
+
+        print('x0_poly.lt = \n{}'.format(x0_poly.lt))
+        print('x0_poly.gt = \n{}'.format(x0_poly.gt))
+
         res, x = self.__validate_x0(model, x0_poly, y0)
         if not res:
+            y = np.argmax(model.apply(x), axis=1)[0]
+
             print('True adversarial sample found!')
+            print('x = {}'.format(x))
+            print('y = {}'.format(y))
+
             return
 
         xi_poly_prev = x0_poly
@@ -50,58 +64,71 @@ class DeepCegarImpl():
 
 
     def __verify(self, model, x0_poly, y0, xi_poly_prev, idx):
+        print('\n########################')
+        print('idx = {}\n'.format(idx))
+
         if idx == len(model.layers):
             no_features = len(x0_poly.lw)
             x = xi_poly_prev
 
             for i in range(len(x.up)):
+                print('i = {}'.format(i))
+
                 if i != y0 and x.lw[y0] <= x.up[i]:
                     coefs = x.gt[y0] - x.lt[i]
-                    lower = 0
+                    value = 0
 
                     for i in range(no_features):
                         if coefs[i] > 0:
-                            lower = lower + coefs[i] * x0_poly.lw[i]
+                            value = value + coefs[i] * x0_poly.lw[i]
                         else:
-                            lower = lower + coefs[i] * x0_poly.up[i]
+                            value = value + coefs[i] * x0_poly.up[i]
 
-                    lower = lower + coefs[-1]
+                    value = value + coefs[-1]
 
-                    if lower < 0: return False
+                    print('value = {}\n'.format(value))
+
+                    if value < 0: return False
 
             return True
         else:
             xi_poly_curr = model.forward(xi_poly_prev, x0_poly, idx)
+
+            if model.layers[idx].is_poly_exact():
+                return self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1)
+
             res, x = self.__validate(model, x0_poly, y0, xi_poly_curr, idx + 1)
+
+            print('xi_poly_curr.lw = {}'.format(xi_poly_curr.lw))
+            print('xi_poly_curr.up = {}'.format(xi_poly_curr.up))
+
+            print('xi_poly_curr.lt = \n{}'.format(xi_poly_curr.lt))
+            print('xi_poly_curr.gt = \n{}'.format(xi_poly_curr.gt))
 
             if not res:
                 # a counter example is found, should be fake
                 print('Fake adversarial sample found!')
 
-                if not model.layers[idx].is_poly_exact():
-                    if self.count_ref >= 5:
-                        return False
-                    else:
-                        self.count_ref = self.count_ref + 1
-
-                    len0 = len(x0_poly.lw)
-                    x = x[-len0:]
-
-                    x_tmp = model.apply_to(x, idx)
-
-                    g = grad(model.apply_from)(x_tmp, idx, y0)
-                    ref_idx = np.argmax(g, axis=1)[0]
-
-                    func = model.layers[idx].func
-
-                    xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_idx, x_tmp, func)
-
-                    if self.__verify(model, x0_poly, y0, xi_poly_prev1, idx):
-                        return self.__verify(model, x0_poly, y0, xi_poly_prev2, idx)
-                    else:
-                        return False
+                if self.count_ref >= 5:
+                    return False
                 else:
-                    # the computation is exact so no need to refine
+                    self.count_ref = self.count_ref + 1
+
+                len0 = len(x0_poly.lw)
+                x = x[-len0:]
+
+                x_tmp = model.apply_to(x, idx)
+
+                g = grad(model.apply_from)(x_tmp, idx, y0)
+                ref_idx = np.argmax(g, axis=1)[0]
+
+                func = model.layers[idx].func
+
+                xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_idx, x_tmp, func)
+
+                if self.__verify(model, x0_poly, y0, xi_poly_prev1, idx):
+                    return self.__verify(model, x0_poly, y0, xi_poly_prev2, idx)
+                else:
                     return False
             else:
                 # ok, continue
@@ -176,8 +203,6 @@ class DeepCegarImpl():
 
 
     def __validate(self, model, x0_poly, y0, xi_poly, idx):
-        return True, np.empty(0)
-
         len0 = len(x0_poly.lw)
         leni = len(xi_poly.lw)
 
