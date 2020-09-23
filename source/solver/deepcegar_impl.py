@@ -17,8 +17,9 @@ class Poly():
 
 
 class DeepCegarImpl():
-    def __init__(self):
+    def __init__(self, max_ref):
         self.count_ref = 0
+        self.max_ref = max_ref
 
 
     def __solve_local_robustness(self, model, spec, display):
@@ -109,7 +110,7 @@ class DeepCegarImpl():
                 # a counter example is found, should be fake
                 print('Fake adversarial sample found!')
 
-                if self.count_ref >= 5:
+                if self.count_ref >= self.max_ref:
                     return False
                 else:
                     self.count_ref = self.count_ref + 1

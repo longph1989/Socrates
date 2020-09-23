@@ -22,9 +22,9 @@ class SPRT():
 
 
 class DeepCegar():
-    def __init__(self):
-        pass
+    def __init__(self, max_ref):
+        self.max_ref = max_ref
 
     def solve(self, model, assertion, display=None):
-        impl = DeepCegarImpl()
+        impl = DeepCegarImpl(self.max_ref)
         impl.solve(model, assertion, display)
