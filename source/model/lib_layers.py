@@ -58,25 +58,28 @@ class Function(Layer):
                     res.gt[i][-1] = res.lw[i]
                 else:
                     if res.lw[i] > 0:
-                        lam = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
+                        lam1 = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
+                        if res.up[i] <= 0:
+                            lam2 = lam1
+                        else:
+                            ll = sigmoid(x_poly.lw[i]) * (1 - sigmoid(x_poly.lw[i]))
+                            uu = sigmoid(x_poly.up[i]) * (1 - sigmoid(x_poly.up[i]))
+                            lam2 = min(ll, uu)
                     else:
                         ll = sigmoid(x_poly.lw[i]) * (1 - sigmoid(x_poly.lw[i]))
                         uu = sigmoid(x_poly.up[i]) * (1 - sigmoid(x_poly.up[i]))
-                        lam = min(ll, uu)
+                        lam1 = min(ll, uu)
+                        if res.up[i] <= 0:
+                            lam2 = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
+                        else:
+                            lam2 = lam1
 
                     x_poly.gt[i][-1] = x_poly.gt[i][-1] - x_poly.lw[i]
-                    res.gt[i] = lam * x_poly.gt[i]
+                    res.gt[i] = lam1 * x_poly.gt[i]
                     res.gt[i][-1] = res.gt[i][-1] + res.lw[i]
 
-                    if res.up[i] <= 0:
-                        lam = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
-                    else:
-                        ll = sigmoid(x_poly.lw[i]) * (1 - sigmoid(x_poly.lw[i]))
-                        uu = sigmoid(x_poly.up[i]) * (1 - sigmoid(x_poly.up[i]))
-                        lam = min(ll, uu)
-
                     x_poly.lt[i][-1] = x_poly.lt[i][-1] - x_poly.up[i]
-                    res.lt[i] = lam * x_poly.lt[i]
+                    res.lt[i] = lam2 * x_poly.lt[i]
                     res.lt[i][-1] = res.lt[i][-1] + res.up[i]
 
         elif self.func == tanh:
@@ -89,25 +92,28 @@ class Function(Layer):
                     res.gt[i][-1] = res.lw[i]
                 else:
                     if res.lw[i] > 0:
-                        lam = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
+                        lam1 = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
+                        if res.up[i] <= 0:
+                            lam2 = lam1
+                        else:
+                            ll = 1 - pow(tanh(x_poly.lw[i]), 2)
+                            uu = 1 - pow(tanh(x_poly.up[i]), 2)
+                            lam2 = min(ll, uu)
                     else:
                         ll = 1 - pow(tanh(x_poly.lw[i]), 2)
                         uu = 1 - pow(tanh(x_poly.up[i]), 2)
-                        lam = min(ll, uu)
+                        lam1 = min(ll, uu)
+                        if res.up[i] <= 0:
+                            lam2 = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
+                        else:
+                            lam2 = lam1
 
                     x_poly.gt[i][-1] = x_poly.gt[i][-1] - x_poly.lw[i]
-                    res.gt[i] = lam * x_poly.gt[i]
+                    res.gt[i] = lam1 * x_poly.gt[i]
                     res.gt[i][-1] = res.gt[i][-1] + res.lw[i]
 
-                    if res.up[i] <= 0:
-                        lam = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
-                    else:
-                        ll = 1 - pow(tanh(x_poly.lw[i]), 2)
-                        uu = 1 - pow(tanh(x_poly.up[i]), 2)
-                        lam = min(ll, uu)
-
                     x_poly.lt[i][-1] = x_poly.lt[i][-1] - x_poly.up[i]
-                    res.lt[i] = lam * x_poly.lt[i]
+                    res.lt[i] = lam2 * x_poly.lt[i]
                     res.lt[i][-1] = res.lt[i][-1] + res.up[i]
 
         return res
