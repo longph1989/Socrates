@@ -214,7 +214,7 @@ class DeepCegarImpl():
         up = np.concatenate([xi_poly.up, x0_poly.up])
         bounds = Bounds(lw, up)
 
-        lt = np.eye(leni)
+        lt = np.eye(leni) * (-1)
         gt = np.eye(leni)
 
         lt = np.concatenate([lt, xi_poly.lt], axis=1)
@@ -222,10 +222,10 @@ class DeepCegarImpl():
 
         constraints = list()
         for coefs in lt:
-            fun = self.__generate_constrains(coefs * (-1))
+            fun = self.__generate_constrains(coefs)
             constraints.append({'type': 'ineq', 'fun': fun})
         for coefs in gt:
-            fun = self.__generate_constrains(coefs)
+            fun = self.__generate_constrains(coefs * (-1))
             constraints.append({'type': 'ineq', 'fun': fun})
 
         res = minimize(self.__obj_func, x, args=args, jac=jac, bounds=bounds, constraints=constraints)
