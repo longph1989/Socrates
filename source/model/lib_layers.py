@@ -19,12 +19,12 @@ class Function(Layer):
     def apply(self, x):
         return self.func(x)
 
-    def apply_poly(self, x, x0_poly):
+    def apply_poly(self, x_poly, x0_poly):
         # x = (50,785)
         res = Poly()
 
         no_features = len(x0_poly.lt[0])
-        no_neurons = len(x.lw)
+        no_neurons = len(x_poly.lw)
 
         res.lt = np.zeros([no_neurons, no_features])
         res.gt = np.zeros([no_neurons, no_features])
@@ -34,73 +34,81 @@ class Function(Layer):
 
         if self.func == relu:
             for i in range(no_neurons):
-                if x.up[i] <= 0:
+                if x_poly.up[i] <= 0:
                     pass
-                elif x.lw[i] >= 0:
-                    res.lt[i] = x.lt[i]
-                    res.gt[i] = x.gt[i]
+                elif x_poly.lw[i] >= 0:
+                    res.lt[i] = x_poly.lt[i]
+                    res.gt[i] = x_poly.gt[i]
 
-                    res.lw[i] = x.lw[i]
-                    res.up[i] = x.up[i]
+                    res.lw[i] = x_poly.lw[i]
+                    res.up[i] = x_poly.up[i]
                 else:
                     # choose lambda = 0
-                    x.lt[i][-1] = x.lt[i][-1] - x.lw[i]
-                    res.lt[i] = x.up[i] * x.lt[i] / (x.up[i] - x.lw[i])
-                    res.up[i] = x.up[i]
+                    x_poly.lt[i][-1] = x_poly.lt[i][-1] - x_poly.lw[i]
+                    res.lt[i] = x_poly.up[i] * x_poly.lt[i] / (x_poly.up[i] - x_poly.lw[i])
+                    res.up[i] = x_poly.up[i]
 
         elif self.func == sigmoid:
-            res.lw = sigmoid(x.lw)
-            res.up = sigmoid(x.up)
+            res.lw = sigmoid(x_poly.lw)
+            res.up = sigmoid(x_poly.up)
 
             for i in range(no_neurons):
                 if res.lw[i] == res.up[i]:
-                    res.lt[i][no_features - 1] = res.lw[i]
-                    res.gt[i][no_features - 1] = res.lw[i]
+                    res.lt[i][-1] = res.lw[i]
+                    res.gt[i][-1] = res.lw[i]
                 else:
                     if res.lw[i] > 0:
-                        lam = (res.up[i] - res.lw[i]) / (x.up[i] - x.lw[i])
-                        res.gt[i] = res.lw[i] + lam * (x.gt[i] - x.lw[i])
+                        lam = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
                     else:
-                        ll = sigmoid(x.lw[i]) * (1 - sigmoid(x.lw[i]))
-                        uu = sigmoid(x.up[i]) * (1 - sigmoid(x.up[i]))
+                        ll = sigmoid(x_poly.lw[i]) * (1 - sigmoid(x_poly.lw[i]))
+                        uu = sigmoid(x_poly.up[i]) * (1 - sigmoid(x_poly.up[i]))
                         lam = min(ll, uu)
-                        res.gt[i] = res.lw[i] + lam * (x.gt[i] - x.lw[i])
+
+                    x_poly.gt[i][-1] = x_poly.gt[i][-1] - x_poly.lw[i]
+                    res.gt[i] = lam * x_poly.gt[i]
+                    res.gt[i][-1] = res.gt[i][-1] + res.lw[i]
 
                     if res.up[i] <= 0:
-                        lam = (res.up[i] - res.lw[i]) / (x.up[i] - x.lw[i])
-                        res.lt[i] = res.up[i] + lam * (x.lt[i] - x.up[i])
+                        lam = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
                     else:
-                        ll = sigmoid(x.lw[i]) * (1 - sigmoid(x.lw[i]))
-                        uu = sigmoid(x.up[i]) * (1 - sigmoid(x.up[i]))
+                        ll = sigmoid(x_poly.lw[i]) * (1 - sigmoid(x_poly.lw[i]))
+                        uu = sigmoid(x_poly.up[i]) * (1 - sigmoid(x_poly.up[i]))
                         lam = min(ll, uu)
-                        res.lt[i] = res.up[i] + lam * (x.lt[i] - x.up[i])
+
+                    x_poly.lt[i][-1] = x_poly.lt[i][-1] - x_poly.up[i]
+                    res.lt[i] = lam * x_poly.lt[i]
+                    res.lt[i][-1] = res.lt[i][-1] + res.up[i]
 
         elif self.func == tanh:
-            res.lw = tanh(x.lw)
-            res.up = tanh(x.up)
+            res.lw = tanh(x_poly.lw)
+            res.up = tanh(x_poly.up)
 
             for i in range(no_neurons):
                 if res.lw[i] == res.up[i]:
-                    res.lt[i][no_features - 1] = res.lw[i]
-                    res.gt[i][no_features - 1] = res.lw[i]
+                    res.lt[i][-1] = res.lw[i]
+                    res.gt[i][-1] = res.lw[i]
                 else:
                     if res.lw[i] > 0:
-                        lam = (res.up[i] - res.lw[i]) / (x.up[i] - x.lw[i])
-                        res.gt[i] = res.lw[i] + lam * (x.gt[i] - x.lw[i])
+                        lam = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
                     else:
-                        ll = 1 - pow(tanh(x.lw[i]), 2)
-                        uu = 1 - pow(tanh(x.up[i]), 2)
+                        ll = 1 - pow(tanh(x_poly.lw[i]), 2)
+                        uu = 1 - pow(tanh(x_poly.up[i]), 2)
                         lam = min(ll, uu)
-                        res.gt[i] = res.lw[i] + lam * (x.gt[i] - x.lw[i])
+
+                    x_poly.gt[i][-1] = x_poly.gt[i][-1] - x_poly.lw[i]
+                    res.gt[i] = lam * x_poly.gt[i]
+                    res.gt[i][-1] = res.gt[i][-1] + res.lw[i]
 
                     if res.up[i] <= 0:
-                        lam = (res.up[i] - res.lw[i]) / (x.up[i] - x.lw[i])
-                        res.lt[i] = res.up[i] + lam * (x.lt[i] - x.up[i])
+                        lam = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
                     else:
-                        ll = 1 - pow(tanh(x.lw[i]), 2)
-                        uu = 1 - pow(tanh(x.up[i]), 2)
+                        ll = 1 - pow(tanh(x_poly.lw[i]), 2)
+                        uu = 1 - pow(tanh(x_poly.up[i]), 2)
                         lam = min(ll, uu)
-                        res.lt[i] = res.up[i] + lam * (x.lt[i] - x.up[i])
+
+                    x_poly.lt[i][-1] = x_poly.lt[i][-1] - x_poly.up[i]
+                    res.lt[i] = lam * x_poly.lt[i]
+                    res.lt[i][-1] = res.lt[i][-1] + res.up[i]
 
         return res
 
