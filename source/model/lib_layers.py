@@ -44,7 +44,8 @@ class Function(Layer):
                     res.up[i] = x.up[i]
                 else:
                     # choose lambda = 0
-                    res.lt[i] = x.up[i] * (x.lt[i] - x.lw[i]) / (x.up[i] - x.lw[i])
+                    x.lt[i][-1] = x.lt[i][-1] - x.lw[i]
+                    res.lt[i] = x.up[i] * x.lt[i] / (x.up[i] - x.lw[i])
                     res.up[i] = x.up[i]
 
         elif self.func == sigmoid:
