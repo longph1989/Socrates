@@ -23,11 +23,11 @@ class Function(Layer):
         # x = (50,785)
         res = Poly()
 
-        no_features = len(x0_poly.lt[0])
+        no_features = len(x0_poly.lw)
         no_neurons = len(x_poly.lw)
 
-        res.lt = np.zeros([no_neurons, no_features])
-        res.gt = np.zeros([no_neurons, no_features])
+        res.lt = np.zeros([no_neurons, no_features + 1])
+        res.gt = np.zeros([no_neurons, no_features + 1])
 
         res.lw = np.zeros(no_neurons)
         res.up = np.zeros(no_neurons)
@@ -116,6 +116,23 @@ class Function(Layer):
                     res.lt[i] = lam2 * x_poly.lt[i]
                     res.lt[i][-1] = res.lt[i][-1] + res.up[i]
 
+        elif self.func.__name__ == 'reshape':
+            shape = self.func.keywords['newshape']
+            shape = [*self.shape[1:], no_features + 1]
+
+            import numpy as rnp
+
+            res.lt = rnp.reshape(res.lt, shape)
+            res.gt = rnp.reshape(res.gt, shape)
+
+        elif self.func.__name__ == 'transpose':
+            axes = self.func.keywords['axes']
+
+            import numpy as rnp
+
+            res.lt = rnp.transpose(res.lt, axes)
+            res.gt = rnp.transpose(res.gt, axes)
+
         return res
 
     def is_poly_exact(self):
@@ -139,6 +156,8 @@ class Linear(Layer):
         # weights = (784,50)
         # bias = (1,50)
         # res = (50,785)
+
+        assert self.func == None, "self.func should be None"
 
         res = Poly()
 
@@ -182,15 +201,15 @@ class Linear(Layer):
             res.lw[i] = res.lw[i] + res.gt[i,-1]
             res.up[i] = res.up[i] + res.lt[i,-1]
 
-        if self.func != None:
-            if self.func == relu:
-                func = Function('relu', None)
-            elif self.func == sigmoid:
-                func = Function('sigmoid', None)
-            elif self.func == tanh:
-                func = Function('tanh', None)
-
-            res = func.apply_poly(res, x0_poly)
+        # if self.func != None:
+        #     if self.func == relu:
+        #         func = Function('relu', None)
+        #     elif self.func == sigmoid:
+        #         func = Function('sigmoid', None)
+        #     elif self.func == tanh:
+        #         func = Function('tanh', None)
+        #
+        #     res = func.apply_poly(res, x0_poly)
 
         return res
 
