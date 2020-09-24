@@ -208,7 +208,7 @@ class DeepCegarImpl():
         leni = len(xi_poly.lw)
 
         x = np.zeros(len0 + leni)
-        args = (model, leni, y0, idx)
+        args = (model, len0, leni, y0, idx)
         jac = grad(self.__obj_func)
 
         lw = np.concatenate([xi_poly.lw, x0_poly.lw])
@@ -237,10 +237,17 @@ class DeepCegarImpl():
             return True, np.empty(0)
 
 
-    def __obj_func(self, x, model, leni, y0, idx):
+    def __obj_func(self, x, model, len0, leni, y0, idx):
+        x0 = x[-len0:]
         xi = x[:leni]
+
+        tmp = model.apply_to(x0, idx)
+
+        xi = xi.reshape(tmp.shape)
         output = model.apply_from(xi, idx)
         y0_score = output[0][y0]
+
+        print('output = {}'.format(output))
 
         output = output - np.eye(output[0].size)[y0] * 1e9
         max_score = np.max(output)

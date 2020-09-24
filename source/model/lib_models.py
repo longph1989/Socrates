@@ -49,9 +49,7 @@ class Model:
             # only work when layers is not None
             raise NameError('Not support yet!')
 
-        shape_i = [1, *self.shape[1:]]
-
-        output = x.reshape(shape_i) # no need for recurrent yet
+        output = x # no need for recurrent yet
         for i in range(len(self.layers)):
             if i >= fromIdx:
                 layer = self.layers[i]
