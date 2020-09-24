@@ -136,7 +136,10 @@ class Function(Layer):
         return res
 
     def is_poly_exact(self):
-        return False
+        if self.func == relu or self.func == sigmoid or self.func == tanh:
+            return False
+        else:
+            return True
 
 
 class Linear(Layer):
