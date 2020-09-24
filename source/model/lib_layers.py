@@ -479,7 +479,7 @@ class MaxPool1d(Layer):
         k_l = self.kernel
 
         p = self.padding
-        x_pad = np.pad(x, ((0,0), (0,0), (p,p)), mode='constant')
+        x_pad = np.pad(x, ((0,0), (0,0), (p,p)), mode='constant', constant_values=(-10e9))
         x_n, x_c, x_l = x_pad.shape
 
         res_l = int((x_l - k_l) / self.stride) + 1
@@ -505,7 +505,7 @@ class MaxPool2d(Layer):
         k_h, k_w = self.kernel
 
         p = self.padding
-        x_pad = np.pad(x, ((0,0), (0,0), (p,p), (p,p)), mode='constant')
+        x_pad = np.pad(x, ((0,0), (0,0), (p,p), (p,p)), mode='constant', constant_values=(-10e9))
         x_n, x_c, x_h, x_w = x_pad.shape
 
         res_h = int((x_h - k_h) / self.stride) + 1
@@ -533,7 +533,7 @@ class MaxPool3d(Layer):
         k_d, k_h, k_w = self.kernel
 
         p = self.padding
-        x_pad = np.pad(x, ((0,0), (0,0), (p,p), (p,p), (p,p)), mode='constant')
+        x_pad = np.pad(x, ((0,0), (0,0), (p,p), (p,p), (p,p)), mode='constant', constant_values=(-10e9))
         x_n, x_c, x_d, x_h, x_w = x_pad.shape
 
         res_d = int((x_d - k_d) / self.stride) + 1
