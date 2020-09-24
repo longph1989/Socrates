@@ -143,16 +143,16 @@ class Linear(Layer):
         res = Poly()
 
         no_features = len(x0_poly.lw)
-        no_neurons = len(self.weights[0])
+        no_curr_ns = len(self.weights[0])
         no_prev_ns = len(x_poly.lw)
 
-        res.lt = np.zeros([no_neurons, no_features + 1])
-        res.gt = np.zeros([no_neurons, no_features + 1])
+        res.lt = np.zeros([no_curr_ns, no_features + 1])
+        res.gt = np.zeros([no_curr_ns, no_features + 1])
 
-        res.lw = np.zeros(no_neurons)
-        res.up = np.zeros(no_neurons)
+        res.lw = np.zeros(no_curr_ns)
+        res.up = np.zeros(no_curr_ns)
 
-        for i in range(no_neurons): # 0 to 50
+        for i in range(no_curr_ns): # 0 to 50
             for j in range(no_prev_ns): # 0 to 784
                 if self.weights[j,i] > 0:
                     res.lt[i] = res.lt[i] + x_poly.lt[j] * self.weights[j,i]
@@ -167,7 +167,7 @@ class Linear(Layer):
             res.lt[i,-1] = res.lt[i,-1] + self.bias[0,i]
             res.gt[i,-1] = res.gt[i,-1] + self.bias[0,i]
 
-        for i in range(no_neurons):
+        for i in range(no_curr_ns):
             for j in range(no_features):
                 if res.gt[i,j] > 0:
                     res.lw[i] = res.lw[i] + res.gt[i,j] * x0_poly.lw[j]
@@ -342,6 +342,76 @@ class Conv2d(Layer):
         res = res.reshape(1, f_n, res_h, res_w)
 
         return res
+
+    def apply_poly(self, x_poly, x0_poly):
+        res = Poly()
+
+        no_features = len(x0_poly.lw)
+
+        f_n, f_c, f_h, f_w = self.filters.shape
+        f = self.filters.reshape(f_n, -1)
+
+        b = self.bias.reshape(f_n, -1)
+
+        p = self.padding
+
+        x_lt = np.pad(x_poly.lt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
+        x_gt = np.pad(x_poly.gt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
+
+        # notice that we always have x_n = 1 and so can reduce 1 dimension
+        x_c, x_h, x_w, _ = x_lt.shape
+
+        res_h = int((x_h - f_h) / self.stride) + 1
+        res_w = int((x_w - f_w) / self.stride) + 1
+        size_f = f_c * f_h * f_w
+        size_r = res_h * res_w
+
+        c_idx, h_idx, w_idx = index2d(x_c, self.stride, (f_h, f_w), (x_h, x_w))
+
+        x_lt = x_lt[c_idx, h_idx, w_idx, :]
+        x_lt = x_lt.reshape(size_f, size_r, no_features)
+
+        x_gt = x_gt[c_idx, h_idx, w_idx, :]
+        x_gt = x_gt.reshape(size_f, size_r, no_features)
+
+        res.lt = np.zeros(f_n, size_r, no_features)
+        res.gt = np.zeros(f_n, size_r, no_features)
+
+        res.lw = np.zeros(f_n * size_r)
+        res.up = np.zeros(f_n * size_r)
+
+        for i in range(f_n):
+            for j in range(size_r):
+                for k in range(size_f):
+                    res.lt[i,j] = res.lt[i,j] + f[i,k] * x_lt[k,j]
+                    res.gt[i,j] = res.gt[i,j] + f[i,k] * x_gt[k,j]
+
+                res.lt[i,j,-1] = res.lt[i,j,-1] + bias[i,0]
+                res.gt[i,j,-1] = res.gt[i,j,-1] + bias[i,0]
+
+        for i in range(f_n):
+            for j in range(size_r):
+                for k in range(no_features):
+                    if res.gt[i,j] > 0:
+                        res.lw[i * size_r + j] = res.lw[i * size_r + j] + res.gt[i,j,k] * x0_poly.lw[k]
+                    else:
+                        res.lw[i * size_r + j] = res.lw[i * size_r + j] + res.gt[i,j,k] * x0_poly.up[k]
+
+                    if res.lt[i,j] > 0:
+                        res.up[i * size_r + j] = res.up[i * size_r + j] + res.lt[i,j,k] * x0_poly.up[k]
+                    else:
+                        res.up[i * size_r + j] = res.up[i * size_r + j] + res.lt[i,j,k] * x0_poly.lw[k]
+
+                res.lw[i * size_r + j] = res.lw[i * size_r + j] + res.gt[i,j,-1]
+                res.up[i * size_r + j] = res.up[i * size_r + j] + res.lt[i,j,-1]
+
+        res.lt = res.lt.reshape(f_n, res_h, res_w, -1)
+        res.gt = res.gt.reshape(f_n, res_h, res_w, -1)
+
+        return res
+
+    def is_poly_exact(self):
+        return True
 
 
 class Conv3d(Layer):
