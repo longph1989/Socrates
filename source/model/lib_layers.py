@@ -118,12 +118,16 @@ class Function(Layer):
 
         elif self.func.__name__ == 'reshape':
             shape = self.func.keywords['newshape']
-            shape = [*self.shape[1:], no_features + 1]
+            shape1 = [*self.shape[1:], no_features + 1]
+            shape2 = [*self.shape[1:]]
 
             import numpy as rnp
 
-            res.lt = rnp.reshape(res.lt, shape)
-            res.gt = rnp.reshape(res.gt, shape)
+            res.lt = rnp.reshape(res.lt, shape1)
+            res.gt = rnp.reshape(res.gt, shape1)
+
+            res.lw = rnp.reshape(res.lw, shape2)
+            res.up = rnp.reshape(res.up, shape2)
 
         elif self.func.__name__ == 'transpose':
             axes = self.func.keywords['axes']
@@ -132,6 +136,9 @@ class Function(Layer):
 
             res.lt = rnp.transpose(res.lt, axes)
             res.gt = rnp.transpose(res.gt, axes)
+
+            res.lw = rnp.transpose(res.lw, axes)
+            res.up = rnp.transpose(res.up, axes)
 
         return res
 
@@ -429,6 +436,9 @@ class Conv2d(Layer):
 
         res.lt = res.lt.reshape(f_n, res_h, res_w, -1)
         res.gt = res.gt.reshape(f_n, res_h, res_w, -1)
+
+        res.lw = res.lw.reshape(f_n, res_h, res_w)
+        res.up = res.up.reshape(f_n, res_h, res_w)
 
         return res
 
