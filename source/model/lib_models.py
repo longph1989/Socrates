@@ -44,12 +44,16 @@ class Model:
         return output
 
 
-    def apply_from(self, x, fromIdx, y0=None):
+    def apply_from(self, x, fromIdx, y0=None, shape=None):
         if self.layers == None:
             # only work when layers is not None
             raise NameError('Not support yet!')
 
-        output = x # no need for recurrent yet
+        if shape == None:
+            output = x # no need for recurrent yet
+        else:
+            output = x.reshape(shape) # no need for recurrent yet
+
         for i in range(len(self.layers)):
             if i >= fromIdx:
                 layer = self.layers[i]
@@ -66,9 +70,9 @@ class Model:
             # only work when layers is not None
             raise NameError('Not support yet!')
 
-        shape_i = [1, *self.shape[1:]]
+        shape = [1, *self.shape[1:]]
 
-        output = x.reshape(shape_i) # no need for recurrent yet
+        output = x.reshape(shape) # no need for recurrent yet
         for i in range(len(self.layers)):
             if i < toIdx:
                 layer = self.layers[i]

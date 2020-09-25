@@ -120,7 +120,7 @@ class DeepCegarImpl():
 
                 x_tmp = model.apply_to(x, idx)
 
-                g = grad(model.apply_from)(x_tmp, idx, y0)
+                g = grad(model.apply_from)(x_tmp, idx, y0=y0)
                 ref_idx = np.argmax(g, axis=1)[0]
 
                 func = model.layers[idx].func
