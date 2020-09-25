@@ -392,6 +392,7 @@ class Conv2d(Layer):
 
         res_h = int((x_h - f_h) / self.stride) + 1
         res_w = int((x_w - f_w) / self.stride) + 1
+
         size_f = f_c * f_h * f_w
         size_r = res_h * res_w
 
@@ -531,6 +532,69 @@ class MaxPool2d(Layer):
         res = res.reshape(1, x_c, res_h, res_w)
 
         return res
+
+    def apply_poly(self, x_poly, x0_poly):
+        res = Poly()
+
+        no_features = len(x0_poly.lw)
+
+        k_h, k_w = self.kernel
+
+        p = self.padding
+
+        x_lt = np.pad(x_poly.lt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
+        x_gt = np.pad(x_poly.gt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
+
+        x_lw = np.pad(x_poly.lw, ((0,0), (p,p), (p,p)), mode='constant')
+        x_up = np.pad(x_poly.up, ((0,0), (p,p), (p,p)), mode='constant')
+
+        # notice that we always have x_n = 1 and so can reduce 1 dimension
+        x_c, x_h, x_w, _ = x_lt.shape
+
+        res_h = int((x_h - f_h) / self.stride) + 1
+        res_w = int((x_w - f_w) / self.stride) + 1
+
+        size_k = k_h * k_w
+        size_r = res_h * res_w
+
+        c_idx, h_idx, w_idx = index2d(x_c, self.stride, self.kernel, (x_h, x_w))
+
+        x_lt = x_lt[c_idx, h_idx, w_idx, :]
+        x_lt = x_lt.reshape(x_c, size_k, no_features)
+
+        x_gt = x_gt[c_idx, h_idx, w_idx, :]
+        x_gt = x_gt.reshape(x_c, size_k, no_features)
+
+        x_lw = x_lw[c_idx, h_idx, w_idx]
+        x_lw = x_lw.reshape(x_c, size_k, -1)
+
+        x_up = x_up[c_idx, h_idx, w_idx]
+        x_up = x_up.reshape(x_c, size_k, -1)
+
+        res.lw = np.max(x_lw, axis=1)
+        lw_idx = np.argmax(x_lw, axis=1)
+
+        res.up = np.max(x_up, axis=1)
+        up_idx = np.argmax(x_up, axis=1)
+
+        res.gt = x_gt[range(len(lw_idx)),lw_idx]
+        res.lt = res.gt
+
+        for i in range(x_c * size_r):
+            if lw_idx[i] != up_idx[i]:
+                res.lt[i] = np.zeros(no_features + 1)
+                res.lt[i,-1] = res.up[i]
+
+        res.lt = res.lt.reshape(x_c, res_h, res_w, -1)
+        res.gt = res.gt.reshape(x_c, res_h, res_w, -1)
+
+        res.lw = res.lw.reshape(x_c, res_h, res_w)
+        res.up = res.up.reshape(x_c, res_h, res_w)
+
+        return res
+
+    def is_poly_exact(self):
+        return False
 
 
 class MaxPool3d(Layer):
