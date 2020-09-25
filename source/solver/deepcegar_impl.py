@@ -45,6 +45,14 @@ class DeepCegarImpl():
         print('x0_poly.lt = \n{}'.format(x0_poly.lt))
         print('x0_poly.gt = \n{}'.format(x0_poly.gt))
 
+        shape = [*model.shape[1:]]
+
+        x0_poly.lw.reshape(shape)
+        x0_poly.up.reshape(shape)
+
+        x0_poly.lt.reshape(shape, -1)
+        x0_poly.gt.reshape(shape, -1)
+
         res, x = self.__validate_x0(model, x0_poly, y0)
         if not res:
             y = np.argmax(model.apply(x), axis=1)[0]

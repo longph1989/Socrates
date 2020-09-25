@@ -26,11 +26,11 @@ class Function(Layer):
         no_features = len(x0_poly.lw)
         no_neurons = len(x_poly.lw)
 
-        res.lt = np.zeros([no_neurons, no_features + 1])
-        res.gt = np.zeros([no_neurons, no_features + 1])
-
         res.lw = np.zeros(no_neurons)
         res.up = np.zeros(no_neurons)
+
+        res.lt = np.zeros([no_neurons, no_features + 1])
+        res.gt = np.zeros([no_neurons, no_features + 1])
 
         if self.func == relu:
             for i in range(no_neurons):
@@ -118,27 +118,23 @@ class Function(Layer):
 
         elif self.func.__name__ == 'reshape':
             shape = self.func.keywords['newshape']
-            shape1 = [*self.shape[1:], no_features + 1]
-            shape2 = [*self.shape[1:]]
+            shape1 = [*self.shape[1:]]
+            shape2 = [*self.shape[1:], no_features + 1]
 
-            import numpy as rnp
+            res.lw.reshape(shape1)
+            res.up.reshape(shape1)
 
-            res.lt = rnp.reshape(res.lt, shape1)
-            res.gt = rnp.reshape(res.gt, shape1)
-
-            res.lw = rnp.reshape(res.lw, shape2)
-            res.up = rnp.reshape(res.up, shape2)
+            res.lt.reshape(shape2)
+            res.gt.reshape(shape2)
 
         elif self.func.__name__ == 'transpose':
             axes = self.func.keywords['axes']
 
-            import numpy as rnp
+            res.lw.transpose(axes)
+            res.up.transpose(axes)
 
-            res.lt = rnp.transpose(res.lt, axes)
-            res.gt = rnp.transpose(res.gt, axes)
-
-            res.lw = rnp.transpose(res.lw, axes)
-            res.up = rnp.transpose(res.up, axes)
+            res.lt.transpose(axes)
+            res.gt.transpose(axes)
 
         return res
 
@@ -175,11 +171,11 @@ class Linear(Layer):
         no_curr_ns = len(self.weights[0])
         no_prev_ns = len(x_poly.lw)
 
-        res.lt = np.zeros([no_curr_ns, no_features + 1])
-        res.gt = np.zeros([no_curr_ns, no_features + 1])
-
         res.lw = np.zeros(no_curr_ns)
         res.up = np.zeros(no_curr_ns)
+
+        res.lt = np.zeros([no_curr_ns, no_features + 1])
+        res.gt = np.zeros([no_curr_ns, no_features + 1])
 
         for i in range(no_curr_ns): # 0 to 50
             for j in range(no_prev_ns): # 0 to 784
@@ -404,11 +400,11 @@ class Conv2d(Layer):
         x_gt = x_gt[c_idx, h_idx, w_idx, :]
         x_gt = x_gt.reshape(size_f, size_r, no_features)
 
-        res.lt = np.zeros(f_n, size_r, no_features)
-        res.gt = np.zeros(f_n, size_r, no_features)
-
         res.lw = np.zeros(f_n * size_r)
         res.up = np.zeros(f_n * size_r)
+
+        res.lt = np.zeros(f_n, size_r, no_features)
+        res.gt = np.zeros(f_n, size_r, no_features)
 
         for i in range(f_n):
             for j in range(size_r):
@@ -435,11 +431,11 @@ class Conv2d(Layer):
                 res.lw[i * size_r + j] = res.lw[i * size_r + j] + res.gt[i,j,-1]
                 res.up[i * size_r + j] = res.up[i * size_r + j] + res.lt[i,j,-1]
 
-        res.lt = res.lt.reshape(f_n, res_h, res_w, -1)
-        res.gt = res.gt.reshape(f_n, res_h, res_w, -1)
-
         res.lw = res.lw.reshape(f_n, res_h, res_w)
         res.up = res.up.reshape(f_n, res_h, res_w)
+
+        res.lt = res.lt.reshape(f_n, res_h, res_w, -1)
+        res.gt = res.gt.reshape(f_n, res_h, res_w, -1)
 
         return res
 
@@ -542,11 +538,11 @@ class MaxPool2d(Layer):
 
         p = self.padding
 
-        x_lt = np.pad(x_poly.lt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
-        x_gt = np.pad(x_poly.gt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
-
         x_lw = np.pad(x_poly.lw, ((0,0), (p,p), (p,p)), mode='constant')
         x_up = np.pad(x_poly.up, ((0,0), (p,p), (p,p)), mode='constant')
+
+        x_lt = np.pad(x_poly.lt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
+        x_gt = np.pad(x_poly.gt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
 
         # notice that we always have x_n = 1 and so can reduce 1 dimension
         x_c, x_h, x_w, _ = x_lt.shape
@@ -559,17 +555,17 @@ class MaxPool2d(Layer):
 
         c_idx, h_idx, w_idx = index2d(x_c, self.stride, self.kernel, (x_h, x_w))
 
-        x_lt = x_lt[c_idx, h_idx, w_idx, :]
-        x_lt = x_lt.reshape(x_c, size_k, no_features)
-
-        x_gt = x_gt[c_idx, h_idx, w_idx, :]
-        x_gt = x_gt.reshape(x_c, size_k, no_features)
-
         x_lw = x_lw[c_idx, h_idx, w_idx]
         x_lw = x_lw.reshape(x_c, size_k, -1)
 
         x_up = x_up[c_idx, h_idx, w_idx]
         x_up = x_up.reshape(x_c, size_k, -1)
+
+        x_lt = x_lt[c_idx, h_idx, w_idx, :]
+        x_lt = x_lt.reshape(x_c, size_k, no_features)
+
+        x_gt = x_gt[c_idx, h_idx, w_idx, :]
+        x_gt = x_gt.reshape(x_c, size_k, no_features)
 
         res.lw = np.max(x_lw, axis=1)
         lw_idx = np.argmax(x_lw, axis=1)
