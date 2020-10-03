@@ -81,7 +81,7 @@ class Model:
         return output
 
 
-    def forward(self, x_poly, x0_poly, idx):
+    def forward(self, x_poly, x0_poly, idx, lst_poly):
         if self.layers == None:
             # only work when layers is not None
             raise NameError('Not support yet!')
@@ -90,7 +90,7 @@ class Model:
         for i in range(len(self.layers)):
             if i == idx:
                 layer = self.layers[i]
-                output = layer.apply_poly(output, x0_poly)
+                output = layer.apply_poly(output, x0_poly, lst_poly)
                 break
 
         return output

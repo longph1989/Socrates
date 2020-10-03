@@ -19,33 +19,31 @@ class Function(Layer):
     def apply(self, x):
         return self.func(x)
 
-    def apply_poly(self, x_poly, x0_poly):
-        # x = (50,785)
+    def apply_poly(self, x_poly, x0_poly, lst_poly):
         res = Poly()
 
-        no_features = len(x0_poly.lw)
         no_neurons = len(x_poly.lw)
 
         res.lw = np.zeros(no_neurons)
         res.up = np.zeros(no_neurons)
 
-        res.lt = np.zeros([no_neurons, no_features + 1])
-        res.gt = np.zeros([no_neurons, no_features + 1])
+        res.lt = np.zeros([no_neurons, no_neurons + 1])
+        res.gt = np.zeros([no_neurons, no_neurons + 1])
 
         if self.func == relu:
             for i in range(no_neurons):
                 if x_poly.up[i] <= 0:
                     pass
                 elif x_poly.lw[i] >= 0:
-                    res.lt[i] = x_poly.lt[i]
-                    res.gt[i] = x_poly.gt[i]
+                    res.lt[i,i] = 1
+                    res.gt[i,i] = 1
 
                     res.lw[i] = x_poly.lw[i]
                     res.up[i] = x_poly.up[i]
                 else:
                     # choose lambda = 0
-                    x_poly.lt[i][-1] = x_poly.lt[i][-1] - x_poly.lw[i]
-                    res.lt[i] = x_poly.up[i] * x_poly.lt[i] / (x_poly.up[i] - x_poly.lw[i])
+                    res.lt[i,i] = x_poly.up[i] / (x_poly.up[i] - x_poly.lw[i])
+                    res.lt[i,-1] = - x_poly.up[i] * x_poly.lw[i] / (x_poly.up[i] - x_poly.lw[i])
                     res.up[i] = x_poly.up[i]
 
         elif self.func == sigmoid:
@@ -53,13 +51,13 @@ class Function(Layer):
             res.up = sigmoid(x_poly.up)
 
             for i in range(no_neurons):
-                if res.lw[i] == res.up[i]:
+                if x_poly.lw[i] == x_poly.up[i]:
                     res.lt[i][-1] = res.lw[i]
                     res.gt[i][-1] = res.lw[i]
                 else:
-                    if res.lw[i] > 0:
+                    if x_poly.lw[i] > 0:
                         lam1 = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
-                        if res.up[i] <= 0:
+                        if x_poly.up[i] <= 0:
                             lam2 = lam1
                         else:
                             ll = sigmoid(x_poly.lw[i]) * (1 - sigmoid(x_poly.lw[i]))
@@ -69,31 +67,29 @@ class Function(Layer):
                         ll = sigmoid(x_poly.lw[i]) * (1 - sigmoid(x_poly.lw[i]))
                         uu = sigmoid(x_poly.up[i]) * (1 - sigmoid(x_poly.up[i]))
                         lam1 = min(ll, uu)
-                        if res.up[i] <= 0:
+                        if x_poly.up[i] <= 0:
                             lam2 = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
                         else:
                             lam2 = lam1
 
-                    x_poly.gt[i][-1] = x_poly.gt[i][-1] - x_poly.lw[i]
-                    res.gt[i] = lam1 * x_poly.gt[i]
-                    res.gt[i][-1] = res.gt[i][-1] + res.lw[i]
+                    res.gt[i,i] = lam1
+                    res.gt[i,-1] = res.lw[i] - lam1 * x_poly.lw[i]
 
-                    x_poly.lt[i][-1] = x_poly.lt[i][-1] - x_poly.up[i]
-                    res.lt[i] = lam2 * x_poly.lt[i]
-                    res.lt[i][-1] = res.lt[i][-1] + res.up[i]
+                    res.lt[i,i] = lam2
+                    res.lt[i,-1] = res.up[i] - lam2 * x_poly.up[i]
 
         elif self.func == tanh:
             res.lw = tanh(x_poly.lw)
             res.up = tanh(x_poly.up)
 
             for i in range(no_neurons):
-                if res.lw[i] == res.up[i]:
+                if x_poly.lw[i] == x_poly.up[i]:
                     res.lt[i][-1] = res.lw[i]
                     res.gt[i][-1] = res.lw[i]
                 else:
-                    if res.lw[i] > 0:
+                    if x_poly.lw[i] > 0:
                         lam1 = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
-                        if res.up[i] <= 0:
+                        if x_poly.up[i] <= 0:
                             lam2 = lam1
                         else:
                             ll = 1 - pow(tanh(x_poly.lw[i]), 2)
@@ -103,38 +99,16 @@ class Function(Layer):
                         ll = 1 - pow(tanh(x_poly.lw[i]), 2)
                         uu = 1 - pow(tanh(x_poly.up[i]), 2)
                         lam1 = min(ll, uu)
-                        if res.up[i] <= 0:
+                        if x_poly.up[i] <= 0:
                             lam2 = (res.up[i] - res.lw[i]) / (x_poly.up[i] - x_poly.lw[i])
                         else:
                             lam2 = lam1
 
-                    x_poly.gt[i][-1] = x_poly.gt[i][-1] - x_poly.lw[i]
-                    res.gt[i] = lam1 * x_poly.gt[i]
-                    res.gt[i][-1] = res.gt[i][-1] + res.lw[i]
+                    res.gt[i,i] = lam1
+                    res.gt[i,-1] = res.lw[i] - lam1 * x_poly.lw[i]
 
-                    x_poly.lt[i][-1] = x_poly.lt[i][-1] - x_poly.up[i]
-                    res.lt[i] = lam2 * x_poly.lt[i]
-                    res.lt[i][-1] = res.lt[i][-1] + res.up[i]
-
-        elif self.func.__name__ == 'reshape':
-            shape = self.func.keywords['newshape']
-            shape1 = [*self.shape[1:]]
-            shape2 = [*self.shape[1:], no_features + 1]
-
-            res.lw.reshape(shape1)
-            res.up.reshape(shape1)
-
-            res.lt.reshape(shape2)
-            res.gt.reshape(shape2)
-
-        elif self.func.__name__ == 'transpose':
-            axes = self.func.keywords['axes']
-
-            res.lw.transpose(axes)
-            res.up.transpose(axes)
-
-            res.lt.transpose(axes)
-            res.gt.transpose(axes)
+                    res.lt[i,i] = lam2
+                    res.lt[i,-1] = res.up[i] - lam2 * x_poly.up[i]
 
         return res
 
@@ -157,65 +131,67 @@ class Linear(Layer):
         else:
             return self.func(x @ self.weights + self.bias)
 
-    def apply_poly(self, x_poly, x0_poly):
-        # x = (784,785)
-        # weights = (784,50)
-        # bias = (1,50)
-        # res = (50,785)
-
+    def apply_poly(self, x_poly, x0_poly, lst_poly):
         assert self.func == None, "self.func should be None"
 
         res = Poly()
 
-        no_features = len(x0_poly.lw)
-        no_curr_ns = len(self.weights[0])
-        no_prev_ns = len(x_poly.lw)
+        weights = self.weights.transpose(1, 0)
+        bias = self.bias.transpose(1, 0)
+
+        no_curr_ns = len(bias)
+
+        res.lt = np.concatenate([weights, bias], axis=1)
+        res.gt = np.concatenate([weights, bias], axis=1)
 
         res.lw = np.zeros(no_curr_ns)
         res.up = np.zeros(no_curr_ns)
 
-        res.lt = np.zeros([no_curr_ns, no_features + 1])
-        res.gt = np.zeros([no_curr_ns, no_features + 1])
+        lt_curr = res.lt
+        gt_curr = res.gt
 
-        for i in range(no_curr_ns): # 0 to 50
-            for j in range(no_prev_ns): # 0 to 784
-                if self.weights[j,i] > 0:
-                    res.lt[i] = res.lt[i] + x_poly.lt[j] * self.weights[j,i]
-                else:
-                    res.lt[i] = res.lt[i] + x_poly.gt[j] * self.weights[j,i]
+        for k, e in reversed(list(enumerate(lst_poly))):
+            lt_prev = e.lt
+            gt_prev = e.gt
 
-                if self.weights[j,i] > 0:
-                    res.gt[i] = res.gt[i] + x_poly.gt[j] * self.weights[j,i]
-                else:
-                    res.gt[i] = res.gt[i] + x_poly.lt[j] * self.weights[j,i]
+            no_e_ns = len(e.lw)
 
-            res.lt[i,-1] = res.lt[i,-1] + self.bias[0,i]
-            res.gt[i,-1] = res.gt[i,-1] + self.bias[0,i]
+            if k > 0:
+                lt = np.zeros([no_curr_ns, no_e_ns + 1])
+                gt = np.zeros([no_curr_ns, no_e_ns + 1])
 
-        for i in range(no_curr_ns):
-            for j in range(no_features):
-                if res.gt[i,j] > 0:
-                    res.lw[i] = res.lw[i] + res.gt[i,j] * x0_poly.lw[j]
-                else:
-                    res.lw[i] = res.lw[i] + res.gt[i,j] * x0_poly.up[j]
+                for i in range(no_curr_ns):
+                    for j in range(no_e_ns):
+                        if lt_curr[i,j] > 0:
+                            lt[i] = lt[i] + lt_curr[i,j] * lt_prev[j]
+                        elif lt_curr[i,j] < 0:
+                            lt[i] = lt[i] + lt_curr[i,j] * gt_prev[j]
 
-                if res.lt[i,j] > 0:
-                    res.up[i] = res.up[i] + res.lt[i,j] * x0_poly.up[j]
-                else:
-                    res.up[i] = res.up[i] + res.lt[i,j] * x0_poly.lw[j]
+                        if gt_curr[i,j] > 0:
+                            gt[i] = gt[i] + gt_curr[i,j] * gt_prev[j]
+                        elif gt_curr[i,j] < 0:
+                            gt[i] = gt[i] + gt_curr[i,j] * lt_prev[j]
 
-            res.lw[i] = res.lw[i] + res.gt[i,-1]
-            res.up[i] = res.up[i] + res.lt[i,-1]
+                    lt[i,-1] = lt[i,-1] + lt_curr[i,-1]
+                    gt[i,-1] = gt[i,-1] + gt_curr[i,-1]
 
-        # if self.func != None:
-        #     if self.func == relu:
-        #         func = Function('relu', None)
-        #     elif self.func == sigmoid:
-        #         func = Function('sigmoid', None)
-        #     elif self.func == tanh:
-        #         func = Function('tanh', None)
-        #
-        #     res = func.apply_poly(res, x0_poly)
+                lt_curr = lt
+                gt_curr = gt
+            else:
+                for i in range(no_curr_ns):
+                    for j in range(no_e_ns):
+                        if gt_curr[i,j] > 0:
+                            res.lw[i] = res.lw[i] + gt_curr[i,j] * x0_poly.lw[j]
+                        elif gt_curr[i,j] < 0:
+                            res.lw[i] = res.lw[i] + gt_curr[i,j] * x0_poly.up[j]
+
+                        if lt_curr[i,j] > 0:
+                            res.up[i] = res.up[i] + lt_curr[i,j] * x0_poly.up[j]
+                        elif lt_curr[i,j] < 0:
+                            res.up[i] = res.up[i] + lt_curr[i,j] * x0_poly.lw[j]
+
+                    res.lw[i] = res.lw[i] + gt_curr[i,-1]
+                    res.up[i] = res.up[i] + lt_curr[i,-1]
 
         return res
 
