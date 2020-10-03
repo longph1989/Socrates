@@ -89,7 +89,7 @@ class DeepCegarImpl():
                     coefs_curr = np.zeros(no_neurons + 1)
                     coefs_curr[y0] = 1
                     coefs_curr[lbl] = -1
-                    
+
                     for k, e in reversed(list(enumerate(lst_poly))):
                         lt_prev = e.lt
                         gt_prev = e.gt
@@ -126,7 +126,6 @@ class DeepCegarImpl():
             return True
         else:
             xi_poly_curr = model.forward(xi_poly_prev, x0_poly, idx, lst_poly)
-            lst_poly.append(xi_poly_curr)
 
             print('xi_poly_curr.lw = {}'.format(xi_poly_curr.lw))
             print('xi_poly_curr.up = {}'.format(xi_poly_curr.up))
@@ -134,41 +133,44 @@ class DeepCegarImpl():
             print('xi_poly_curr.lt = \n{}'.format(xi_poly_curr.lt))
             print('xi_poly_curr.gt = \n{}'.format(xi_poly_curr.gt))
 
-            return self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1, lst_poly)
+            if model.layers[idx].is_poly_exact():
+                lst_poly.append(xi_poly_curr)
+                return self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1, lst_poly)
 
-            # if model.layers[idx].is_poly_exact():
-            #     return self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1)
-            #
-            # res, x = self.__validate(model, x0_poly, y0, xi_poly_curr, idx + 1)
-            #
-            # if not res:
-            #     # a counter example is found, should be fake
-            #     print('Fake adversarial sample found!')
-            #
-            #     if self.count_ref >= self.max_ref:
-            #         return False
-            #     else:
-            #         self.count_ref = self.count_ref + 1
-            #
-            #     len0 = len(x0_poly.lw)
-            #     x = x[-len0:]
-            #
-            #     x_tmp = model.apply_to(x, idx)
-            #
-            #     g = grad(model.apply_from)(x_tmp, idx, y0=y0)
-            #     ref_idx = np.argmax(g, axis=1)[0]
-            #
-            #     func = model.layers[idx].func
-            #
-            #     xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_idx, x_tmp, func)
-            #
-            #     if self.__verify(model, x0_poly, y0, xi_poly_prev1, idx):
-            #         return self.__verify(model, x0_poly, y0, xi_poly_prev2, idx)
-            #     else:
-            #         return False
-            # else:
-            #     # ok, continue
-            #     return self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1)
+            res, x = self.__validate(model, x0_poly, y0, xi_poly_curr, idx + 1)
+
+            if not res:
+                # a counter example is found, should be fake
+                print('Fake adversarial sample found!')
+
+                if self.count_ref >= self.max_ref:
+                    return False
+                else:
+                    self.count_ref = self.count_ref + 1
+
+                # len0 = len(x0_poly.lw)
+                # x = x[-len0:]
+
+                # x_tmp = model.apply_to(x, idx)
+
+                # g = grad(model.apply_from)(x_tmp, idx, y0=y0)
+                g = grad(model.apply_from)(x, idx, y0=y0)
+                ref_idx = np.argmax(g, axis=1)[0]
+
+                func = model.layers[idx].func
+
+                xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_idx, x_tmp, func)
+                lst_poly1 = lst_poly[0:-1].append(xi_poly_prev1)
+                lst_poly2 = lst_poly[0:-1].append(xi_poly_prev2)
+
+                if self.__verify(model, x0_poly, y0, xi_poly_prev1, idx, lst_poly1):
+                    return self.__verify(model, x0_poly, y0, xi_poly_prev2, idx, lst_poly2)
+                else:
+                    return False
+            else:
+                # ok, continue
+                lst_poly.append(xi_poly_curr)
+                return self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1)
 
 
     def __refine(self, x_poly, idx, x_tmp, func):
@@ -242,27 +244,30 @@ class DeepCegarImpl():
         len0 = len(x0_poly.lw)
         leni = len(xi_poly.lw)
 
-        x = np.zeros(len0 + leni)
+        # x = np.zeros(len0 + leni)
+        x = np.zeros(leni)
         args = (model, len0, leni, y0, idx)
         jac = grad(self.__obj_func)
 
-        lw = np.concatenate([xi_poly.lw, x0_poly.lw])
-        up = np.concatenate([xi_poly.up, x0_poly.up])
+        # lw = np.concatenate([xi_poly.lw, x0_poly.lw])
+        # up = np.concatenate([xi_poly.up, x0_poly.up])
+        lw = np.concatenate([xi_poly.lw])
+        up = np.concatenate([xi_poly.up])
         bounds = Bounds(lw, up)
 
-        lt = np.eye(leni) * (-1)
-        gt = np.eye(leni)
-
-        lt = np.concatenate([lt, xi_poly.lt], axis=1)
-        gt = np.concatenate([gt, xi_poly.gt], axis=1)
+        # lt = np.eye(leni) * (-1)
+        # gt = np.eye(leni)
+        #
+        # lt = np.concatenate([lt, xi_poly.lt], axis=1)
+        # gt = np.concatenate([gt, xi_poly.gt], axis=1)
 
         constraints = list()
-        for coefs in lt:
-            fun = self.__generate_constrains(coefs)
-            constraints.append({'type': 'ineq', 'fun': fun})
-        for coefs in gt:
-            fun = self.__generate_constrains(coefs * (-1))
-            constraints.append({'type': 'ineq', 'fun': fun})
+        # for coefs in lt:
+        #     fun = self.__generate_constrains(coefs)
+        #     constraints.append({'type': 'ineq', 'fun': fun})
+        # for coefs in gt:
+        #     fun = self.__generate_constrains(coefs * (-1))
+        #     constraints.append({'type': 'ineq', 'fun': fun})
 
         res = minimize(self.__obj_func, x, args=args, jac=jac, bounds=bounds, constraints=constraints)
 
@@ -273,12 +278,14 @@ class DeepCegarImpl():
 
 
     def __obj_func(self, x, model, len0, leni, y0, idx):
-        x0 = x[-len0:]
-        xi = x[:leni]
+        # x0 = x[-len0:]
+        # xi = x[:leni]
+        x0 = np.zeros(len0)
 
         tmp = model.apply_to(x0, idx)
 
-        xi = xi.reshape(tmp.shape)
+        # xi = xi.reshape(tmp.shape)
+        xi = x.reshape(tmp.shape)
         output = model.apply_from(xi, idx)
         y0_score = output[0][y0]
 
