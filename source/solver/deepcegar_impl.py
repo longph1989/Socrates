@@ -7,6 +7,7 @@ from autograd import grad
 from assertion.lib_functions import di
 from utils import *
 
+
 class Poly():
     def __init__(self):
         self.lw = None
@@ -14,6 +15,67 @@ class Poly():
 
         self.lt = None
         self.gt = None
+
+    def back_substitute(self, lst_poly):
+        lt_curr = self.lt
+        gt_curr = self.gt
+
+        no_curr_ns = len(lt_curr)
+
+        lw = np.zeros(no_curr_ns)
+        up = np.zeros(no_curr_ns)
+
+        print(gt_curr)
+
+        for k, e in reversed(list(enumerate(lst_poly))):
+            lt_prev = e.lt
+            gt_prev = e.gt
+
+            no_e_ns = len(e.lw)
+
+            if k > 0:
+                lt = np.zeros([no_curr_ns, no_e_ns + 1])
+                gt = np.zeros([no_curr_ns, no_e_ns + 1])
+
+                for i in range(no_curr_ns):
+                    for j in range(no_e_ns):
+                        if lt_curr[i,j] > 0:
+                            lt[i] = lt[i] + lt_curr[i,j] * lt_prev[j]
+                        elif lt_curr[i,j] < 0:
+                            lt[i] = lt[i] + lt_curr[i,j] * gt_prev[j]
+
+                        if gt_curr[i,j] > 0:
+                            gt[i] = gt[i] + gt_curr[i,j] * gt_prev[j]
+                        elif gt_curr[i,j] < 0:
+                            gt[i] = gt[i] + gt_curr[i,j] * lt_prev[j]
+
+                    lt[i,-1] = lt[i,-1] + lt_curr[i,-1]
+                    gt[i,-1] = gt[i,-1] + gt_curr[i,-1]
+
+                lt_curr = lt
+                gt_curr = gt
+
+                print('\n#################\n')
+                print(gt_curr)
+
+            else:
+                for i in range(no_curr_ns):
+                    for j in range(no_e_ns):
+                        if lt_curr[i,j] > 0:
+                            up[i] = up[i] + lt_curr[i,j] * e.up[j]
+                        elif lt_curr[i,j] < 0:
+                            up[i] = up[i] + lt_curr[i,j] * e.lw[j]
+
+                        if gt_curr[i,j] > 0:
+                            lw[i] = lw[i] + gt_curr[i,j] * e.lw[j]
+                        elif gt_curr[i,j] < 0:
+                            lw[i] = lw[i] + gt_curr[i,j] * e.up[j]
+
+                    up[i] = up[i] + lt_curr[i,-1]
+                    lw[i] = lw[i] + gt_curr[i,-1]
+
+        self.lw = lw
+        self.up = up
 
 
 class DeepCegarImpl():
@@ -36,14 +98,8 @@ class DeepCegarImpl():
         x0_poly.lw = np.maximum(model.lower, x0 - eps)
         x0_poly.up = np.minimum(model.upper, x0 + eps)
 
-        x0_poly.lt = np.eye(len(x0) + 1)[0:-1]
-        x0_poly.gt = np.eye(len(x0) + 1)[0:-1]
-
         print('x0_poly.lw = {}'.format(x0_poly.lw))
         print('x0_poly.up = {}'.format(x0_poly.up))
-
-        print('x0_poly.lt = \n{}'.format(x0_poly.lt))
-        print('x0_poly.gt = \n{}'.format(x0_poly.gt))
 
         # shape = [*model.shape[1:]]
         # print('shape = {}'.format(shape))
@@ -54,7 +110,7 @@ class DeepCegarImpl():
         # x0_poly.lt.reshape(*shape, -1)
         # x0_poly.gt.reshape(*shape, -1)
 
-        res, x = self.__validate_x0(model, x0_poly, y0)
+        res, x = self.__validate_x0(model, x0, y0, x0_poly.lw, x0_poly.up)
         if not res:
             y = np.argmax(model.apply(x), axis=1)[0]
 
@@ -64,9 +120,15 @@ class DeepCegarImpl():
 
             return
 
+        x0_poly.lt = np.eye(len(x0) + 1)[0:-1]
+        x0_poly.gt = np.eye(len(x0) + 1)[0:-1]
+
+        print('x0_poly.lt = \n{}'.format(x0_poly.lt))
+        print('x0_poly.gt = \n{}'.format(x0_poly.gt))
+
         xi_poly_prev = x0_poly
         lst_poly = [x0_poly]
-        res = self.__verify(model, x0_poly, y0, xi_poly_prev, 0, lst_poly)
+        res = self.__verify(model, y0, xi_poly_prev, 0, lst_poly)
 
         if res:
             print('The network is robust around x0!')
@@ -74,7 +136,7 @@ class DeepCegarImpl():
             print('Unknown!')
 
 
-    def __verify(self, model, x0_poly, y0, xi_poly_prev, idx, lst_poly):
+    def __verify(self, model, y0, xi_poly_prev, idx, lst_poly):
         print('\n########################')
         print('idx = {}\n'.format(idx))
 
@@ -86,46 +148,27 @@ class DeepCegarImpl():
                 print('lbl = {}'.format(lbl))
 
                 if lbl != y0 and x.lw[y0] <= x.up[lbl]:
+                    res_poly = Poly()
+
                     coefs_curr = np.zeros(no_neurons + 1)
                     coefs_curr[y0] = 1
                     coefs_curr[lbl] = -1
 
-                    for k, e in reversed(list(enumerate(lst_poly))):
-                        lt_prev = e.lt
-                        gt_prev = e.gt
+                    res_poly.lt = np.zeros([1, no_neurons + 1])
+                    res_poly.gt = np.zeros([1, no_neurons + 1])
 
-                        no_e_ns = len(e.lw)
+                    res_poly.gt[0,y0] = 1
+                    res_poly.gt[0,lbl] = -1
 
-                        if k > 0:
-                            coefs = np.zeros(no_e_ns + 1)
+                    res_poly.back_substitute(lst_poly)
 
-                            for i in range(no_e_ns):
-                                if coefs_curr[i] > 0:
-                                    coefs = coefs + coefs_curr[i] * gt_prev[i]
-                                elif coefs_curr[i] < 0:
-                                    coefs = coefs + coefs_curr[i] * lt_prev[i]
+                    print('res_lw = {}\n'.format(res_poly.lw))
 
-                            coefs[-1] = coefs[-1] + coefs_curr[-1]
-
-                            coefs_curr = coefs
-                        else:
-                            value = 0
-
-                            for i in range(no_e_ns):
-                                if coefs_curr[i] > 0:
-                                    value = value + coefs_curr[i] * x0_poly.lw[i]
-                                elif coefs_curr[i] < 0:
-                                    value = value + coefs_curr[i] * x0_poly.up[i]
-
-                                value = value + coefs_curr[-1]
-
-                            print('value = {}\n'.format(value))
-
-                            if value < 0: return False
+                    if res_poly.lw < 0: return False
 
             return True
         else:
-            xi_poly_curr = model.forward(xi_poly_prev, x0_poly, idx, lst_poly)
+            xi_poly_curr = model.forward(xi_poly_prev, idx, lst_poly)
 
             print('xi_poly_curr.lw = {}'.format(xi_poly_curr.lw))
             print('xi_poly_curr.up = {}'.format(xi_poly_curr.up))
@@ -135,9 +178,9 @@ class DeepCegarImpl():
 
             if model.layers[idx].is_poly_exact():
                 lst_poly.append(xi_poly_curr)
-                return self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1, lst_poly)
+                return self.__verify(model, y0, xi_poly_curr, idx + 1, lst_poly)
 
-            res, x = self.__validate(model, x0_poly, y0, xi_poly_curr, idx + 1)
+            res, x = self.__validate(model, lst_poly[0], y0, xi_poly_curr, idx + 1)
 
             if not res:
                 # a counter example is found, should be fake
@@ -163,14 +206,14 @@ class DeepCegarImpl():
                 lst_poly1 = lst_poly[0:-1].append(xi_poly_prev1)
                 lst_poly2 = lst_poly[0:-1].append(xi_poly_prev2)
 
-                if self.__verify(model, x0_poly, y0, xi_poly_prev1, idx, lst_poly1):
-                    return self.__verify(model, x0_poly, y0, xi_poly_prev2, idx, lst_poly2)
+                if self.__verify(model, y0, xi_poly_prev1, idx, lst_poly1):
+                    return self.__verify(model, y0, xi_poly_prev2, idx, lst_poly2)
                 else:
                     return False
             else:
                 # ok, continue
                 lst_poly.append(xi_poly_curr)
-                return self.__verify(model, x0_poly, y0, xi_poly_curr, idx + 1)
+                return self.__verify(model, y0, xi_poly_curr, idx + 1, lst_poly)
 
 
     def __refine(self, x_poly, idx, x_tmp, func):
@@ -200,14 +243,12 @@ class DeepCegarImpl():
         return x1_poly, x2_poly
 
 
-    def __validate_x0(self, model, x0_poly, y0):
-        len0 = len(x0_poly.lw)
-
-        x = np.zeros(len0)
+    def __validate_x0(self, model, x0, y0, lw, up):
+        x = x0
         args = (model, y0)
         jac = grad(self.__obj_func_x0)
 
-        bounds = Bounds(x0_poly.lw, x0_poly.up)
+        bounds = Bounds(lw, up)
 
         res = minimize(self.__obj_func_x0, x, args=args, jac=jac, bounds=bounds)
 

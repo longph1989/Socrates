@@ -19,7 +19,7 @@ class Function(Layer):
     def apply(self, x):
         return self.func(x)
 
-    def apply_poly(self, x_poly, x0_poly, lst_poly):
+    def apply_poly(self, x_poly, lst_poly):
         res = Poly()
 
         no_neurons = len(x_poly.lw)
@@ -131,7 +131,7 @@ class Linear(Layer):
         else:
             return self.func(x @ self.weights + self.bias)
 
-    def apply_poly(self, x_poly, x0_poly, lst_poly):
+    def apply_poly(self, x_poly, lst_poly):
         assert self.func == None, "self.func should be None"
 
         res = Poly()
@@ -144,54 +144,7 @@ class Linear(Layer):
         res.lt = np.concatenate([weights, bias], axis=1)
         res.gt = np.concatenate([weights, bias], axis=1)
 
-        res.lw = np.zeros(no_curr_ns)
-        res.up = np.zeros(no_curr_ns)
-
-        lt_curr = res.lt
-        gt_curr = res.gt
-
-        for k, e in reversed(list(enumerate(lst_poly))):
-            lt_prev = e.lt
-            gt_prev = e.gt
-
-            no_e_ns = len(e.lw)
-
-            if k > 0:
-                lt = np.zeros([no_curr_ns, no_e_ns + 1])
-                gt = np.zeros([no_curr_ns, no_e_ns + 1])
-
-                for i in range(no_curr_ns):
-                    for j in range(no_e_ns):
-                        if lt_curr[i,j] > 0:
-                            lt[i] = lt[i] + lt_curr[i,j] * lt_prev[j]
-                        elif lt_curr[i,j] < 0:
-                            lt[i] = lt[i] + lt_curr[i,j] * gt_prev[j]
-
-                        if gt_curr[i,j] > 0:
-                            gt[i] = gt[i] + gt_curr[i,j] * gt_prev[j]
-                        elif gt_curr[i,j] < 0:
-                            gt[i] = gt[i] + gt_curr[i,j] * lt_prev[j]
-
-                    lt[i,-1] = lt[i,-1] + lt_curr[i,-1]
-                    gt[i,-1] = gt[i,-1] + gt_curr[i,-1]
-
-                lt_curr = lt
-                gt_curr = gt
-            else:
-                for i in range(no_curr_ns):
-                    for j in range(no_e_ns):
-                        if gt_curr[i,j] > 0:
-                            res.lw[i] = res.lw[i] + gt_curr[i,j] * x0_poly.lw[j]
-                        elif gt_curr[i,j] < 0:
-                            res.lw[i] = res.lw[i] + gt_curr[i,j] * x0_poly.up[j]
-
-                        if lt_curr[i,j] > 0:
-                            res.up[i] = res.up[i] + lt_curr[i,j] * x0_poly.up[j]
-                        elif lt_curr[i,j] < 0:
-                            res.up[i] = res.up[i] + lt_curr[i,j] * x0_poly.lw[j]
-
-                    res.lw[i] = res.lw[i] + gt_curr[i,-1]
-                    res.up[i] = res.up[i] + lt_curr[i,-1]
+        res.back_substitute(lst_poly)
 
         return res
 
@@ -344,7 +297,8 @@ class Conv2d(Layer):
 
         return res
 
-    def apply_poly(self, x_poly, x0_poly):
+    def apply_poly(self, x_poly, lst_poly):
+        x0_poly = lst_poly[0]
         res = Poly()
 
         no_features = len(x0_poly.lw)
@@ -505,7 +459,8 @@ class MaxPool2d(Layer):
 
         return res
 
-    def apply_poly(self, x_poly, x0_poly):
+    def apply_poly(self, x_poly, lst_poly):
+        x0_poly = lst_poly[0]
         res = Poly()
 
         no_features = len(x0_poly.lw)
