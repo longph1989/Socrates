@@ -25,8 +25,6 @@ class Poly():
         lw = np.zeros(no_curr_ns)
         up = np.zeros(no_curr_ns)
 
-        print(gt_curr)
-
         for k, e in reversed(list(enumerate(lst_poly))):
             lt_prev = e.lt
             gt_prev = e.gt
@@ -54,10 +52,6 @@ class Poly():
 
                 lt_curr = lt
                 gt_curr = gt
-
-                print('\n#################\n')
-                print(gt_curr)
-
             else:
                 for i in range(no_curr_ns):
                     for j in range(no_e_ns):
@@ -100,15 +94,6 @@ class DeepCegarImpl():
 
         print('x0_poly.lw = {}'.format(x0_poly.lw))
         print('x0_poly.up = {}'.format(x0_poly.up))
-
-        # shape = [*model.shape[1:]]
-        # print('shape = {}'.format(shape))
-        #
-        # x0_poly.lw.reshape(shape)
-        # x0_poly.up.reshape(shape)
-        #
-        # x0_poly.lt.reshape(*shape, -1)
-        # x0_poly.gt.reshape(*shape, -1)
 
         res, x = self.__validate_x0(model, x0, y0, x0_poly.lw, x0_poly.up)
         if not res:
@@ -191,18 +176,13 @@ class DeepCegarImpl():
                 else:
                     self.count_ref = self.count_ref + 1
 
-                # len0 = len(x0_poly.lw)
-                # x = x[-len0:]
-
-                # x_tmp = model.apply_to(x, idx)
-
-                # g = grad(model.apply_from)(x_tmp, idx, y0=y0)
                 g = grad(model.apply_from)(x, idx, y0=y0)
                 ref_idx = np.argmax(g, axis=1)[0]
+                x_idx = x[ref_idx]
 
                 func = model.layers[idx].func
 
-                xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_idx, x_tmp, func)
+                xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_idx, x_idx, func)
                 lst_poly1 = lst_poly[0:-1].append(xi_poly_prev1)
                 lst_poly2 = lst_poly[0:-1].append(xi_poly_prev2)
 
@@ -216,7 +196,7 @@ class DeepCegarImpl():
                 return self.__verify(model, y0, xi_poly_curr, idx + 1, lst_poly)
 
 
-    def __refine(self, x_poly, idx, x_tmp, func):
+    def __refine(self, x_poly, ref_idx, x_idx, func):
         x1_poly = Poly()
         x2_poly = Poly()
 
@@ -231,14 +211,14 @@ class DeepCegarImpl():
         x2_poly.gt = x_poly.gt
 
         if func == relu:
-            x1_poly.up[idx] = 0
-            x2_poly.lw[idx] = 0
+            val = 0
         elif func == sigmoid:
-            x1_poly.up[idx] = x_tmp[idx]
-            x2_poly.lw[idx] = x_tmp[idx]
+            val = np.log(x_idx / (1 - x_idx))
         elif func == tanh:
-            x1_poly.up[idx] = x_tmp[idx]
-            x2_poly.lw[idx] = x_tmp[idx]
+            val = 0.5 * np.log((1 + x_idx) / (1 - x_idx))
+
+        x1_poly.up[ref_idx] = val
+        x2_poly.lw[ref_idx] = val
 
         return x1_poly, x2_poly
 
@@ -270,47 +250,19 @@ class DeepCegarImpl():
         return loss + np.sum(x - x)
 
 
-    def __generate_constrains(self, coefs):
-        def fun(x, coefs=coefs):
-            res = 0
-            lenx = len(x)
-            for i in range(lenx):
-                res = res + coefs[i] * x[i]
-            res = res + coefs[lenx]
-            return res
-        return fun
-
-
     def __validate(self, model, x0_poly, y0, xi_poly, idx):
         len0 = len(x0_poly.lw)
         leni = len(xi_poly.lw)
 
-        # x = np.zeros(len0 + leni)
         x = np.zeros(leni)
         args = (model, len0, leni, y0, idx)
         jac = grad(self.__obj_func)
 
-        # lw = np.concatenate([xi_poly.lw, x0_poly.lw])
-        # up = np.concatenate([xi_poly.up, x0_poly.up])
         lw = np.concatenate([xi_poly.lw])
         up = np.concatenate([xi_poly.up])
         bounds = Bounds(lw, up)
 
-        # lt = np.eye(leni) * (-1)
-        # gt = np.eye(leni)
-        #
-        # lt = np.concatenate([lt, xi_poly.lt], axis=1)
-        # gt = np.concatenate([gt, xi_poly.gt], axis=1)
-
-        constraints = list()
-        # for coefs in lt:
-        #     fun = self.__generate_constrains(coefs)
-        #     constraints.append({'type': 'ineq', 'fun': fun})
-        # for coefs in gt:
-        #     fun = self.__generate_constrains(coefs * (-1))
-        #     constraints.append({'type': 'ineq', 'fun': fun})
-
-        res = minimize(self.__obj_func, x, args=args, jac=jac, bounds=bounds, constraints=constraints)
+        res = minimize(self.__obj_func, x, args=args, jac=jac, bounds=bounds)
 
         if res.fun == 0: # an adversarial sample is generated
             return False, res.x
@@ -319,13 +271,10 @@ class DeepCegarImpl():
 
 
     def __obj_func(self, x, model, len0, leni, y0, idx):
-        # x0 = x[-len0:]
-        # xi = x[:leni]
         x0 = np.zeros(len0)
 
         tmp = model.apply_to(x0, idx)
 
-        # xi = xi.reshape(tmp.shape)
         xi = x.reshape(tmp.shape)
         output = model.apply_from(xi, idx)
         y0_score = output[0][y0]
