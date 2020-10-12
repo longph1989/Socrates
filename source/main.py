@@ -2,7 +2,7 @@ import autograd.numpy as np
 import argparse
 import json
 
-from parser import parse
+from json_parser import parse
 
 
 def main():

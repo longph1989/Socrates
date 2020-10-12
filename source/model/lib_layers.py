@@ -41,10 +41,17 @@ class Function(Layer):
                     res.lw[i] = x_poly.lw[i]
                     res.up[i] = x_poly.up[i]
                 else:
-                    # choose lambda = 0
                     res.lt[i,i] = x_poly.up[i] / (x_poly.up[i] - x_poly.lw[i])
                     res.lt[i,-1] = - x_poly.up[i] * x_poly.lw[i] / (x_poly.up[i] - x_poly.lw[i])
+
+                    s1 = res.lt[i,i] * x_poly.up[i] + res.lt[i,-1]
+                    s2 = -x_poly.lw[i]
+
+                    lam = 0 if s1 <= s2 else 1
+
+                    res.gt[i,i] = lam
                     res.up[i] = x_poly.up[i]
+                    res.lw[i] = lam * x_poly.lw[i]
 
         elif self.func == sigmoid:
             res.lw = sigmoid(x_poly.lw)
@@ -144,7 +151,7 @@ class Linear(Layer):
         res.lt = np.concatenate([weights, bias], axis=1)
         res.gt = np.concatenate([weights, bias], axis=1)
 
-        res.back_substitute(lst_poly)
+        res.back_substitute_bounds(lst_poly)
 
         return res
 

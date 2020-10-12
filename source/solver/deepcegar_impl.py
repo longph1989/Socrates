@@ -16,7 +16,7 @@ class Poly():
         self.lt = None
         self.gt = None
 
-    def back_substitute(self, lst_poly):
+    def back_substitute_bounds(self, lst_poly):
         lt_curr = self.lt
         gt_curr = self.gt
 
@@ -29,11 +29,12 @@ class Poly():
             lt_prev = e.lt
             gt_prev = e.gt
 
-            no_e_ns = len(e.lw)
+            no_e_ns = len(lt_prev)
+            no_coefs = len(lt_prev[0])
 
             if k > 0:
-                lt = np.zeros([no_curr_ns, no_e_ns + 1])
-                gt = np.zeros([no_curr_ns, no_e_ns + 1])
+                lt = np.zeros([no_curr_ns, no_coefs])
+                gt = np.zeros([no_curr_ns, no_coefs])
 
                 for i in range(no_curr_ns):
                     for j in range(no_e_ns):
@@ -92,28 +93,17 @@ class DeepCegarImpl():
         x0_poly.lw = np.maximum(model.lower, x0 - eps)
         x0_poly.up = np.minimum(model.upper, x0 + eps)
 
-        print('x0_poly.lw = {}'.format(x0_poly.lw))
-        print('x0_poly.up = {}'.format(x0_poly.up))
-
-        res, x = self.__validate_x0(model, x0, y0, x0_poly.lw, x0_poly.up)
-        if not res:
-            y = np.argmax(model.apply(x), axis=1)[0]
-
-            print('True adversarial sample found!')
-            print('x = {}'.format(x))
-            print('y = {}'.format(y))
-
-            return
+        # print('x0_poly.lw = {}'.format(x0_poly.lw))
+        # print('x0_poly.up = {}'.format(x0_poly.up))
 
         x0_poly.lt = np.eye(len(x0) + 1)[0:-1]
         x0_poly.gt = np.eye(len(x0) + 1)[0:-1]
 
-        print('x0_poly.lt = \n{}'.format(x0_poly.lt))
-        print('x0_poly.gt = \n{}'.format(x0_poly.gt))
+        # print('x0_poly.lt = \n{}'.format(x0_poly.lt))
+        # print('x0_poly.gt = \n{}'.format(x0_poly.gt))
 
-        xi_poly_prev = x0_poly
         lst_poly = [x0_poly]
-        res = self.__verify(model, y0, xi_poly_prev, 0, lst_poly)
+        res = self.__verify(model, y0, x0_poly, 0, lst_poly)
 
         if res:
             print('The network is robust around x0!')
@@ -122,15 +112,18 @@ class DeepCegarImpl():
 
 
     def __verify(self, model, y0, xi_poly_prev, idx, lst_poly):
-        print('\n########################')
-        print('idx = {}\n'.format(idx))
+        # print('\n########################')
+        # print('idx = {}\n'.format(idx))
 
         if idx == len(model.layers):
             x = xi_poly_prev
             no_neurons = len(x.lw)
 
+            print('lw = {}'.format(x.lw))
+            print('up = {}'.format(x.up))
+
             for lbl in range(no_neurons):
-                print('lbl = {}'.format(lbl))
+                # print('lbl = {}'.format(lbl))
 
                 if lbl != y0 and x.lw[y0] <= x.up[lbl]:
                     res_poly = Poly()
@@ -145,9 +138,9 @@ class DeepCegarImpl():
                     res_poly.gt[0,y0] = 1
                     res_poly.gt[0,lbl] = -1
 
-                    res_poly.back_substitute(lst_poly)
+                    res_poly.back_substitute_bounds(lst_poly)
 
-                    print('res_lw = {}\n'.format(res_poly.lw))
+                    # print('res_lw = {}\n'.format(res_poly.lw))
 
                     if res_poly.lw < 0: return False
 
@@ -155,138 +148,14 @@ class DeepCegarImpl():
         else:
             xi_poly_curr = model.forward(xi_poly_prev, idx, lst_poly)
 
-            print('xi_poly_curr.lw = {}'.format(xi_poly_curr.lw))
-            print('xi_poly_curr.up = {}'.format(xi_poly_curr.up))
+            # print('xi_poly_curr.lw = {}'.format(xi_poly_curr.lw))
+            # print('xi_poly_curr.up = {}'.format(xi_poly_curr.up))
+            #
+            # print('xi_poly_curr.lt = \n{}'.format(xi_poly_curr.lt))
+            # print('xi_poly_curr.gt = \n{}'.format(xi_poly_curr.gt))
 
-            print('xi_poly_curr.lt = \n{}'.format(xi_poly_curr.lt))
-            print('xi_poly_curr.gt = \n{}'.format(xi_poly_curr.gt))
-
-            if model.layers[idx].is_poly_exact():
-                lst_poly.append(xi_poly_curr)
-                return self.__verify(model, y0, xi_poly_curr, idx + 1, lst_poly)
-
-            res, x = self.__validate(model, lst_poly[0], y0, xi_poly_curr, idx + 1)
-
-            if not res:
-                # a counter example is found, should be fake
-                print('Fake adversarial sample found!')
-
-                if self.count_ref >= self.max_ref:
-                    return False
-                else:
-                    self.count_ref = self.count_ref + 1
-
-                g = grad(model.apply_from)(x, idx, y0=y0)
-                ref_idx = np.argmax(g, axis=1)[0]
-                x_idx = x[ref_idx]
-
-                func = model.layers[idx].func
-
-                xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_idx, x_idx, func)
-                lst_poly1 = lst_poly[0:-1].append(xi_poly_prev1)
-                lst_poly2 = lst_poly[0:-1].append(xi_poly_prev2)
-
-                if self.__verify(model, y0, xi_poly_prev1, idx, lst_poly1):
-                    return self.__verify(model, y0, xi_poly_prev2, idx, lst_poly2)
-                else:
-                    return False
-            else:
-                # ok, continue
-                lst_poly.append(xi_poly_curr)
-                return self.__verify(model, y0, xi_poly_curr, idx + 1, lst_poly)
-
-
-    def __refine(self, x_poly, ref_idx, x_idx, func):
-        x1_poly = Poly()
-        x2_poly = Poly()
-
-        x1_poly.lw = x_poly.lw
-        x1_poly.up = x_poly.up
-        x1_poly.lt = x_poly.lt
-        x1_poly.gt = x_poly.gt
-
-        x2_poly.lw = x_poly.lw
-        x2_poly.up = x_poly.up
-        x2_poly.lt = x_poly.lt
-        x2_poly.gt = x_poly.gt
-
-        if func == relu:
-            val = 0
-        elif func == sigmoid:
-            val = np.log(x_idx / (1 - x_idx))
-        elif func == tanh:
-            val = 0.5 * np.log((1 + x_idx) / (1 - x_idx))
-
-        x1_poly.up[ref_idx] = val
-        x2_poly.lw[ref_idx] = val
-
-        return x1_poly, x2_poly
-
-
-    def __validate_x0(self, model, x0, y0, lw, up):
-        x = x0
-        args = (model, y0)
-        jac = grad(self.__obj_func_x0)
-
-        bounds = Bounds(lw, up)
-
-        res = minimize(self.__obj_func_x0, x, args=args, jac=jac, bounds=bounds)
-
-        if res.fun == 0: # an adversarial sample is generated
-            return False, res.x
-        else:
-            return True, np.empty(0)
-
-
-    def __obj_func_x0(self, x, model, y0):
-        output = model.apply(x)
-        y0_score = output[0][y0]
-
-        output = output - np.eye(output[0].size)[y0] * 1e9
-        max_score = np.max(output)
-
-        loss = 0 if y0_score < max_score else y0_score - max_score + 1e-9
-
-        return loss + np.sum(x - x)
-
-
-    def __validate(self, model, x0_poly, y0, xi_poly, idx):
-        len0 = len(x0_poly.lw)
-        leni = len(xi_poly.lw)
-
-        x = np.zeros(leni)
-        args = (model, len0, leni, y0, idx)
-        jac = grad(self.__obj_func)
-
-        lw = np.concatenate([xi_poly.lw])
-        up = np.concatenate([xi_poly.up])
-        bounds = Bounds(lw, up)
-
-        res = minimize(self.__obj_func, x, args=args, jac=jac, bounds=bounds)
-
-        if res.fun == 0: # an adversarial sample is generated
-            return False, res.x
-        else:
-            return True, np.empty(0)
-
-
-    def __obj_func(self, x, model, len0, leni, y0, idx):
-        x0 = np.zeros(len0)
-
-        tmp = model.apply_to(x0, idx)
-
-        xi = x.reshape(tmp.shape)
-        output = model.apply_from(xi, idx)
-        y0_score = output[0][y0]
-
-        print('output = {}'.format(output))
-
-        output = output - np.eye(output[0].size)[y0] * 1e9
-        max_score = np.max(output)
-
-        loss = 0 if y0_score < max_score else y0_score - max_score + 1e-9
-
-        return loss + np.sum(x - x)
+            lst_poly.append(xi_poly_curr)
+            return self.__verify(model, y0, xi_poly_curr, idx + 1, lst_poly)
 
 
     def solve(self, model, assertion, display=None):
