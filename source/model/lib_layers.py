@@ -3,6 +3,8 @@ import autograd.numpy as np
 from solver.deepcegar_impl import Poly
 from utils import *
 
+import time
+
 
 class Layer:
     def apply(self, x):
@@ -151,7 +153,13 @@ class Linear(Layer):
         res.lt = np.concatenate([weights, bias], axis=1)
         res.gt = np.concatenate([weights, bias], axis=1)
 
+        t0 = time.time()
+
         res.back_substitute_bounds(lst_poly)
+
+        t1 = time.time()
+
+        print('back sub time = {}'.format(t1 - t0))
 
         return res
 

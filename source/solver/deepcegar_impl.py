@@ -7,6 +7,10 @@ from autograd import grad
 from assertion.lib_functions import di
 from utils import *
 
+from multiprocessing import Pool
+
+import time
+
 
 class Poly():
     def __init__(self):
@@ -33,6 +37,11 @@ class Poly():
             no_coefs = len(lt_prev[0])
 
             if k > 0:
+                time0 = time.time()
+
+                print('no_curr_ns = {}'.format(no_curr_ns))
+                print('no_e_ns = {}'.format(no_e_ns))
+
                 lt = np.zeros([no_curr_ns, no_coefs])
                 gt = np.zeros([no_curr_ns, no_coefs])
 
@@ -53,21 +62,50 @@ class Poly():
 
                 lt_curr = lt
                 gt_curr = gt
+
+                time1 = time.time()
+                print('step time = {}'.format(time1 - time0))
             else:
-                for i in range(no_curr_ns):
+                time0 = time.time()
+
+                print('no_curr_ns = {}'.format(no_curr_ns))
+                print('no_e_ns = {}'.format(no_e_ns))
+
+                def last_layer(i):
                     for j in range(no_e_ns):
                         if lt_curr[i,j] > 0:
-                            up[i] = up[i] + lt_curr[i,j] * e.up[j]
+                            self.up[i] += lt_curr[i,j] * e.up[j]
                         elif lt_curr[i,j] < 0:
-                            up[i] = up[i] + lt_curr[i,j] * e.lw[j]
+                            self.up[i] += lt_curr[i,j] * e.lw[j]
 
                         if gt_curr[i,j] > 0:
-                            lw[i] = lw[i] + gt_curr[i,j] * e.lw[j]
+                            self.lw[i] += gt_curr[i,j] * e.lw[j]
                         elif gt_curr[i,j] < 0:
-                            lw[i] = lw[i] + gt_curr[i,j] * e.up[j]
+                            self.lw[i] += gt_curr[i,j] * e.up[j]
 
-                    up[i] = up[i] + lt_curr[i,-1]
-                    lw[i] = lw[i] + gt_curr[i,-1]
+                    self.up[i] += lt_curr[i,-1]
+                    self.lw[i] += gt_curr[i,-1]
+
+                pool = Pool(4)
+                pool.map(last_layer, range(no_curr_ns))
+
+                # for i in range(no_curr_ns):
+                #     for j in range(no_e_ns):
+                #         if lt_curr[i,j] > 0:
+                #             up[i] = up[i] + lt_curr[i,j] * e.up[j]
+                #         elif lt_curr[i,j] < 0:
+                #             up[i] = up[i] + lt_curr[i,j] * e.lw[j]
+                #
+                #         if gt_curr[i,j] > 0:
+                #             lw[i] = lw[i] + gt_curr[i,j] * e.lw[j]
+                #         elif gt_curr[i,j] < 0:
+                #             lw[i] = lw[i] + gt_curr[i,j] * e.up[j]
+                #
+                #     up[i] = up[i] + lt_curr[i,-1]
+                #     lw[i] = lw[i] + gt_curr[i,-1]
+
+                time1 = time.time()
+                print('step time = {}'.format(time1 - time0))
 
         self.lw = lw
         self.up = up
@@ -122,6 +160,8 @@ class DeepCegarImpl():
             print('lw = {}'.format(x.lw))
             print('up = {}'.format(x.up))
 
+            t0 = time.time()
+
             for lbl in range(no_neurons):
                 # print('lbl = {}'.format(lbl))
 
@@ -144,9 +184,19 @@ class DeepCegarImpl():
 
                     if res_poly.lw < 0: return False
 
+            t1 = time.time()
+
+            print('time n = {}'.format(t1 - t0))
+
             return True
         else:
+            t0 = time.time()
+
             xi_poly_curr = model.forward(xi_poly_prev, idx, lst_poly)
+
+            t1 = time.time()
+
+            print('time i = {}'.format(t1 - t0))
 
             # print('xi_poly_curr.lw = {}'.format(xi_poly_curr.lw))
             # print('xi_poly_curr.up = {}'.format(xi_poly_curr.up))

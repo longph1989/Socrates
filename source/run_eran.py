@@ -3,8 +3,12 @@ import argparse
 import json
 import ast
 
-from parser import parse
+from json_parser import parse
 from utils import *
+
+
+import time
+
 
 
 def add_assertion(args, spec):
@@ -88,7 +92,7 @@ def main():
 
     y0s = np.array(ast.literal_eval(read(pathY)))
 
-    for i in range(100):
+    for i in range(1):
         assertion['x0'] = pathX + 'data' + str(i) + '.txt'
         x0 = np.array(ast.literal_eval(read(assertion['x0'])))
 
@@ -101,6 +105,8 @@ def main():
         print('lbl_x0 = {}'.format(lbl_x0))
         print('y0 = {}\n'.format(y0s[i]))
 
+        t0 = time.time()
+
         if lbl_x0 == y0s[i]:
             update_bounds(args, model, x0, lower, upper)
             print('Run at data {}\n'.format(i))
@@ -108,6 +114,9 @@ def main():
         else:
             print('Skip at data {}'.format(i))
 
+        t1 = time.time()
+
+        print('time = {}'.format(t1 - t0))
         print('\n============================\n')
 
 
