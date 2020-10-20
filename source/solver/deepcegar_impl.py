@@ -148,10 +148,72 @@ class DeepCegarImpl():
                 return self.__verify(model, x0, y0, xi_poly_curr, idx + 1, lst_poly)
 
             res, x = self.__validate(model, x0, y0, xi_poly_curr, idx + 1)
-
-            lst_poly.append(xi_poly_curr)
-            return self.__verify(model, x0, y0, xi_poly_curr, idx + 1, lst_poly)
+            print('res = {}'.format(res))
+            print('x = {}'.format(x))
             
+            if not res:
+                # a counter example is found, should be fake
+                print('Fake adversarial sample found!')
+
+                if self.count_ref >= self.max_ref:
+                    return False
+                else:
+                    self.count_ref = self.count_ref + 1
+
+                tmp = model.apply_to(x0, idx + 1)
+                x = x.reshape(tmp.shape)
+
+                g = grad(model.apply_from)(x, idx + 1, y0=y0)
+                ref_idx = np.argmax(g, axis=1)[0]
+                x_idx = x[0, ref_idx]
+
+                func = model.layers[idx].func
+
+                print('ref_idx = {}'.format(ref_idx))
+                print('x[ref_idx] = {}'.format(x[0, ref_idx]))
+                xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_idx, x_idx, func)
+
+                lst_poly1 = lst_poly[0:-1]
+                lst_poly2 = lst_poly[0:-1]
+
+                lst_poly1.append(xi_poly_prev1)
+                lst_poly2.append(xi_poly_prev2)
+
+                if self.__verify(model, x0, y0, xi_poly_prev1, idx, lst_poly1):
+                    return self.__verify(model, x0, y0, xi_poly_prev2, idx, lst_poly2)
+                else:
+                    return False
+            else:
+                lst_poly.append(xi_poly_curr)
+                return self.__verify(model, x0, y0, xi_poly_curr, idx + 1, lst_poly)
+            
+    
+    def __refine(self, x_poly, ref_idx, x_idx, func):
+        x1_poly = Poly()
+        x2_poly = Poly()
+
+        x1_poly.lw = x_poly.lw
+        x1_poly.up = x_poly.up
+        x1_poly.lt = x_poly.lt
+        x1_poly.gt = x_poly.gt
+
+        x2_poly.lw = x_poly.lw
+        x2_poly.up = x_poly.up
+        x2_poly.lt = x_poly.lt
+        x2_poly.gt = x_poly.gt
+
+        if func == relu:
+            val = 0
+        elif func == sigmoid:
+            val = np.log(x_idx / (1 - x_idx))
+        elif func == tanh:
+            val = 0.5 * np.log((1 + x_idx) / (1 - x_idx))
+
+        x1_poly.up[ref_idx] = val - 1e-6
+        x2_poly.lw[ref_idx] = val
+
+        return x1_poly, x2_poly
+    
             
     def __validate(self, model, x0, y0, xi_poly, idx):
         leni = len(xi_poly.lw)
@@ -185,8 +247,8 @@ class DeepCegarImpl():
         loss = 0 if y0_score < max_score else y0_score - max_score + 1e-9
 
         return loss + np.sum(x - x)
-
-
+       
+       
     def solve(self, model, assertion, display=None):
         # only solve for local robustness
         return self.__solve_local_robustness(model, assertion, display)
