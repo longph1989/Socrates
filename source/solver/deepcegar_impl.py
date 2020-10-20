@@ -142,7 +142,7 @@ class DeepCegarImpl():
             return True
         else:
             xi_poly_curr = model.forward(xi_poly_prev, idx, lst_poly)
-            
+
             if model.layers[idx].is_poly_exact():
                 lst_poly.append(xi_poly_curr)
                 return self.__verify(model, x0, y0, xi_poly_curr, idx + 1, lst_poly)
@@ -161,20 +161,20 @@ class DeepCegarImpl():
                     self.count_ref = self.count_ref + 1
 
                 tmp = model.apply_to(x0, idx + 1)
-                x = x.reshape(tmp.shape)
+                xi = x.reshape(tmp.shape)
 
-                g = grad(model.apply_from)(x, idx + 1, y0=y0)
-                ref_idx = np.argmax(g, axis=1)[0]
-                x_idx = x[0, ref_idx]
-
+                g = grad(model.apply_from)(xi, idx + 1, y0=y0)
+                ref_ord = np.flip(np.argsort(g)).reshape(-1)
+                
                 func = model.layers[idx].func
 
-                print('ref_idx = {}'.format(ref_idx))
-                print('x[ref_idx] = {}'.format(x[0, ref_idx]))
-                xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_idx, x_idx, func)
+                xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_ord, x, func)
+                
+                if xi_poly_prev1 == None or xi_poly_prev2 == None:
+                    return False
 
-                lst_poly1 = lst_poly[0:-1]
-                lst_poly2 = lst_poly[0:-1]
+                lst_poly1 = lst_poly[0:-1].copy()
+                lst_poly2 = lst_poly[0:-1].copy()
 
                 lst_poly1.append(xi_poly_prev1)
                 lst_poly2.append(xi_poly_prev2)
@@ -188,32 +188,54 @@ class DeepCegarImpl():
                 return self.__verify(model, x0, y0, xi_poly_curr, idx + 1, lst_poly)
             
     
-    def __refine(self, x_poly, ref_idx, x_idx, func):
-        x1_poly = Poly()
-        x2_poly = Poly()
-
-        x1_poly.lw = x_poly.lw
-        x1_poly.up = x_poly.up
-        x1_poly.lt = x_poly.lt
-        x1_poly.gt = x_poly.gt
-
-        x2_poly.lw = x_poly.lw
-        x2_poly.up = x_poly.up
-        x2_poly.lt = x_poly.lt
-        x2_poly.gt = x_poly.gt
-
-        if func == relu:
-            val = 0
-        elif func == sigmoid:
-            val = np.log(x_idx / (1 - x_idx))
-        elif func == tanh:
-            val = 0.5 * np.log((1 + x_idx) / (1 - x_idx))
-
-        x1_poly.up[ref_idx] = val - 1e-6
-        x2_poly.lw[ref_idx] = val
-
-        return x1_poly, x2_poly
     
+    def __refine(self, x_poly, ref_ord, x, func):
+        lw = x_poly.lw
+        up = x_poly.up
+        
+        ref_idx = -1
+    
+        if func == relu:
+            for i in ref_ord:
+                if lw[i] < 0 and up[i] > 0:
+                    ref_idx = i
+                    break
+        else:
+            for i in ref_ord:
+                if lw[i] != up[i]:
+                    ref_idx = idx
+                    break
+                    
+        print('ref_idx = {}'.format(ref_idx))
+        
+        if ref_idx != -1:
+            x1_poly = Poly()
+            x2_poly = Poly()
+
+            x1_poly.lw = x_poly.lw.copy()
+            x1_poly.up = x_poly.up.copy()
+            x1_poly.lt = x_poly.lt.copy()
+            x1_poly.gt = x_poly.gt.copy()
+
+            x2_poly.lw = x_poly.lw.copy()
+            x2_poly.up = x_poly.up.copy()
+            x2_poly.lt = x_poly.lt.copy()
+            x2_poly.gt = x_poly.gt.copy()
+            
+            if func == relu:
+                val = 0
+            elif func == sigmoid:
+                val = np.log(x_idx / (1 - x_idx))
+            elif func == tanh:
+                val = 0.5 * np.log((1 + x_idx) / (1 - x_idx))
+
+            x1_poly.up[ref_idx] = val
+            x2_poly.lw[ref_idx] = val
+            
+            return x1_poly, x2_poly
+        else:
+            return None, None
+        
             
     def __validate(self, model, x0, y0, xi_poly, idx):
         leni = len(xi_poly.lw)

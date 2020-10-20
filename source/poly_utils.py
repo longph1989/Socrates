@@ -4,15 +4,15 @@ import autograd.numpy as np
 def back_substitute(args):
     idx, lt_curr, gt_curr, lst_poly = args
     
-    lw = 0
-    up = 0
+    best_lw = -1e9
+    best_up = 1e9
     
     for k, e in reversed(list(enumerate(lst_poly))):
-        lt_prev = e.lt
-        gt_prev = e.gt
+        lw = 0
+        up = 0
 
-        no_e_ns = len(lt_prev)
-        no_coefs = len(lt_prev[0])
+        no_e_ns = len(e.lt)
+        no_coefs = len(e.lt[0])
 
         if k > 0:
             lt = np.zeros([no_coefs])
@@ -20,14 +20,21 @@ def back_substitute(args):
 
             for i in range(no_e_ns):
                 if lt_curr[i] > 0:
-                    lt = lt + lt_curr[i] * lt_prev[i]
+                    up = up + lt_curr[i] * e.up[i]
+                    lt = lt + lt_curr[i] * e.lt[i]
                 elif lt_curr[i] < 0:
-                    lt = lt + lt_curr[i] * gt_prev[i]
+                    up = up + lt_curr[i] * e.lw[i]
+                    lt = lt + lt_curr[i] * e.gt[i]
 
                 if gt_curr[i] > 0:
-                    gt = gt + gt_curr[i] * gt_prev[i]
+                    lw = lw + gt_curr[i] * e.lw[i]
+                    gt = gt + gt_curr[i] * e.gt[i]
                 elif gt_curr[i] < 0:
-                    gt = gt + gt_curr[i] * lt_prev[i]
+                    lw = lw + gt_curr[i] * e.up[i]
+                    gt = gt + gt_curr[i] * e.lt[i]
+
+            lw = lw + gt_curr[-1]
+            up = up + lt_curr[-1]
 
             lt[-1] = lt[-1] + lt_curr[-1]
             gt[-1] = gt[-1] + gt_curr[-1]
@@ -46,7 +53,10 @@ def back_substitute(args):
                 elif gt_curr[i] < 0:
                     lw = lw + gt_curr[i] * e.up[i]
             
-            up = up + lt_curr[-1]
             lw = lw + gt_curr[-1]
+            up = up + lt_curr[-1]
+                        
+        best_lw = max(best_lw, lw)
+        best_up = min(best_up, up)
 
-    return idx, lw, up
+    return idx, best_lw, best_up
