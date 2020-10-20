@@ -2,7 +2,9 @@ import autograd.numpy as np
 
 from solver.deepcegar_impl import Poly
 from utils import *
+from poly_utils import *
 
+import multiprocessing
 import time
 
 
@@ -148,17 +150,32 @@ class Linear(Layer):
         weights = self.weights.transpose(1, 0)
         bias = self.bias.transpose(1, 0)
 
-        no_curr_ns = len(bias)
+        no_neurons = len(bias)
+        
+        res.lw = np.zeros(no_neurons)
+        res.up = np.zeros(no_neurons)
 
         res.lt = np.concatenate([weights, bias], axis=1)
         res.gt = np.concatenate([weights, bias], axis=1)
 
         t0 = time.time()
 
-        res.back_substitute_bounds(lst_poly)
-
+        if no_neurons <= 100 or len(lst_poly) <= 2:
+            res.back_substitute_bounds(lst_poly)
+        else:
+            clones = []
+            
+            for i in range(no_neurons):
+                clones.append(lst_poly.copy())
+                        
+            pool = multiprocessing.Pool(multiprocessing.cpu_count())
+            for idx, lw, up in pool.map(back_substitute, zip(range(no_neurons), res.lt, res.gt, clones)):
+                res.lw[idx] = lw
+                res.up[idx] = up
+            
         t1 = time.time()
 
+        print('no_neurons = {}'.format(no_neurons))
         print('back sub time = {}'.format(t1 - t0))
 
         return res

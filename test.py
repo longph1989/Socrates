@@ -53,23 +53,24 @@ import multiprocessing
 from multiprocessing import Pool
 import numpy as np
 
+
+def foo(i):
+    return i, i * i
+
+
 class A:
 
     def __init__(self):
         self.arr = np.zeros(10)
 
-    def foo(self, i):
-        self.arr[i] = i
-
     def test(self):
         pool = Pool(multiprocessing.cpu_count())
-        i, pool.map(self.foo, range(10))
-        # for i in range(10):
-        #     self.foo(i)
-        print('here')
-        print(self.arr[9])
+        for i, ii in pool.map(foo, range(10)):
+            self.arr[i] = ii
 
-
-
-a = A()
-a.test()
+if __name__ == '__main__':
+    a = A()
+    a.test()
+    
+    for i in range(10):
+        print(a.arr[i])
