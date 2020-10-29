@@ -23,7 +23,7 @@ class Model:
         return output
 
 
-    def apply(self, x):
+    def apply(self, x, y0=None):
         if self.layers == None:
             return self.__apply_ptmodel(x)
 
@@ -41,44 +41,10 @@ class Model:
         for layer in self.layers:
             layer.reset()
 
-        return output
-
-
-    def apply_from(self, x, fromIdx, y0=None, shape=None):
-        if self.layers == None:
-            # only work when layers is not None
-            raise NameError('Not support yet!')
-
-        if shape == None:
-            output = x # no need for recurrent yet
-        else:
-            output = x.reshape(shape) # no need for recurrent yet
-
-        for i in range(len(self.layers)):
-            if i >= fromIdx:
-                layer = self.layers[i]
-                output = layer.apply(output)
-
         if y0 == None:
             return output
         else:
-            return output[0][y0]
-
-
-    def apply_to(self, x, toIdx):
-        if self.layers == None:
-            # only work when layers is not None
-            raise NameError('Not support yet!')
-
-        shape = [1, *self.shape[1:]]
-
-        output = x.reshape(shape) # no need for recurrent yet
-        for i in range(len(self.layers)):
-            if i < toIdx:
-                layer = self.layers[i]
-                output = layer.apply(output)
-
-        return output
+            return output[0, y0]
 
 
     def forward(self, x_poly, idx, lst_poly):

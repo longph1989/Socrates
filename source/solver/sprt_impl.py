@@ -14,15 +14,6 @@ class SPRTImpl():
         self.delta = delta
 
 
-    def __generate_x(self, shape, lower, upper):
-        size = np.prod(shape)
-        x = np.random.rand(size)
-
-        x = (upper - lower) * x + lower
-
-        return x
-
-
     def __solve_syntactic_sugar(self, model, spec):
         if spec['robustness'] == 'local':
             self.__solve_local_robustness(model, spec)
@@ -39,9 +30,11 @@ class SPRTImpl():
 
     def __solve_global_robustness(self, model, spec):
         n = 1000
+        
+        size = np.prod(model.shape)
 
         for i in range(n):
-            x0 = self.__generate_x(model.shape, model.lower, model.upper)
+            x0 = generate_x(size, model.lower, model.upper)
             y0 = np.argmax(model.apply(x0), axis=1)[0]
 
             if not self.__solve_robustness(model, spec, x0, y0):
@@ -81,9 +74,11 @@ class SPRTImpl():
 
         pr = 1
         no = 0
+        
+        size = np.prod(model.shape)
 
         while True:
-            x = self.__generate_x(model.shape, lower, upper)
+            x = generate_x(size, lower, upper)
 
             if dfunc(x, x0) <= eps:
                 no = no + 1

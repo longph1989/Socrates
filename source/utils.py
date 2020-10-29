@@ -124,3 +124,9 @@ def index3d(channel, stride, kshape, xshape):
     w_idx = w_idx + w_off
 
     return c_idx, d_idx, h_idx, w_idx
+    
+def generate_x(size, lower, upper):
+    x = np.random.rand(size)
+    x = (upper - lower) * x + lower
+
+    return x

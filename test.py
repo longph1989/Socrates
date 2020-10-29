@@ -49,28 +49,55 @@
 # c = b[1:4,1:4]
 # print(c)
 
-import multiprocessing
-from multiprocessing import Pool
-import numpy as np
+# import multiprocessing
+# from multiprocessing import Pool
+# import numpy as np
 
 
-def foo(i):
-    return i, i * i
+# def foo(i):
+    # return i, i * i
 
 
-class A:
+# class A:
 
-    def __init__(self):
-        self.arr = np.zeros(10)
+    # def __init__(self):
+        # self.arr = np.zeros(10)
 
-    def test(self):
-        pool = Pool(multiprocessing.cpu_count())
-        for i, ii in pool.map(foo, range(10)):
-            self.arr[i] = ii
+    # def test(self):
+        # pool = Pool(multiprocessing.cpu_count())
+        # for i, ii in pool.map(foo, range(10)):
+            # self.arr[i] = ii
 
-if __name__ == '__main__':
-    a = A()
-    a.test()
+# if __name__ == '__main__':
+    # a = A()
+    # a.test()
     
-    for i in range(10):
-        print(a.arr[i])
+    # for i in range(10):
+        # print(a.arr[i])
+
+
+import autograd.numpy as np
+
+from autograd import grad
+
+def foo(a):
+    if a[0] + a[1] + a[2] + 100 > 0:
+        return a[0] + a[1] + a[2] + 100
+    else:
+        return 0
+
+# a = np.random.rand(3)
+a = np.zeros(3)
+g = grad(foo)
+
+lr = 0.01
+
+while (foo(a) > 0):
+    print('a = {}'.format(a))
+    print('foo(a) = {}'.format(foo(a)))
+    print('g(a) = {}'.format(g(a)))
+    
+    a = a - lr * g(a)
+    
+print('a = {}'.format(a))
+print('foo(a) = {}'.format(foo(a)))

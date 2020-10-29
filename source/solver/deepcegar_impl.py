@@ -18,18 +18,28 @@ class Poly():
         self.lt = None
         self.gt = None
 
-    def back_substitute(self, lst_poly):
+    def back_substitute(self, lst_poly, get_ineq = False):
         lt_curr = self.lt
         gt_curr = self.gt
         
         no_neurons = len(lt_curr)
         
+        if get_ineq:
+            no_neurons_x0 = len(lst_poly[0].lw)
+                    
+            lt_x0 = np.zeros([no_neurons, no_neurons_x0 + 1])
+            gt_x0 = np.zeros([no_neurons, no_neurons_x0 + 1])
+        
         if no_neurons <= 100 or len(lst_poly) <= 2:
             for i in range(no_neurons):
                 args = (i, lt_curr[i], gt_curr[i], lst_poly)
-                _, lw, up = back_substitute(args)
+                _, lw, up, lt, gt = back_substitute(args)
                 self.lw[i] = lw
                 self.up[i] = up
+                
+                if get_ineq:
+                    lt_x0[i] = lt
+                    gt_x0[i] = gt
         else:
             clones = []
             
@@ -37,15 +47,22 @@ class Poly():
                 clones.append(lst_poly.copy())
                         
             pool = multiprocessing.Pool(multiprocessing.cpu_count())
-            for i, lw, up in pool.map(back_substitute, zip(range(no_neurons), self.lt, self.gt, clones)):
+            for i, lw, up, lt, gt in pool.map(back_substitute, zip(range(no_neurons), self.lt, self.gt, clones)):
                 self.lw[i] = lw
                 self.up[i] = up
+                
+                if get_ineq:
+                    lt_x0[i] = lt
+                    gt_x0[i] = gt
+                    
+        if get_ineq: return lt_x0, gt_x0
 
 
 class DeepCegarImpl():
     def __init__(self, max_ref):
         self.count_ref = 0
-        self.max_ref = max_ref
+        self.max_ref = 5
+        self.max_test = 0
 
 
     def __solve_local_robustness(self, model, spec, display):
@@ -59,64 +76,98 @@ class DeepCegarImpl():
 
         lw = np.maximum(model.lower, x0 - eps)
         up = np.minimum(model.upper, x0 + eps)
+                    
+        print('lw = {}'.format(lw))
+        print('up = {}'.format(up))
 
-        res, x = self.__validate_x0(model, x0, y0, lw, up)
+        res, x = self.__find_adv(model, x0, y0, lw, up)
         if not res:
             y = np.argmax(model.apply(x), axis=1)[0]
 
             print('True adversarial sample found!')
             print('x = {}'.format(x))
             print('y = {}'.format(y))
-
-            return
-            
-        x0_poly = Poly()
-
-        x0_poly.lw = lw
-        x0_poly.up = up
-
-        x0_poly.lt = np.eye(len(x0) + 1)[0:-1]
-        x0_poly.gt = np.eye(len(x0) + 1)[0:-1]
-
-        lst_poly = [x0_poly]
-        res = self.__verify(model, x0, y0, x0_poly, 0, lst_poly)
-
-        if res:
-            print('The network is robust around x0!')
         else:
-            print('Unknown!')
+            x0_poly = Poly()
+
+            x0_poly.lw = lw
+            x0_poly.up = up
+
+            x0_poly.lt = np.eye(len(x0) + 1)[0:-1]
+            x0_poly.gt = np.eye(len(x0) + 1)[0:-1]
+
+            lst_poly = [x0_poly]
+            
+            self.__verify(model, x0, y0, lst_poly)
 
 
-    def __validate_x0(self, model, x0, y0, lw, up):
-        x = x0
+    def __find_adv(self, model, x0, y0, lw, up):
+        def obj_func(x, model, y0):
+            output = model.apply(x)
+            y0_score = output[0][y0]
+
+            output = output - np.eye(output[0].size)[y0] * 1e9
+            max_score = np.max(output)
+
+            loss = 0 if y0_score < max_score else y0_score - max_score + 1e-9
+
+            return loss + np.sum(x - x)
+    
+        x = x0.copy()
 
         args = (model, y0)
-        jac = grad(self.__obj_func_x0)
+        jac = grad(obj_func)
         bounds = Bounds(lw, up)
 
-        res = minimize(self.__obj_func_x0, x, args=args, jac=jac, bounds=bounds)
+        res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
 
         if res.fun == 0: # an adversarial sample is generated
             return False, res.x
         else:
             return True, np.empty(0)
+        
+        
+    def __verify(self, model, x0, y0, lst_poly):
+        res, x = self.__run(model, x0, y0, 0, lst_poly)
+
+        if res:
+            print('The network is robust around x0!')
+            return True
+        elif len(x) == 0:
+            print('Can\'t verify! No adv found! Unknown!')
+            return False
+        else:
+            y = np.argmax(model.apply(x), axis=1)[0]
             
+            if y != y0:
+                print('True adversarial sample found!')
+                print('x = {}'.format(x))
+                print('y = {}'.format(y))
+            else:
+                print('Fake adversarial sample found!')
+                print('x = {}'.format(x))
+                print('y = {}'.format(y))
+                
+                print('Begin refine!')
             
-    def __obj_func_x0(self, x, model, y0):
-        output = model.apply(x)
-        y0_score = output[0][y0]
+                x0_poly1, x0_poly2 = self.__refine(model, lst_poly[0], x, y0)
+                
+                if x0_poly1 != None and x0_poly2 != None:
+                    if self.__verify(model, x0, y0, [x0_poly1]):
+                        return self.__verify(model, x0, y0, [x0_poly2])
+                else:
+                    print('Can\'t refine! Unknown!')
+                    return False
+            
 
-        output = output - np.eye(output[0].size)[y0] * 1e9
-        max_score = np.max(output)
-
-        loss = 0 if y0_score < max_score else y0_score - max_score + 1e-9
-
-        return loss + np.sum(x - x)
-
-
-    def __verify(self, model, x0, y0, xi_poly_prev, idx, lst_poly):
+    def __run(self, model, x0, y0, idx, lst_poly):
+        print('\n############################\n')
+        print('idx = {}'.format(idx))
+        print('xi_poly.lw = {}'.format(lst_poly[idx].lw))
+        print('xi_poly.up = {}'.format(lst_poly[idx].up))
+    
         if idx == len(model.layers):
-            x = xi_poly_prev
+            x = lst_poly[idx]
             no_neurons = len(x.lw)
 
             print('lw = {}'.format(x.lw))
@@ -135,78 +186,63 @@ class DeepCegarImpl():
                     res_poly.gt[0,y0] = 1
                     res_poly.gt[0,lbl] = -1
 
-                    res_poly.back_substitute(lst_poly)
+                    lt_x0, gt_x0 = res_poly.back_substitute(lst_poly, True)
+                    
+                    print('res.lw = {}'.format(res_poly.lw[0]))
+                    print('lt_x0 = {}'.format(lt_x0))
+                    print('gt_x0 = {}'.format(gt_x0))
 
-                    if res_poly.lw[0] < 0: return False
+                    if res_poly.lw[0] < 0:
+                        res, x = self.__find_sus_adv(gt_x0.reshape(-1), x0, lst_poly[0].lw, lst_poly[0].up)
+                        return False, x
 
-            return True
+            return True, np.empty(0)
         else:
-            xi_poly_curr = model.forward(xi_poly_prev, idx, lst_poly)
+            xi_poly_curr = model.forward(lst_poly[idx], idx, lst_poly)
+            lst_poly.append(xi_poly_curr)
+            return self.__run(model, x0, y0, idx + 1, lst_poly)
 
-            if model.layers[idx].is_poly_exact():
-                lst_poly.append(xi_poly_curr)
-                return self.__verify(model, x0, y0, xi_poly_curr, idx + 1, lst_poly)
+        
+    def __find_sus_adv(self, gt_x0, x0, lw, up):
+        def obj_func(x, gt_x0):
+            res = 0
+            for i in range(len(x)):
+                res += x[i] * gt_x0[i]
+            res += gt_x0[-1]
+            return res if res >= 0 else np.sum(x - x)
+    
+        x = x0.copy()
 
-            res, x = self.__validate(model, x0, y0, xi_poly_curr, idx + 1)
-            print('res = {}'.format(res))
-            print('x = {}'.format(x))
-            
-            if not res:
-                # a counter example is found, should be fake
-                print('Fake adversarial sample found!')
+        args = (gt_x0)
+        jac = grad(obj_func)
+        bounds = Bounds(lw, up)
 
-                if self.count_ref >= self.max_ref:
-                    return False
-                else:
-                    self.count_ref = self.count_ref + 1
-
-                tmp = model.apply_to(x0, idx + 1)
-                xi = x.reshape(tmp.shape)
-
-                g = grad(model.apply_from)(xi, idx + 1, y0=y0)
-                ref_ord = np.flip(np.argsort(g)).reshape(-1)
-                
-                func = model.layers[idx].func
-
-                xi_poly_prev1, xi_poly_prev2 = self.__refine(xi_poly_prev, ref_ord, x, func)
-                
-                if xi_poly_prev1 == None or xi_poly_prev2 == None:
-                    return False
-
-                lst_poly1 = lst_poly[0:-1].copy()
-                lst_poly2 = lst_poly[0:-1].copy()
-
-                lst_poly1.append(xi_poly_prev1)
-                lst_poly2.append(xi_poly_prev2)
-
-                if self.__verify(model, x0, y0, xi_poly_prev1, idx, lst_poly1):
-                    return self.__verify(model, x0, y0, xi_poly_prev2, idx, lst_poly2)
-                else:
-                    return False
-            else:
-                lst_poly.append(xi_poly_curr)
-                return self.__verify(model, x0, y0, xi_poly_curr, idx + 1, lst_poly)
-            
+        res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
+        
+        if res.fun == 0: # an adversarial sample is generated
+            return False, res.x
+        else:
+            return True, np.empty(0)
     
     
-    def __refine(self, x_poly, ref_ord, x, func):
+    def __refine(self, model, x_poly, x, y0):
+        self.count_ref += 1
+        
+        if self.count_ref > self.max_ref:
+            return None, None
+            
+        g = grad(model.apply)(x, y0=y0)
+        ref_ord = np.flip(np.argsort(g)).reshape(-1)
+    
         lw = x_poly.lw
         up = x_poly.up
         
         ref_idx = -1
     
-        if func == relu:
-            for i in ref_ord:
-                if lw[i] < 0 and up[i] > 0:
-                    ref_idx = i
-                    break
-        else:
-            for i in ref_ord:
-                if lw[i] != up[i]:
-                    ref_idx = idx
-                    break
-                    
-        print('ref_idx = {}'.format(ref_idx))
+        for i in ref_ord:
+            if x[i] > lw[i] and x[i] < up[i]:
+                ref_idx = i
+                break
         
         if ref_idx != -1:
             x1_poly = Poly()
@@ -222,53 +258,12 @@ class DeepCegarImpl():
             x2_poly.lt = x_poly.lt.copy()
             x2_poly.gt = x_poly.gt.copy()
             
-            if func == relu:
-                val = 0
-            elif func == sigmoid:
-                val = np.log(x_idx / (1 - x_idx))
-            elif func == tanh:
-                val = 0.5 * np.log((1 + x_idx) / (1 - x_idx))
-
-            x1_poly.up[ref_idx] = val
-            x2_poly.lw[ref_idx] = val
+            x1_poly.up[ref_idx] = x[ref_idx]
+            x2_poly.lw[ref_idx] = x[ref_idx]
             
             return x1_poly, x2_poly
         else:
             return None, None
-        
-            
-    def __validate(self, model, x0, y0, xi_poly, idx):
-        leni = len(xi_poly.lw)
-        x = np.zeros(leni)
-
-        args = (model, x0, y0, idx)
-        jac = grad(self.__obj_func)
-
-        lw = np.concatenate([xi_poly.lw])
-        up = np.concatenate([xi_poly.up])
-        bounds = Bounds(lw, up)
-
-        res = minimize(self.__obj_func, x, args=args, jac=jac, bounds=bounds)
-
-        if res.fun == 0: # an adversarial sample is generated
-            return False, res.x
-        else:
-            return True, np.empty(0)
-
-
-    def __obj_func(self, x, model, x0, y0, idx):
-        tmp = model.apply_to(x0, idx)
-
-        x = x.reshape(tmp.shape)
-        output = model.apply_from(x, idx)
-        y0_score = output[0][y0]
-
-        output = output - np.eye(output[0].size)[y0] * 1e9
-        max_score = np.max(output)
-
-        loss = 0 if y0_score < max_score else y0_score - max_score + 1e-9
-
-        return loss + np.sum(x - x)
        
        
     def solve(self, model, assertion, display=None):

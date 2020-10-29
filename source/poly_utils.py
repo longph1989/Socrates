@@ -55,8 +55,8 @@ def back_substitute(args):
             
             lw = lw + gt_curr[-1]
             up = up + lt_curr[-1]
-                        
-        best_lw = max(best_lw, lw)
-        best_up = min(best_up, up)
+            
+            best_lw = max(best_lw, lw)
+            best_up = min(best_up, up)
 
-    return idx, best_lw, best_up
+    return idx, best_lw, best_up, lt_curr, gt_curr

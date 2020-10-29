@@ -26,6 +26,8 @@ def add_solver(args, spec):
         solver['alpha'] = '0.05'
         solver['beta'] = '0.05'
         solver['delta'] = '0.005'
+    elif args.algorithm == 'deepcegar':
+        solver['max_ref'] = '5'
 
     spec['solver'] = solver
 
@@ -67,7 +69,7 @@ def main():
 
     y0s = np.array(ast.literal_eval(read(pathY)))
 
-    for i in range(100):
+    for i in range(1):
         assertion['x0'] = pathX + 'data' + str(i) + '.txt'
         x0 = np.array(ast.literal_eval(read(assertion['x0'])))
 
