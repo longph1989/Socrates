@@ -6,8 +6,11 @@ import ast
 from json_parser import parse
 from utils import *
 
+from solver.lib_solvers import DeepCegar
+
 
 import time
+import gc
 
 
 
@@ -92,7 +95,7 @@ def main():
 
     y0s = np.array(ast.literal_eval(read(pathY)))
 
-    for i in range(1):
+    for i in range(10):    
         assertion['x0'] = pathX + 'data' + str(i) + '.txt'
         x0 = np.array(ast.literal_eval(read(assertion['x0'])))
 

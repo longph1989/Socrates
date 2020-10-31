@@ -2,8 +2,8 @@ mkdir results_cegar
 mkdir results_cegar/eran_01
 
 (time python -u source/run_eran.py --spec benchmark/eran/nnet/mnist_relu_4_1024/spec.json --algorithm deepcegar --eps 0.1 --dataset mnist_fc) &> results_cegar/eran_01/log_mnist_relu_4_1024.txt
-(time python -u source/run_eran.py --spec benchmark/eran/nnet/mnist_relu_6_100/spec.json --algorithm deepcegar --eps 0.1 --dataset mnist_fc) &> results_cegar/eran_01/log_mnist_relu_6_100.txt
-(time python -u source/run_eran.py --spec benchmark/eran/nnet/mnist_relu_9_200/spec.json --algorithm deepcegar --eps 0.1 --dataset mnist_fc) &> results_cegar/eran_01/log_mnist_relu_9_200.txt
+#(time python -u source/run_eran.py --spec benchmark/eran/nnet/mnist_relu_6_100/spec.json --algorithm deepcegar --eps 0.1 --dataset mnist_fc) &> results_cegar/eran_01/log_mnist_relu_6_100.txt
+#(time python -u source/run_eran.py --spec benchmark/eran/nnet/mnist_relu_9_200/spec.json --algorithm deepcegar --eps 0.1 --dataset mnist_fc) &> results_cegar/eran_01/log_mnist_relu_9_200.txt
 #
 # (time python -u source/run_eran.py --spec benchmark/eran/nnet/mnist_sigmoid_6_500/spec.json --algorithm deepcegar --eps 0.1 --dataset mnist_conv) &> results_cegar/eran_01/log_mnist_sigmoid_6_500.txt
 # (time python -u source/run_eran.py --spec benchmark/eran/nnet/mnist_sigmoid_6_500_pgd_0.1/spec.json --algorithm deepcegar --eps 0.1 --dataset mnist_conv) &> results_cegar/eran_01/log_mnist_sigmoid_6_500_pgd_0.1.txt

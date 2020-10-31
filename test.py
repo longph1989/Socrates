@@ -76,28 +76,58 @@
         # print(a.arr[i])
 
 
-import autograd.numpy as np
+# import autograd.numpy as np
 
-from autograd import grad
+# from autograd import grad
 
-def foo(a):
-    if a[0] + a[1] + a[2] + 100 > 0:
-        return a[0] + a[1] + a[2] + 100
-    else:
-        return 0
+# def foo(a):
+    # if a[0] + a[1] + a[2] + 100 > 0:
+        # return a[0] + a[1] + a[2] + 100
+    # else:
+        # return 0
 
-# a = np.random.rand(3)
-a = np.zeros(3)
-g = grad(foo)
+# # a = np.random.rand(3)
+# a = np.zeros(3)
+# g = grad(foo)
 
-lr = 0.01
+# lr = 0.01
 
-while (foo(a) > 0):
-    print('a = {}'.format(a))
-    print('foo(a) = {}'.format(foo(a)))
-    print('g(a) = {}'.format(g(a)))
+# while (foo(a) > 0):
+    # print('a = {}'.format(a))
+    # print('foo(a) = {}'.format(foo(a)))
+    # print('g(a) = {}'.format(g(a)))
     
-    a = a - lr * g(a)
+    # a = a - lr * g(a)
     
-print('a = {}'.format(a))
-print('foo(a) = {}'.format(foo(a)))
+# print('a = {}'.format(a))
+# print('foo(a) = {}'.format(foo(a)))
+
+import numpy as np
+import multiprocessing
+import time
+
+def foo(args):
+    a, b = args
+    print(a)
+    b[a] = a
+    print(b)
+
+if __name__ == '__main__':
+    a = range(10)
+    b = np.random.rand(10)
+    
+    clones = []
+    
+    for i in a:
+        clones.append(b)
+    
+    pool = multiprocessing.Pool(multiprocessing.cpu_count())
+
+    t1 = time.time()
+    pool.map(foo, zip(a, clones))
+    # for i in a: print(i)
+    
+    t2 = time.time()
+
+    print(t2 - t1)
+    print(b)

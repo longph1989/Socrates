@@ -45,10 +45,7 @@ class Function(Layer):
                     res.lt[i,i] = x_poly.up[i] / (x_poly.up[i] - x_poly.lw[i])
                     res.lt[i,-1] = - x_poly.up[i] * x_poly.lw[i] / (x_poly.up[i] - x_poly.lw[i])
 
-                    s1 = res.lt[i,i] * x_poly.up[i] + res.lt[i,-1]
-                    s2 = -x_poly.lw[i]
-
-                    lam = 0 if s1 <= s2 else 1
+                    lam = 0 if x_poly.up[i] <= -x_poly.lw[i] else 1
 
                     res.gt[i,i] = lam
                     res.up[i] = x_poly.up[i]

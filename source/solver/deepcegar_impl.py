@@ -9,6 +9,8 @@ from assertion.lib_functions import di
 from utils import *
 from poly_utils import *
 
+import sys
+import gc
 
 class Poly():
     def __init__(self):
@@ -31,6 +33,7 @@ class Poly():
             gt_x0 = np.zeros([no_neurons, no_neurons_x0 + 1])
         
         if no_neurons <= 100 or len(lst_poly) <= 2:
+        # if True:
             for i in range(no_neurons):
                 args = (i, lt_curr[i], gt_curr[i], lst_poly)
                 _, lw, up, lt, gt = back_substitute(args)
@@ -44,7 +47,7 @@ class Poly():
             clones = []
             
             for i in range(no_neurons):
-                clones.append(lst_poly.copy())
+                clones.append(lst_poly)
                         
             pool = multiprocessing.Pool(multiprocessing.cpu_count())
             for i, lw, up, lt, gt in pool.map(back_substitute, zip(range(no_neurons), self.lt, self.gt, clones)):
@@ -54,6 +57,7 @@ class Poly():
                 if get_ineq:
                     lt_x0[i] = lt
                     gt_x0[i] = gt
+            pool.close()
                     
         if get_ineq: return lt_x0, gt_x0
 
@@ -71,15 +75,9 @@ class DeepCegarImpl():
 
         eps = ast.literal_eval(read(spec['eps']))
 
-        print('x0 = {}'.format(x0))
-        print('y0 = {}'.format(y0))
-
         lw = np.maximum(model.lower, x0 - eps)
         up = np.minimum(model.upper, x0 + eps)
                     
-        print('lw = {}'.format(lw))
-        print('up = {}'.format(up))
-
         res, x = self.__find_adv(model, x0, y0, lw, up)
         if not res:
             y = np.argmax(model.apply(x), axis=1)[0]
@@ -133,38 +131,41 @@ class DeepCegarImpl():
         if res:
             print('The network is robust around x0!')
             return True
-        elif len(x) == 0:
-            print('Can\'t verify! No adv found! Unknown!')
-            return False
         else:
-            y = np.argmax(model.apply(x), axis=1)[0]
+            print('Unknown!')
+            return False
+        # elif len(x) == 0:
+            # print('Can\'t verify! No adv found! Unknown!')
+            # return False
+        # else:
+            # y = np.argmax(model.apply(x), axis=1)[0]
             
-            if y != y0:
-                print('True adversarial sample found!')
-                print('x = {}'.format(x))
-                print('y = {}'.format(y))
-            else:
-                print('Fake adversarial sample found!')
-                print('x = {}'.format(x))
-                print('y = {}'.format(y))
+            # if y != y0:
+                # print('True adversarial sample found!')
+                # print('x = {}'.format(x))
+                # print('y = {}'.format(y))
+            # else:
+                # print('Fake adversarial sample found!')
+                # print('x = {}'.format(x))
+                # print('y = {}'.format(y))
                 
-                print('Begin refine!')
+                # print('Begin refine!')
             
-                x0_poly1, x0_poly2 = self.__refine(model, lst_poly[0], x, y0)
+                # x0_poly1, x0_poly2 = self.__refine(model, lst_poly[0], x, y0)
                 
-                if x0_poly1 != None and x0_poly2 != None:
-                    if self.__verify(model, x0, y0, [x0_poly1]):
-                        return self.__verify(model, x0, y0, [x0_poly2])
-                else:
-                    print('Can\'t refine! Unknown!')
-                    return False
+                # if x0_poly1 != None and x0_poly2 != None:
+                    # if self.__verify(model, x0, y0, [x0_poly1]):
+                        # return self.__verify(model, x0, y0, [x0_poly2])
+                # else:
+                    # print('Can\'t refine! Unknown!')
+                    # return False
             
 
     def __run(self, model, x0, y0, idx, lst_poly):
-        print('\n############################\n')
-        print('idx = {}'.format(idx))
-        print('xi_poly.lw = {}'.format(lst_poly[idx].lw))
-        print('xi_poly.up = {}'.format(lst_poly[idx].up))
+        # print('\n############################\n')
+        # print('idx = {}'.format(idx))
+        # print('xi_poly.lw = {}'.format(lst_poly[idx].lw))
+        # print('xi_poly.up = {}'.format(lst_poly[idx].up))
     
         if idx == len(model.layers):
             x = lst_poly[idx]
@@ -188,9 +189,9 @@ class DeepCegarImpl():
 
                     lt_x0, gt_x0 = res_poly.back_substitute(lst_poly, True)
                     
-                    print('res.lw = {}'.format(res_poly.lw[0]))
-                    print('lt_x0 = {}'.format(lt_x0))
-                    print('gt_x0 = {}'.format(gt_x0))
+                    # print('res.lw = {}'.format(res_poly.lw[0]))
+                    # print('lt_x0 = {}'.format(lt_x0))
+                    # print('gt_x0 = {}'.format(gt_x0))
 
                     if res_poly.lw[0] < 0:
                         res, x = self.__find_sus_adv(gt_x0.reshape(-1), x0, lst_poly[0].lw, lst_poly[0].up)
