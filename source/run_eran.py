@@ -95,7 +95,9 @@ def main():
 
     y0s = np.array(ast.literal_eval(read(pathY)))
 
-    for i in range(10):    
+    for i in range(1):
+        i = i + 13
+    
         assertion['x0'] = pathX + 'data' + str(i) + '.txt'
         x0 = np.array(ast.literal_eval(read(assertion['x0'])))
 
