@@ -145,13 +145,13 @@ class Linear(Layer):
         no_neurons = len(bias)
 
         res = Poly()
-        
+
         res.lw = np.zeros(no_neurons)
         res.up = np.zeros(no_neurons)
 
         res.lt = np.concatenate([weights, bias], axis=1)
         res.gt = np.concatenate([weights, bias], axis=1)
-                
+
         res.back_substitute(lst_poly)
 
         return res
