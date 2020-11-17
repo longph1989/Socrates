@@ -305,80 +305,80 @@ class Conv2d(Layer):
 
         return res
 
-    def apply_poly(self, x_poly, lst_poly):
-        x0_poly = lst_poly[0]
-        res = Poly()
-
-        no_features = len(x0_poly.lw)
-
-        f_n, f_c, f_h, f_w = self.filters.shape
-        f = self.filters.reshape(f_n, -1)
-
-        b = self.bias.reshape(f_n, -1)
-
-        p = self.padding
-
-        x_lt = np.pad(x_poly.lt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
-        x_gt = np.pad(x_poly.gt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
-
-        # notice that we always have x_n = 1 and so can reduce 1 dimension
-        x_c, x_h, x_w, _ = x_lt.shape
-
-        res_h = int((x_h - f_h) / self.stride) + 1
-        res_w = int((x_w - f_w) / self.stride) + 1
-
-        size_f = f_c * f_h * f_w
-        size_r = res_h * res_w
-
-        c_idx, h_idx, w_idx = index2d(x_c, self.stride, (f_h, f_w), (x_h, x_w))
-
-        x_lt = x_lt[c_idx, h_idx, w_idx, :]
-        x_lt = x_lt.reshape(size_f, size_r, no_features)
-
-        x_gt = x_gt[c_idx, h_idx, w_idx, :]
-        x_gt = x_gt.reshape(size_f, size_r, no_features)
-
-        res.lw = np.zeros(f_n * size_r)
-        res.up = np.zeros(f_n * size_r)
-
-        res.lt = np.zeros(f_n, size_r, no_features)
-        res.gt = np.zeros(f_n, size_r, no_features)
-
-        for i in range(f_n):
-            for j in range(size_r):
-                for k in range(size_f):
-                    res.lt[i,j] = res.lt[i,j] + f[i,k] * x_lt[k,j]
-                    res.gt[i,j] = res.gt[i,j] + f[i,k] * x_gt[k,j]
-
-                res.lt[i,j,-1] = res.lt[i,j,-1] + bias[i,0]
-                res.gt[i,j,-1] = res.gt[i,j,-1] + bias[i,0]
-
-        for i in range(f_n):
-            for j in range(size_r):
-                for k in range(no_features):
-                    if res.gt[i,j] > 0:
-                        res.lw[i * size_r + j] = res.lw[i * size_r + j] + res.gt[i,j,k] * x0_poly.lw[k]
-                    else:
-                        res.lw[i * size_r + j] = res.lw[i * size_r + j] + res.gt[i,j,k] * x0_poly.up[k]
-
-                    if res.lt[i,j] > 0:
-                        res.up[i * size_r + j] = res.up[i * size_r + j] + res.lt[i,j,k] * x0_poly.up[k]
-                    else:
-                        res.up[i * size_r + j] = res.up[i * size_r + j] + res.lt[i,j,k] * x0_poly.lw[k]
-
-                res.lw[i * size_r + j] = res.lw[i * size_r + j] + res.gt[i,j,-1]
-                res.up[i * size_r + j] = res.up[i * size_r + j] + res.lt[i,j,-1]
-
-        res.lw = res.lw.reshape(f_n, res_h, res_w)
-        res.up = res.up.reshape(f_n, res_h, res_w)
-
-        res.lt = res.lt.reshape(f_n, res_h, res_w, -1)
-        res.gt = res.gt.reshape(f_n, res_h, res_w, -1)
-
-        return res
-
-    def is_poly_exact(self):
-        return True
+    # def apply_poly(self, x_poly, lst_poly):
+    #     x0_poly = lst_poly[0]
+    #     res = Poly()
+    #
+    #     no_features = len(x0_poly.lw)
+    #
+    #     f_n, f_c, f_h, f_w = self.filters.shape
+    #     f = self.filters.reshape(f_n, -1)
+    #
+    #     b = self.bias.reshape(f_n, -1)
+    #
+    #     p = self.padding
+    #
+    #     x_lt = np.pad(x_poly.lt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
+    #     x_gt = np.pad(x_poly.gt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
+    #
+    #     # notice that we always have x_n = 1 and so can reduce 1 dimension
+    #     x_c, x_h, x_w, _ = x_lt.shape
+    #
+    #     res_h = int((x_h - f_h) / self.stride) + 1
+    #     res_w = int((x_w - f_w) / self.stride) + 1
+    #
+    #     size_f = f_c * f_h * f_w
+    #     size_r = res_h * res_w
+    #
+    #     c_idx, h_idx, w_idx = index2d(x_c, self.stride, (f_h, f_w), (x_h, x_w))
+    #
+    #     x_lt = x_lt[c_idx, h_idx, w_idx, :]
+    #     x_lt = x_lt.reshape(size_f, size_r, no_features)
+    #
+    #     x_gt = x_gt[c_idx, h_idx, w_idx, :]
+    #     x_gt = x_gt.reshape(size_f, size_r, no_features)
+    #
+    #     res.lw = np.zeros(f_n * size_r)
+    #     res.up = np.zeros(f_n * size_r)
+    #
+    #     res.lt = np.zeros(f_n, size_r, no_features)
+    #     res.gt = np.zeros(f_n, size_r, no_features)
+    #
+    #     for i in range(f_n):
+    #         for j in range(size_r):
+    #             for k in range(size_f):
+    #                 res.lt[i,j] = res.lt[i,j] + f[i,k] * x_lt[k,j]
+    #                 res.gt[i,j] = res.gt[i,j] + f[i,k] * x_gt[k,j]
+    #
+    #             res.lt[i,j,-1] = res.lt[i,j,-1] + bias[i,0]
+    #             res.gt[i,j,-1] = res.gt[i,j,-1] + bias[i,0]
+    #
+    #     for i in range(f_n):
+    #         for j in range(size_r):
+    #             for k in range(no_features):
+    #                 if res.gt[i,j] > 0:
+    #                     res.lw[i * size_r + j] = res.lw[i * size_r + j] + res.gt[i,j,k] * x0_poly.lw[k]
+    #                 else:
+    #                     res.lw[i * size_r + j] = res.lw[i * size_r + j] + res.gt[i,j,k] * x0_poly.up[k]
+    #
+    #                 if res.lt[i,j] > 0:
+    #                     res.up[i * size_r + j] = res.up[i * size_r + j] + res.lt[i,j,k] * x0_poly.up[k]
+    #                 else:
+    #                     res.up[i * size_r + j] = res.up[i * size_r + j] + res.lt[i,j,k] * x0_poly.lw[k]
+    #
+    #             res.lw[i * size_r + j] = res.lw[i * size_r + j] + res.gt[i,j,-1]
+    #             res.up[i * size_r + j] = res.up[i * size_r + j] + res.lt[i,j,-1]
+    #
+    #     res.lw = res.lw.reshape(f_n, res_h, res_w)
+    #     res.up = res.up.reshape(f_n, res_h, res_w)
+    #
+    #     res.lt = res.lt.reshape(f_n, res_h, res_w, -1)
+    #     res.gt = res.gt.reshape(f_n, res_h, res_w, -1)
+    #
+    #     return res
+    #
+    # def is_poly_exact(self):
+    #     return True
 
 
 class Conv3d(Layer):
@@ -467,69 +467,69 @@ class MaxPool2d(Layer):
 
         return res
 
-    def apply_poly(self, x_poly, lst_poly):
-        x0_poly = lst_poly[0]
-        res = Poly()
-
-        no_features = len(x0_poly.lw)
-
-        k_h, k_w = self.kernel
-
-        p = self.padding
-
-        x_lw = np.pad(x_poly.lw, ((0,0), (p,p), (p,p)), mode='constant')
-        x_up = np.pad(x_poly.up, ((0,0), (p,p), (p,p)), mode='constant')
-
-        x_lt = np.pad(x_poly.lt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
-        x_gt = np.pad(x_poly.gt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
-
-        # notice that we always have x_n = 1 and so can reduce 1 dimension
-        x_c, x_h, x_w, _ = x_lt.shape
-
-        res_h = int((x_h - f_h) / self.stride) + 1
-        res_w = int((x_w - f_w) / self.stride) + 1
-
-        size_k = k_h * k_w
-        size_r = res_h * res_w
-
-        c_idx, h_idx, w_idx = index2d(x_c, self.stride, self.kernel, (x_h, x_w))
-
-        x_lw = x_lw[c_idx, h_idx, w_idx]
-        x_lw = x_lw.reshape(x_c, size_k, -1)
-
-        x_up = x_up[c_idx, h_idx, w_idx]
-        x_up = x_up.reshape(x_c, size_k, -1)
-
-        x_lt = x_lt[c_idx, h_idx, w_idx, :]
-        x_lt = x_lt.reshape(x_c, size_k, no_features)
-
-        x_gt = x_gt[c_idx, h_idx, w_idx, :]
-        x_gt = x_gt.reshape(x_c, size_k, no_features)
-
-        res.lw = np.max(x_lw, axis=1)
-        lw_idx = np.argmax(x_lw, axis=1)
-
-        res.up = np.max(x_up, axis=1)
-        up_idx = np.argmax(x_up, axis=1)
-
-        res.gt = x_gt[range(len(lw_idx)),lw_idx]
-        res.lt = res.gt
-
-        for i in range(x_c * size_r):
-            if lw_idx[i] != up_idx[i]:
-                res.lt[i] = np.zeros(no_features + 1)
-                res.lt[i,-1] = res.up[i]
-
-        res.lt = res.lt.reshape(x_c, res_h, res_w, -1)
-        res.gt = res.gt.reshape(x_c, res_h, res_w, -1)
-
-        res.lw = res.lw.reshape(x_c, res_h, res_w)
-        res.up = res.up.reshape(x_c, res_h, res_w)
-
-        return res
-
-    def is_poly_exact(self):
-        return False
+    # def apply_poly(self, x_poly, lst_poly):
+    #     x0_poly = lst_poly[0]
+    #     res = Poly()
+    #
+    #     no_features = len(x0_poly.lw)
+    #
+    #     k_h, k_w = self.kernel
+    #
+    #     p = self.padding
+    #
+    #     x_lw = np.pad(x_poly.lw, ((0,0), (p,p), (p,p)), mode='constant')
+    #     x_up = np.pad(x_poly.up, ((0,0), (p,p), (p,p)), mode='constant')
+    #
+    #     x_lt = np.pad(x_poly.lt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
+    #     x_gt = np.pad(x_poly.gt, ((0,0), (p,p), (p,p), (0,0)), mode='constant')
+    #
+    #     # notice that we always have x_n = 1 and so can reduce 1 dimension
+    #     x_c, x_h, x_w, _ = x_lt.shape
+    #
+    #     res_h = int((x_h - f_h) / self.stride) + 1
+    #     res_w = int((x_w - f_w) / self.stride) + 1
+    #
+    #     size_k = k_h * k_w
+    #     size_r = res_h * res_w
+    #
+    #     c_idx, h_idx, w_idx = index2d(x_c, self.stride, self.kernel, (x_h, x_w))
+    #
+    #     x_lw = x_lw[c_idx, h_idx, w_idx]
+    #     x_lw = x_lw.reshape(x_c, size_k, -1)
+    #
+    #     x_up = x_up[c_idx, h_idx, w_idx]
+    #     x_up = x_up.reshape(x_c, size_k, -1)
+    #
+    #     x_lt = x_lt[c_idx, h_idx, w_idx, :]
+    #     x_lt = x_lt.reshape(x_c, size_k, no_features)
+    #
+    #     x_gt = x_gt[c_idx, h_idx, w_idx, :]
+    #     x_gt = x_gt.reshape(x_c, size_k, no_features)
+    #
+    #     res.lw = np.max(x_lw, axis=1)
+    #     lw_idx = np.argmax(x_lw, axis=1)
+    #
+    #     res.up = np.max(x_up, axis=1)
+    #     up_idx = np.argmax(x_up, axis=1)
+    #
+    #     res.gt = x_gt[range(len(lw_idx)),lw_idx]
+    #     res.lt = res.gt
+    #
+    #     for i in range(x_c * size_r):
+    #         if lw_idx[i] != up_idx[i]:
+    #             res.lt[i] = np.zeros(no_features + 1)
+    #             res.lt[i,-1] = res.up[i]
+    #
+    #     res.lt = res.lt.reshape(x_c, res_h, res_w, -1)
+    #     res.gt = res.gt.reshape(x_c, res_h, res_w, -1)
+    #
+    #     res.lw = res.lw.reshape(x_c, res_h, res_w)
+    #     res.up = res.up.reshape(x_c, res_h, res_w)
+    #
+    #     return res
+    #
+    # def is_poly_exact(self):
+    #     return False
 
 
 class MaxPool3d(Layer):

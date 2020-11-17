@@ -1,9 +1,6 @@
 mkdir results_cegar
 mkdir results_cegar/eran_001
 
-python -u source\run_eran.py --spec benchmark\eran\nnet\mnist_relu_4_1024\spec.json --algorithm deepcegar --eps 0.01 --dataset mnist_fc
-python -u source\run_eran.py --spec benchmark\eran\nnet\mnist_relu_4_1024\spec.json --algorithm deepcegar --eps 0.1 --dataset mnist_fc
-
 (time python -u source/run_eran.py --spec benchmark/eran/nnet/mnist_relu_4_1024/spec.json --algorithm deepcegar --eps 0.01 --dataset mnist_fc) &> results_cegar/eran_001/log_mnist_relu_4_1024.txt
 # (time python -u source/run_eran.py --spec benchmark/eran/nnet/mnist_relu_6_100/spec.json --algorithm deepcegar --eps 0.01 --dataset mnist_fc) &> results_cegar/eran_001/log_mnist_relu_6_100.txt
 # (time python -u source/run_eran.py --spec benchmark/eran/nnet/mnist_relu_9_200/spec.json --algorithm deepcegar --eps 0.01 --dataset mnist_fc) &> results_cegar/eran_001/log_mnist_relu_9_200.txt

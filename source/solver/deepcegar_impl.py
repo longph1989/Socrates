@@ -9,6 +9,7 @@ from assertion.lib_functions import di
 from utils import *
 from poly_utils import *
 
+
 class Poly():
     def __init__(self):
         self.lw = None
@@ -41,7 +42,6 @@ class Poly():
             gt_x0 = np.zeros([no_neurons, no_neurons_x0 + 1])
 
         if no_neurons <= 100 or len(lst_poly) <= 2:
-        # if True:
             for i in range(no_neurons):
                 args = (i, lt_curr[i], gt_curr[i], lst_poly)
                 _, lw, up, lt, gt = back_substitute(args)
@@ -58,9 +58,8 @@ class Poly():
                 clones.append(lst_poly)
 
             num_cores = 4
-            # print('num cores = {}'.format(num_cores))
             pool = multiprocessing.Pool(num_cores)
-            for i, lw, up, lt, gt in pool.map(back_substitute_mid, zip(range(no_neurons), self.lt, self.gt, clones)):
+            for i, lw, up, lt, gt in pool.map(back_substitute, zip(range(no_neurons), self.lt, self.gt, clones)):
                 self.lw[i] = lw
                 self.up[i] = up
 
@@ -74,9 +73,9 @@ class Poly():
 
 class DeepCegarImpl():
     def __init__(self, max_ref):
-        self.count_ref = 0
-        self.max_ref = 30
-        self.max_test = 0
+        self.has_ref = False
+        self.max_ref = 20
+        self.cnt_ref = 0
 
 
     def __solve_local_robustness(self, model, spec, display):
@@ -120,24 +119,6 @@ class DeepCegarImpl():
                 print('Unknown!')
 
 
-    def __find_adv1(self, model, x0, y0, lw, up):
-        x = x0
-
-        for i in range(10000):
-            g = grad(model.apply)(x, y0=y0)
-
-            x = x - 0.01 * g
-            x = np.maximum(x, lw)
-            x = np.minimum(x, up)
-
-            y = np.argmax(model.apply(x), axis=1)[0]
-
-            if y != y0:
-                return False, x
-
-        return True, np.empty(0)
-
-
     def __find_adv(self, model, x0, y0, lw, up):
         def obj_func(x, model, y0):
             output = model.apply(x)
@@ -169,11 +150,7 @@ class DeepCegarImpl():
 
         if res:
             return True
-        # else:
-            # print('Unknown!')
-            # return False
-        elif len(x) == 0:
-            # print('Can\'t verify! No adv found! Unknown!')
+        elif not self.has_ref or len(x) == 0:
             return False
         else:
             y = np.argmax(model.apply(x), axis=1)[0]
@@ -185,66 +162,30 @@ class DeepCegarImpl():
 
                 return False
             else:
-                # print('Fake adversarial sample found!')
-                # print('x = {}'.format(x))
-                # print('y = {}'.format(y))
-
-                best_layer = -1
-                best_index = -1
-                best_value = -1
-
-                for i in range(len(model.layers)):
-                    layer = model.layers[i]
-
-                    if not layer.is_poly_exact():
-                        tmp = model.apply_to(x, i)
-                        g = grad(model.apply_from)(tmp, i, y0=y0).reshape(-1)
-                        # ref_ord = np.flip(np.argsort(np.abs(g)))
-
-                        poly_i = lst_poly[i]
-
-                        for ref_idx in range(len(g)):
-                            if poly_i.lw[ref_idx] < 0 and poly_i.up[ref_idx] > 0:
-                                if best_layer == -1 or best_value < g[ref_idx]:
-                                    best_layer = i
-                                    best_index = ref_idx
-                                    best_value = g[ref_idx]
-
-                lst_poly1, lst_poly2 = self.__refine_global(model, lst_poly, x, best_layer, best_index)
+                ref_layer, ref_index, ref_value = self.__choose_refinement(model, lst_poly, x)
+                lst_poly1, lst_poly2 = self.__refine(model, lst_poly, x, ref_layer, ref_index, ref_value)
 
                 if lst_poly1 != None and lst_poly2 != None:
-                    if self.__verify(model, x0, y0, best_layer, lst_poly1):
-                        return self.__verify(model, x0, y0, best_layer, lst_poly2)
+                    if self.__verify(model, x0, y0, ref_layer, lst_poly1):
+                        return self.__verify(model, x0, y0, ref_layer, lst_poly2)
                     else:
                         return False
                 else:
                     return False
 
-                # x0_poly1, x0_poly2 = self.__refine(model, lst_poly[0], x, y0)
-                #
-                # if x0_poly1 != None and x0_poly2 != None:
-                #     if self.__verify(model, x0, y0, 0, [x0_poly1]):
-                #         return self.__verify(model, x0, y0, 0, [x0_poly2])
-                #     else:
-                #         return False
-                # else:
-                #     # print('Can\'t refine! Unknown!')
-                #     return False
-
 
     def __run(self, model, x0, y0, idx, lst_poly):
+        # print('\n############################\n')
         # print('idx = {}'.format(idx))
-        # if idx == 0:
-            # print('\n############################\n')
-            # print('xi_poly.lw = {}'.format(lst_poly[idx].lw))
-            # print('xi_poly.up = {}'.format(lst_poly[idx].up))
+        # print('xi_poly.lw = {}'.format(lst_poly[idx].lw))
+        # print('xi_poly.up = {}'.format(lst_poly[idx].up))
 
         if idx == len(model.layers):
             x = lst_poly[idx]
             no_neurons = len(x.lw)
 
-            # print('lw = {}'.format(x.lw))
-            # print('up = {}'.format(x.up))
+            # print('x.lw = {}'.format(x.lw))
+            # print('x.up = {}'.format(x.up))
 
             for lbl in range(no_neurons):
                 if lbl != y0 and x.lw[y0] <= x.up[lbl]:
@@ -298,134 +239,93 @@ class DeepCegarImpl():
             return True, np.empty(0)
 
 
-    def __refine_global(self, model, lst_poly, x, best_layer, best_index):
-        if self.count_ref == 0:
+    def __choose_refinement1(model, lst_poly, x):
+        best_layer = -1
+        best_index = -1
+        best_value = -1
+        ref_value = 0
+
+        for i in range(len(model.layers)):
+            layer = model.layers[i]
+
+            if not layer.is_poly_exact():
+                tmp = model.apply_to(x, i)
+                g = grad(model.apply_from)(tmp, i, y0=y0).reshape(-1)
+                g = np.abs(g)
+
+                poly_i = lst_poly[i]
+
+                for ref_idx in range(len(g)):
+                    if poly_i.lw[ref_idx] < 0 and poly_i.up[ref_idx] > 0:
+                        if best_layer == -1 or best_value < g[ref_idx]:
+                            best_layer = i
+                            best_index = ref_idx
+                            best_value = g[ref_idx]
+
+        return best_layer, best_index, ref_value
+
+
+    def __choose_refinement2(model, lst_poly, x):
+        best_layer = -1
+        best_index = -1
+        best_value = -1
+        ref_value = 0
+
+        for i in range(1):
+            layer = model.layers[i]
+
+            g = grad(model.apply)(x, y0=y0).reshape(-1)
+            g = np.abs(g)
+
+            poly_i = lst_poly[i]
+
+            for ref_idx in range(len(g)):
+                if poly_i.lw[ref_idx] < poly_i.up[ref_idx]:
+                    if best_layer == -1 or best_value < g[ref_idx]:
+                        best_layer = i
+                        best_index = ref_idx
+                        best_value = g[ref_idx]
+                        ref_value = (poly_i.lw[ref_idx] + poly_i.up[ref_idx]) / 2
+
+        return best_layer, best_index, ref_value
+
+
+    def __refine(self, model, lst_poly, x, ref_layer, ref_index, ref_value):
+        if self.cnt_ref == 0:
             print('Refine! ', end='')
-            # print('Refine!')
 
-        self.count_ref += 1
+        self.cnt_ref += 1
 
-        # print('count_ref: {}'.format(self.count_ref))
-        if self.count_ref > self.max_ref or best_layer == -1:
-            # print('Reach limit!', end='')
+        if self.cnt_ref > self.max_ref or best_layer == -1:
             return None, None
-
-        # tmp = model.apply_to(x, best_layer).reshape(-1)
-        # val = tmp[best_index]
-
-        # print('best_layer: {}'.format(best_layer))
-        # print('best_index: {}'.format(best_index))
-        # print('lw: {}'.format(lst_poly[best_layer].lw[best_index]))
-        # print('up: {}'.format(lst_poly[best_layer].up[best_index]))
 
         lst_poly1 = []
         lst_poly2 = []
 
-        for i in range(best_layer):
+        for i in range(ref_layer):
             lst_poly1.append(lst_poly[i].copy())
             lst_poly2.append(lst_poly[i].copy())
 
         x1_poly = Poly()
         x2_poly = Poly()
 
-        x1_poly.lw = lst_poly[best_layer].lw.copy()
-        x1_poly.up = lst_poly[best_layer].up.copy()
-        x1_poly.lt = lst_poly[best_layer].lt.copy()
-        x1_poly.gt = lst_poly[best_layer].gt.copy()
+        x1_poly.lw = lst_poly[ref_layer].lw.copy()
+        x1_poly.up = lst_poly[ref_layer].up.copy()
+        x1_poly.lt = lst_poly[ref_layer].lt.copy()
+        x1_poly.gt = lst_poly[ref_layer].gt.copy()
 
-        x2_poly.lw = lst_poly[best_layer].lw.copy()
-        x2_poly.up = lst_poly[best_layer].up.copy()
-        x2_poly.lt = lst_poly[best_layer].lt.copy()
-        x2_poly.gt = lst_poly[best_layer].gt.copy()
+        x2_poly.lw = lst_poly[ref_layer].lw.copy()
+        x2_poly.up = lst_poly[ref_layer].up.copy()
+        x2_poly.lt = lst_poly[ref_layer].lt.copy()
+        x2_poly.gt = lst_poly[ref_layer].gt.copy()
 
-        x1_poly.up[best_index] = 0
-        x2_poly.lw[best_index] = 0
+        x1_poly.up[ref_index] = ref_value
+        x2_poly.lw[ref_index] = ref_value
 
         lst_poly1.append(x1_poly)
         lst_poly2.append(x2_poly)
 
         return lst_poly1, lst_poly2
-
-
-    def __refine(self, model, x_poly, x, y0):
-        if self.count_ref == 0:
-            print('Refine! ', end='')
-
-        self.count_ref += 1
-
-        if self.count_ref > self.max_ref:
-            # print('Reach limit!', end='')
-            return None, None
-
-        g = grad(model.apply)(x, y0=y0)
-        ref_ord = np.flip(np.argsort(g)).reshape(-1)
-
-        lw = x_poly.lw
-        up = x_poly.up
-
-        ref_idx1 = -1
-        ref_idx2 = -1
-
-        for i in ref_ord:
-            if x[i] > lw[i] and x[i] < up[i]:
-                ref_idx1 = i
-                break
-
-        for i in ref_ord:
-            if lw[i] < up[i]:
-                ref_idx2 = i
-                break
-
-        if ref_idx1 != -1:
-            ref_idx = ref_idx1
-
-            # print('ref_idx = {}'.format(ref_idx))
-            # print('x[ref_idx] = {}'.format(x[ref_idx]))
-
-            x1_poly = Poly()
-            x2_poly = Poly()
-
-            x1_poly.lw = x_poly.lw.copy()
-            x1_poly.up = x_poly.up.copy()
-            x1_poly.lt = x_poly.lt.copy()
-            x1_poly.gt = x_poly.gt.copy()
-
-            x2_poly.lw = x_poly.lw.copy()
-            x2_poly.up = x_poly.up.copy()
-            x2_poly.lt = x_poly.lt.copy()
-            x2_poly.gt = x_poly.gt.copy()
-
-            x1_poly.up[ref_idx] = x[ref_idx]
-            x2_poly.lw[ref_idx] = x[ref_idx]
-
-            return x1_poly, x2_poly
-        elif ref_idx2 != -1:
-            ref_idx = ref_idx2
-
-            # print('ref_idx = {}'.format(ref_idx))
-            # print('x[ref_idx] = {}'.format(x[ref_idx]))
-
-            x1_poly = Poly()
-            x2_poly = Poly()
-
-            x1_poly.lw = x_poly.lw.copy()
-            x1_poly.up = x_poly.up.copy()
-            x1_poly.lt = x_poly.lt.copy()
-            x1_poly.gt = x_poly.gt.copy()
-
-            x2_poly.lw = x_poly.lw.copy()
-            x2_poly.up = x_poly.up.copy()
-            x2_poly.lt = x_poly.lt.copy()
-            x2_poly.gt = x_poly.gt.copy()
-
-            val = (x1_poly.lw[ref_idx] + x1_poly.up[ref_idx]) / 2
-
-            x1_poly.up[ref_idx] = val
-            x2_poly.lw[ref_idx] = val
-
-            return x1_poly, x2_poly
-        else:
-            return None, None
 
 
     def solve(self, model, assertion, display=None):
