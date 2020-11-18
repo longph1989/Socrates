@@ -3,6 +3,8 @@ import autograd.numpy as np
 
 def back_substitute(args):
     idx, lt_curr, gt_curr, lst_poly = args
+    lst_lt = []
+    lst_gt = []
 
     best_lw = -1e9
     best_up = 1e9
@@ -44,6 +46,9 @@ def back_substitute(args):
 
             lt_curr = lt
             gt_curr = gt
+
+            lst_lt.insert(0, lt_curr)
+            lst_gt.insert(0, gt_curr)
         else:
             for i in range(no_e_ns):
                 if lt_curr[i] > 0:
@@ -62,4 +67,5 @@ def back_substitute(args):
             best_lw = max(best_lw, lw)
             best_up = min(best_up, up)
 
-    return idx, best_lw, best_up, lt_curr, gt_curr
+    # return idx, best_lw, best_up, lt_curr, gt_curr
+    return idx, best_lw, best_up, lst_lt, lst_gt

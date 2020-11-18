@@ -29,17 +29,21 @@ class Poly():
 
         return new_poly
 
-    def back_substitute(self, lst_poly, get_ineq = False):
+    def back_substitute(self, lst_poly, get_ineq=False):
         lt_curr = self.lt
         gt_curr = self.gt
 
         no_neurons = len(lt_curr)
 
         if get_ineq:
-            no_neurons_x0 = len(lst_poly[0].lw)
-
-            lt_x0 = np.zeros([no_neurons, no_neurons_x0 + 1])
-            gt_x0 = np.zeros([no_neurons, no_neurons_x0 + 1])
+            # get_ineq only happens at the last step
+            # no_neurons in this case always be 1
+            # no_neurons_x0 = len(lst_poly[0].lw)
+            #
+            # lt_x0 = np.zeros([no_neurons, no_neurons_x0 + 1])
+            # gt_x0 = np.zeros([no_neurons, no_neurons_x0 + 1])
+            lst_lt = None
+            lst_gt = None
 
         if no_neurons <= 100 or len(lst_poly) <= 2:
             for i in range(no_neurons):
@@ -49,8 +53,10 @@ class Poly():
                 self.up[i] = up
 
                 if get_ineq:
-                    lt_x0[i] = lt
-                    gt_x0[i] = gt
+                    # lt_x0[i] = lt
+                    # gt_x0[i] = gt
+                    lst_lt = lt
+                    lst_gt = gt
         else:
             clones = []
 
@@ -59,16 +65,17 @@ class Poly():
 
             num_cores = 4
             pool = multiprocessing.Pool(num_cores)
-            for i, lw, up, lt, gt in pool.map(back_substitute, zip(range(no_neurons), self.lt, self.gt, clones)):
+            for i, lw, up, _, _ in pool.map(back_substitute, zip(range(no_neurons), self.lt, self.gt, clones)):
                 self.lw[i] = lw
                 self.up[i] = up
 
-                if get_ineq:
-                    lt_x0[i] = lt
-                    gt_x0[i] = gt
+                # if get_ineq:
+                #     lt_x0[i] = lt
+                #     gt_x0[i] = gt
             pool.close()
 
-        if get_ineq: return lt_x0, gt_x0
+        # if get_ineq: return lt_x0, gt_x0
+        if get_ineq: return lst_lt, lst_gt
 
 
 class DeepCegarImpl():
@@ -146,7 +153,7 @@ class DeepCegarImpl():
 
 
     def __verify(self, model, x0, y0, idx, lst_poly):
-        res, x = self.__run(model, x0, y0, idx, lst_poly)
+        res, x, lst_gt = self.__run(model, x0, y0, idx, lst_poly)
 
         if res:
             return True
@@ -162,7 +169,7 @@ class DeepCegarImpl():
 
                 return False
             else:
-                ref_layer, ref_index, ref_value = self.__choose_refinement3(model, lst_poly, x, y0)
+                ref_layer, ref_index, ref_value = self.__choose_refinement4(model, lst_poly, x, y0, lst_gt)
                 lst_poly1, lst_poly2 = self.__refine(model, lst_poly, x, ref_layer, ref_index, ref_value)
 
                 if lst_poly1 != None and lst_poly2 != None:
@@ -200,17 +207,20 @@ class DeepCegarImpl():
                     res_poly.gt[0,y0] = 1
                     res_poly.gt[0,lbl] = -1
 
-                    lt_x0, gt_x0 = res_poly.back_substitute(lst_poly, True)
+                    # lt_x0, gt_x0 = res_poly.back_substitute(lst_poly, True)
 
                     # print('res.lw = {}'.format(res_poly.lw[0]))
                     # print('lt_x0 = {}'.format(lt_x0))
                     # print('gt_x0 = {}'.format(gt_x0))
 
-                    if res_poly.lw[0] < 0:
-                        res, x = self.__find_sus_adv(gt_x0.reshape(-1), x0, lst_poly[0].lw, lst_poly[0].up)
-                        return False, x
+                    lst_lt, lst_gt = res_poly.back_substitute(lst_poly, True)
+                    gt_x0 = lst_gt[0]
 
-            return True, np.empty(0)
+                    if res_poly.lw[0] < 0:
+                        res, x = self.__find_sus_adv(gt_x0, x0, lst_poly[0].lw, lst_poly[0].up)
+                        return False, x, lst_gt
+
+            return True, None, None
         else:
             xi_poly_curr = model.forward(lst_poly[idx], idx, lst_poly)
             lst_poly.append(xi_poly_curr)
@@ -240,7 +250,7 @@ class DeepCegarImpl():
 
 
     # inner neuron with largest gradient
-    def __choose_refinement1(self, model, lst_poly, x, y0):
+    def __choose_refinement1(self, model, lst_poly, x, y0, lst_gt):
         best_layer = -1
         best_index = -1
         best_value = -1
@@ -267,7 +277,7 @@ class DeepCegarImpl():
 
 
     # input bisection
-    def __choose_refinement2(self, model, lst_poly, x, y0):
+    def __choose_refinement2(self, model, lst_poly, x, y0, lst_gt):
         best_layer = -1
         best_index = -1
         best_value = -1
@@ -293,7 +303,7 @@ class DeepCegarImpl():
 
 
     # first approx layer
-    def __choose_refinement3(self, model, lst_poly, x, y0):
+    def __choose_refinement3(self, model, lst_poly, x, y0, lst_gt):
         best_layer = -1
         best_index = -1
         best_value = -1
@@ -315,6 +325,31 @@ class DeepCegarImpl():
                             best_layer = i
                             best_index = ref_idx
                             best_value = g[ref_idx]
+                break
+
+        return best_layer, best_index, ref_value
+
+
+    # largest coefs
+    def __choose_refinement4(self, model, lst_poly, x, y0, lst_gt):
+        best_layer = -1
+        best_index = -1
+        best_value = -1
+        ref_value = 0
+
+        for i in range(len(model.layers)):
+            layer = model.layers[i]
+
+            if not layer.is_poly_exact():
+                gt = np.abs(lst_gt[i])
+                poly_i = lst_poly[i]
+
+                for ref_idx in range(len(gt) - 1):
+                    if poly_i.lw[ref_idx] < 0 and poly_i.up[ref_idx] > 0:
+                        if best_layer == -1 or best_value < gt[ref_idx]:
+                            best_layer = i
+                            best_index = ref_idx
+                            best_value = gt[ref_idx]
                 break
 
         return best_layer, best_index, ref_value
