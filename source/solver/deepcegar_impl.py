@@ -73,7 +73,7 @@ class Poly():
 
 class DeepCegarImpl():
     def __init__(self, max_ref):
-        self.has_ref = False
+        self.has_ref = True
         self.max_ref = 20
         self.cnt_ref = 0
 
@@ -162,7 +162,7 @@ class DeepCegarImpl():
 
                 return False
             else:
-                ref_layer, ref_index, ref_value = self.__choose_refinement(model, lst_poly, x)
+                ref_layer, ref_index, ref_value = self.__choose_refinement3(model, lst_poly, x, y0)
                 lst_poly1, lst_poly2 = self.__refine(model, lst_poly, x, ref_layer, ref_index, ref_value)
 
                 if lst_poly1 != None and lst_poly2 != None:
@@ -239,7 +239,8 @@ class DeepCegarImpl():
             return True, np.empty(0)
 
 
-    def __choose_refinement1(model, lst_poly, x):
+    # inner neuron with largest gradient
+    def __choose_refinement1(self, model, lst_poly, x, y0):
         best_layer = -1
         best_index = -1
         best_value = -1
@@ -265,7 +266,8 @@ class DeepCegarImpl():
         return best_layer, best_index, ref_value
 
 
-    def __choose_refinement2(model, lst_poly, x):
+    # input bisection
+    def __choose_refinement2(self, model, lst_poly, x, y0):
         best_layer = -1
         best_index = -1
         best_value = -1
@@ -290,13 +292,41 @@ class DeepCegarImpl():
         return best_layer, best_index, ref_value
 
 
+    # first approx layer
+    def __choose_refinement3(self, model, lst_poly, x, y0):
+        best_layer = -1
+        best_index = -1
+        best_value = -1
+        ref_value = 0
+
+        for i in range(len(model.layers)):
+            layer = model.layers[i]
+
+            if not layer.is_poly_exact():
+                tmp = model.apply_to(x, i)
+                g = grad(model.apply_from)(tmp, i, y0=y0).reshape(-1)
+                g = np.abs(g)
+
+                poly_i = lst_poly[i]
+
+                for ref_idx in range(len(g)):
+                    if poly_i.lw[ref_idx] < 0 and poly_i.up[ref_idx] > 0:
+                        if best_layer == -1 or best_value < g[ref_idx]:
+                            best_layer = i
+                            best_index = ref_idx
+                            best_value = g[ref_idx]
+                break
+
+        return best_layer, best_index, ref_value
+
+
     def __refine(self, model, lst_poly, x, ref_layer, ref_index, ref_value):
         if self.cnt_ref == 0:
             print('Refine! ', end='')
 
         self.cnt_ref += 1
 
-        if self.cnt_ref > self.max_ref or best_layer == -1:
+        if self.cnt_ref > self.max_ref or ref_layer == -1:
             return None, None
 
         lst_poly1 = []
