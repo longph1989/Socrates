@@ -104,11 +104,7 @@ class DeepCegarImpl():
 
         res, x = self.__find_adv(model, x0, y0, lw, up)
         if not res:
-            y = np.argmax(model.apply(x), axis=1)[0]
-
-            print('True adversarial sample found!')
-            print('x = {}'.format(x))
-            print('y = {}'.format(y))
+            self.__validate_adv(model, x, y0)
         else:
             x0_poly = Poly()
 
@@ -120,10 +116,13 @@ class DeepCegarImpl():
 
             lst_poly = [x0_poly]
 
-            if self.__verify(model, x0, y0, 0, lst_poly):
+            res = self.__verify(model, x0, y0, 0, lst_poly)
+            if res == 0:
                 print('The network is robust around x0!')
-            else:
+            elif res == 1:
                 print('Unknown!')
+            else res == 2:
+                print('True adversarial sample found in verifiction!')
 
 
     def __find_adv(self, model, x0, y0, lw, up):
@@ -152,33 +151,46 @@ class DeepCegarImpl():
             return True, np.empty(0)
 
 
+    def __validate_adv(self, model, x, y0):
+        y = np.argmax(model.apply(x), axis=1)[0]
+
+        if y != y0:
+            print('True adversarial sample found!')
+            print('x = {}'.format(x))
+            print('y = {}'.format(y))
+            return True
+        else:
+            return False
+
+
     def __verify(self, model, x0, y0, idx, lst_poly):
-        res, x, lst_gt, lbl = self.__run(model, x0, y0, idx, lst_poly)
+        res, x, y, lst_gt = self.__run(model, x0, y0, idx, lst_poly)
 
         if res:
-            return True
-        elif not self.has_ref or len(x) == 0:
-            return False
+            return 0 # True, robust
+        elif not self.has_ref or x == None:
+            return 1 # False, unknown
         else:
-            y = np.argmax(model.apply(x), axis=1)[0]
-
-            if y != y0:
-                print('True adversarial sample found!')
-                print('x = {}'.format(x))
-                print('y = {}'.format(y))
-
-                return False
+            if self.__validate_adv(model, x, y0):
+                return 2 # False, with adv
             else:
-                ref_layer, ref_index, ref_value = self.__input_bisection(model, lst_poly, x, y0, lbl, lst_gt)
+                ref_layer, ref_index, ref_value = self.__input_bisection(model, lst_poly, x, y0, y, lst_gt)
                 lst_poly1, lst_poly2 = self.__refine(model, lst_poly, x, ref_layer, ref_index, ref_value)
 
+                # this makes res1 and res2 not symmetric
+                # there may be the chance res2 can find the true adv while
+                # res1 is false with unknown and so res2 is not run
+                # the problem is not too important for now because it is rare
+                # and we focus on verification
                 if lst_poly1 != None and lst_poly2 != None:
-                    if self.__verify(model, x0, y0, ref_layer, lst_poly1):
-                        return self.__verify(model, x0, y0, ref_layer, lst_poly2)
+                    res1 = self.__verify(model, x0, y0, ref_layer, lst_poly1)
+                    if res1 == 0:
+                        res2 = self.__verify(model, x0, y0, ref_layer, lst_poly2)
+                        return res2
                     else:
-                        return False
+                        return res1
                 else:
-                    return False
+                    return 1 # False, unknown
 
 
     def __run(self, model, x0, y0, idx, lst_poly):
@@ -194,8 +206,8 @@ class DeepCegarImpl():
             # print('x.lw = {}'.format(x.lw))
             # print('x.up = {}'.format(x.up))
 
-            for lbl in range(no_neurons):
-                if lbl != y0 and x.lw[y0] <= x.up[lbl]:
+            for y in range(no_neurons):
+                if y != y0 and x.lw[y0] <= x.up[y]:
                     res_poly = Poly()
 
                     res_poly.lw = np.zeros(1)
@@ -205,7 +217,7 @@ class DeepCegarImpl():
                     res_poly.gt = np.zeros([1, no_neurons + 1])
 
                     res_poly.gt[0,y0] = 1
-                    res_poly.gt[0,lbl] = -1
+                    res_poly.gt[0,y] = -1
 
                     # lt_x0, gt_x0 = res_poly.back_substitute(lst_poly, True)
 
@@ -218,7 +230,7 @@ class DeepCegarImpl():
 
                     if res_poly.lw[0] < 0:
                         res, x = self.__find_sus_adv(gt_x0, x0, lst_poly[0].lw, lst_poly[0].up)
-                        return False, x, lst_gt, lbl
+                        return False, x, y, lst_gt
 
             return True, None, None, None
         else:
@@ -265,12 +277,13 @@ class DeepCegarImpl():
             poly_i = lst_poly[i]
 
             for ref_idx in range(len(g)):
-                if poly_i.lw[ref_idx] < poly_i.up[ref_idx]:
-                    if best_layer == -1 or best_value < g[ref_idx]:
-                        best_layer = i
-                        best_index = ref_idx
-                        best_value = g[ref_idx]
-                        ref_value = (poly_i.lw[ref_idx] + poly_i.up[ref_idx]) / 2
+                lw = poly_i.lw[ref_idx]
+                up = poly_i.up[ref_idx]
+                if lw < up and (best_layer == -1 or best_value < g[ref_idx]):
+                    best_layer = i
+                    best_index = ref_idx
+                    best_value = g[ref_idx]
+                    ref_value = (lw + up) / 2
 
         return best_layer, best_index, ref_value
 
@@ -290,16 +303,14 @@ class DeepCegarImpl():
                 poly_i = lst_poly[i]
 
                 for ref_idx in range(len(gt) - 1):
-                    if poly_i.lw[ref_idx] < 0 and poly_i.up[ref_idx] > 0:
-                        if best_layer == -1 or best_value < gt[ref_idx]:
-                            best_layer = i
-                            best_index = ref_idx
-                            best_value = gt[ref_idx]
-
-                            if i == 0:
-                                ref_value = (poly_i.lw[ref_idx] + poly_i.up[ref_idx]) / 2
-                            else:
-                                ref_value = 0
+                    lw = poly_i.lw[ref_idx]
+                    up = poly_i.up[ref_idx]
+                    if lw < 0 and up > 0 and (best_layer == -1 or \
+                            best_value < gt[ref_idx]):
+                        best_layer = i
+                        best_index = ref_idx
+                        best_value = gt[ref_idx]
+                        ref_value = (lw + up) / 2 if i == 0 else 0
 
         return best_layer, best_index, ref_value
 
