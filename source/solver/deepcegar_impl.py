@@ -35,16 +35,6 @@ class Poly():
 
         no_neurons = len(lt_curr)
 
-        if get_ineq:
-            # get_ineq only happens at the last step
-            # no_neurons in this case always be 1
-            # no_neurons_x0 = len(lst_poly[0].lw)
-            #
-            # lt_x0 = np.zeros([no_neurons, no_neurons_x0 + 1])
-            # gt_x0 = np.zeros([no_neurons, no_neurons_x0 + 1])
-            lst_lt = None
-            lst_gt = None
-
         if no_neurons <= 100 or len(lst_poly) <= 2:
             for i in range(no_neurons):
                 args = (i, lt_curr[i], gt_curr[i], lst_poly)
@@ -52,9 +42,9 @@ class Poly():
                 self.lw[i] = lw
                 self.up[i] = up
 
+                # get_ineq only happens at the last step
+                # no_neurons in this case always be 1
                 if get_ineq:
-                    # lt_x0[i] = lt
-                    # gt_x0[i] = gt
                     lst_lt = lt
                     lst_gt = gt
         else:
@@ -65,16 +55,12 @@ class Poly():
 
             num_cores = 4
             pool = multiprocessing.Pool(num_cores)
-            for i, lw, up, _, _ in pool.map(back_substitute, zip(range(no_neurons), self.lt, self.gt, clones)):
+            zz = zip(range(no_neurons), self.lt, self.gt, clones)
+            for i, lw, up, _, _ in pool.map(back_substitute, zz):
                 self.lw[i] = lw
                 self.up[i] = up
-
-                # if get_ineq:
-                #     lt_x0[i] = lt
-                #     gt_x0[i] = gt
             pool.close()
 
-        # if get_ineq: return lt_x0, gt_x0
         if get_ineq: return lst_lt, lst_gt
 
 
@@ -121,7 +107,7 @@ class DeepCegarImpl():
                 print('The network is robust around x0!')
             elif res == 1:
                 print('Unknown!')
-            else res == 2:
+            elif res == 2:
                 print('True adversarial sample found in verifiction!')
 
 
@@ -168,13 +154,14 @@ class DeepCegarImpl():
 
         if res:
             return 0 # True, robust
-        elif not self.has_ref or x == None:
+        elif not self.has_ref:
             return 1 # False, unknown
         else:
             if self.__validate_adv(model, x, y0):
                 return 2 # False, with adv
             else:
                 ref_layer, ref_index, ref_value = self.__input_bisection(model, lst_poly, x, y0, y, lst_gt)
+                # ref_layer, ref_index, ref_value = self.__inner_refinement(model, lst_poly, x, y0, y, lst_gt)
                 lst_poly1, lst_poly2 = self.__refine(model, lst_poly, x, ref_layer, ref_index, ref_value)
 
                 # this makes res1 and res2 not symmetric
@@ -261,7 +248,7 @@ class DeepCegarImpl():
             return True, np.empty(0)
 
 
-    # input bisection
+    # input bisection with largest coefs
     def __input_bisection(self, model, lst_poly, x, y0, y, lst_gt):
         best_layer = -1
         best_index = -1
@@ -271,25 +258,23 @@ class DeepCegarImpl():
         for i in range(1):
             layer = model.layers[i]
 
-            g = grad(model.apply)(x, y0=y0, y=y).reshape(-1)
-            g = np.abs(g)
-
+            gt = np.abs(lst_gt[i])
             poly_i = lst_poly[i]
 
-            for ref_idx in range(len(g)):
+            for ref_idx in range(len(gt) - 1):
                 lw = poly_i.lw[ref_idx]
                 up = poly_i.up[ref_idx]
-                if lw < up and (best_layer == -1 or best_value < g[ref_idx]):
+                if lw < up and (best_layer == -1 or best_value < gt[ref_idx]):
                     best_layer = i
                     best_index = ref_idx
-                    best_value = g[ref_idx]
+                    best_value = gt[ref_idx]
                     ref_value = (lw + up) / 2
 
         return best_layer, best_index, ref_value
 
 
-    # input or inner neuron with largest coefs
-    def __largest_coefs(self, model, lst_poly, x, y0, y, lst_gt):
+    # inner neuron refinement with largest coefs
+    def __inner_refinement(self, model, lst_poly, x, y0, y, lst_gt):
         best_layer = -1
         best_index = -1
         best_value = -1
@@ -298,19 +283,17 @@ class DeepCegarImpl():
         for i in range(len(model.layers)):
             layer = model.layers[i]
 
-            if i == 0 or not layer.is_poly_exact():
+            if not layer.is_poly_exact():
                 gt = np.abs(lst_gt[i])
                 poly_i = lst_poly[i]
 
                 for ref_idx in range(len(gt) - 1):
                     lw = poly_i.lw[ref_idx]
                     up = poly_i.up[ref_idx]
-                    if lw < 0 and up > 0 and (best_layer == -1 or \
-                            best_value < gt[ref_idx]):
+                    if lw < 0 and up > 0 and (best_layer == -1 or best_value < gt[ref_idx]):
                         best_layer = i
                         best_index = ref_idx
                         best_value = gt[ref_idx]
-                        ref_value = (lw + up) / 2 if i == 0 else 0
 
         return best_layer, best_index, ref_value
 
