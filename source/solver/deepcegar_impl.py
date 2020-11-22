@@ -160,8 +160,9 @@ class DeepCegarImpl():
             if self.__validate_adv(model, x, y0):
                 return 2 # False, with adv
             else:
-                ref_layer, ref_index, ref_value = self.__input_bisection(model, lst_poly, x, y0, y, lst_gt)
+                # ref_layer, ref_index, ref_value = self.__input_bisection(model, lst_poly, x, y0, y, lst_gt)
                 # ref_layer, ref_index, ref_value = self.__inner_refinement(model, lst_poly, x, y0, y, lst_gt)
+                ref_layer, ref_index, ref_value = self.__cnt_refinement(model, lst_poly, x, y0, y, lst_gt)
                 lst_poly1, lst_poly2 = self.__refine(model, lst_poly, x, ref_layer, ref_index, ref_value)
 
                 # this makes res1 and res2 not symmetric
@@ -206,16 +207,13 @@ class DeepCegarImpl():
                     res_poly.gt[0,y0] = 1
                     res_poly.gt[0,y] = -1
 
-                    # lt_x0, gt_x0 = res_poly.back_substitute(lst_poly, True)
-
-                    # print('res.lw = {}'.format(res_poly.lw[0]))
-                    # print('lt_x0 = {}'.format(lt_x0))
-                    # print('gt_x0 = {}'.format(gt_x0))
-
                     lst_lt, lst_gt = res_poly.back_substitute(lst_poly, True)
                     gt_x0 = lst_gt[0]
 
-                    if res_poly.lw[0] < 0:
+                    # print('y = {}'.format(y))
+                    # print('res.lw = {}'.format(res_poly.lw[0]))
+
+                    if res_poly.lw[0] <= 0:
                         res, x = self.__find_sus_adv(gt_x0, x0, lst_poly[0].lw, lst_poly[0].up)
                         return False, x, y, lst_gt
 
@@ -271,7 +269,7 @@ class DeepCegarImpl():
         return best_layer, best_index, ref_value
 
 
-    # inner neuron refinement with largest coefs
+    # input or inner neuron refinement with largest coefs
     def __inner_refinement(self, model, lst_poly, x, y0, y, lst_gt):
         best_layer = -1
         best_index = -1
@@ -281,17 +279,65 @@ class DeepCegarImpl():
         for i in range(len(model.layers)):
             layer = model.layers[i]
 
-            if not layer.is_poly_exact():
+            # if not layer.is_poly_exact():
+            if i == 0 or not layer.is_poly_exact():
                 gt = np.abs(lst_gt[i])
                 poly_i = lst_poly[i]
 
                 for ref_idx in range(len(gt) - 1):
                     lw = poly_i.lw[ref_idx]
                     up = poly_i.up[ref_idx]
-                    if lw < 0 and up > 0 and (best_layer == -1 or best_value < gt[ref_idx]):
+                    # if lw < 0 and up > 0 and (best_layer == -1 or best_value < gt[ref_idx]):
+                    if ((i == 0 and lw < up) or (lw < 0 and up > 0)) and \
+                            (best_layer == -1 or best_value < gt[ref_idx]):
                         best_layer = i
                         best_index = ref_idx
                         best_value = gt[ref_idx]
+                        ref_value = (lw + up) / 2 if i == 0 else 0
+
+        return best_layer, best_index, ref_value
+
+
+
+    def __cnt_refinement(self, model, lst_poly, x, y0, y, lst_gt):
+        best_layer = -1
+        best_cnt = 1e9
+
+        for i in range(len(model.layers)):
+            layer = model.layers[i]
+
+            if i == 0 or not layer.is_poly_exact():
+                cnt = 0
+                poly_i = lst_poly[i]
+
+                for ref_idx in range(len(poly_i.lw)):
+                    lw = poly_i.lw[ref_idx]
+                    up = poly_i.up[ref_idx]
+                    if (i == 0 and lw < up) or (lw < 0 and up > 0):
+                        cnt = cnt + 1
+
+                if best_cnt > cnt and cnt > 0:
+                    best_layer = i
+                    best_cnt = cnt
+
+        if best_layer == -1:
+            return -1, -1, -1
+
+        best_index = -1
+        best_value = -1
+        ref_val = 0
+
+        gt = np.abs(lst_gt[best_layer])
+        poly_i = lst_poly[best_layer]
+
+        for ref_idx in range(len(gt) - 1):
+            lw = poly_i.lw[ref_idx]
+            up = poly_i.up[ref_idx]
+            if ((best_layer == 0 and lw < up) or (lw < 0 and up > 0)) and \
+                    (best_index == -1 or best_value < gt[ref_idx]):
+                best_index = ref_idx
+                best_value = gt[ref_idx]
+                ref_value = (lw + up) / 2 if best_layer == 0 else 0
 
         return best_layer, best_index, ref_value
 
@@ -299,9 +345,14 @@ class DeepCegarImpl():
 
     def __refine(self, model, lst_poly, x, ref_layer, ref_index, ref_value):
         if self.cnt_ref == 0:
+            # print('Refine! ')
             print('Refine! ', end='')
 
         self.cnt_ref += 1
+
+        # print('ref_layer = {}'.format(ref_layer))
+        # print('ref_index = {}'.format(ref_index))
+        # print('ref_value = {}'.format(ref_value))
 
         if self.cnt_ref > self.max_ref or ref_layer == -1:
             return None, None
