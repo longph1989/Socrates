@@ -256,8 +256,6 @@ class DeepCegarImpl():
         ref_value = 0
 
         for i in range(1):
-            layer = model.layers[i]
-
             gt = np.abs(lst_gt[i])
             poly_i = lst_poly[i]
 
