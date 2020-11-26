@@ -160,10 +160,11 @@ class DeepCegarImpl():
             if self.__validate_adv(model, x, y0):
                 return 2 # False, with adv
             else:
-                ref_layer, ref_index, ref_value = self.__input_bisection(model, lst_poly, x, y0, y, lst_gt)
+                # ref_layer, ref_index, ref_value = self.__input_bisection(model, lst_poly, x, y0, y, lst_gt)
                 # ref_layer, ref_index, ref_value = self.__inner_refinement(model, lst_poly, x, y0, y, lst_gt)
                 # ref_layer, ref_index, ref_value = self.__cnt_refinement(model, lst_poly, x, y0, y, lst_gt)
                 # ref_layer, ref_index, ref_value = self.__negative_impact_refinement(model, lst_poly, x, y0, y, lst_gt)
+                ref_layer, ref_index, ref_value = self.__total_impact_refinement(model, lst_poly, x, y0, y, lst_gt)
                 lst_poly1, lst_poly2 = self.__refine(model, lst_poly, x, ref_layer, ref_index, ref_value)
 
                 # this makes res1 and res2 not symmetric
@@ -376,6 +377,48 @@ class DeepCegarImpl():
                     if (i == 0 and lw < up) or (lw < 0 and up > 0):
                         impact = min(cf * lw, cf * up)
                         if impact < 0:
+                            norm_impact = impact / sum_impact
+                            if best_layer == -1 or best_value < norm_impact:
+                                best_layer = i
+                                best_index = ref_idx
+                                best_value = norm_impact
+                                ref_value = (lw + up) / 2 if i == 0 else 0
+
+        return best_layer, best_index, ref_value
+
+
+    # total impact
+    def __total_impact_refinement(self, model, lst_poly, x, y0, y, lst_gt):
+        best_layer = -1
+        best_index = -1
+        best_value = -1
+        ref_value = 0
+
+        for i in range(len(model.layers)):
+            layer = model.layers[i]
+            sum_impact = 0
+
+            if i == 0 or not layer.is_poly_exact():
+                poly_i = lst_poly[i]
+                gt_i = lst_gt[i]
+
+                for ref_idx in range(len(poly_i.lw)):
+                    lw = poly_i.lw[ref_idx]
+                    up = poly_i.up[ref_idx]
+                    cf = gt_i[ref_idx]
+
+                    if (i == 0 and lw < up) or (lw < 0 and up > 0):
+                        impact = max(abs(cf * lw), abs(cf * up))
+                        sum_impact = sum_impact + impact
+
+                if sum_impact > 0:
+                    for ref_idx in range(len(poly_i.lw)):
+                        lw = poly_i.lw[ref_idx]
+                        up = poly_i.up[ref_idx]
+                        cf = gt_i[ref_idx]
+
+                        if (i == 0 and lw < up) or (lw < 0 and up > 0):
+                            impact = max(abs(cf * lw), abs(cf * up))
                             norm_impact = impact / sum_impact
                             if best_layer == -1 or best_value < norm_impact:
                                 best_layer = i
