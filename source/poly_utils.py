@@ -69,3 +69,19 @@ def back_substitute(args):
 
     # return idx, best_lw, best_up, lt_curr, gt_curr
     return idx, best_lw, best_up, lst_lt, lst_gt
+
+
+def back_propagate(args):
+    def obj_func1(x, i): return x[i]
+    def obj_func2(x, i): return -x[i]
+
+    idx, bounds, constraints = args
+
+    args = (idx)
+    res1 = minimize(obj_func1, x, args=args, bounds=bounds, constraints=constraints)
+    res2 = minimize(obj_func2, x, args=args, bounds=bounds, constraints=constraints)
+
+    res1.fun = round(res1.fun, 9)
+    res2.fun = round(res2.fun, 9)
+
+    return idx, res1.fun, -res2.fun

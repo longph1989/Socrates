@@ -103,7 +103,7 @@ class DeepCegarImpl():
             lst_poly = [x0_poly]
 
             # res = self.__verify(model, x0, y0, 0, lst_poly)
-            res = self.__verify_back_prop(model, x0, y0, 0, lst_poly)
+            res = self.__verify_back_propagate(model, x0, y0, 0, lst_poly)
             if res == 0:
                 print('The network is robust around x0!')
             elif res == 1:
@@ -150,7 +150,7 @@ class DeepCegarImpl():
             return False
 
 
-    def __verify_back_prop(self, model, x0, y0, idx, lst_poly):
+    def __verify_back_propagate(self, model, x0, y0, idx, lst_poly):
         res, x, y, lst_gt = self.__run(model, x0, y0, idx, lst_poly)
 
         if res:
@@ -161,15 +161,15 @@ class DeepCegarImpl():
             if self.__validate_adv(model, x, y0):
                 return 2 # False, with adv
             else:
-                new_lst_poly = self.__back_prop(model, y0, y, lst_poly)
+                new_lst_poly = self.__back_propagate(model, y0, y, lst_poly)
 
                 if new_lst_poly != None:
-                    return self.__verify_back_prop(model, x0, y0, 0, new_lst_poly)
+                    return self.__verify_back_propagate(model, x0, y0, 0, new_lst_poly)
                 else:
                     return 1 # False, unknown
 
 
-    def __back_prop(self, model, y0, y, lst_poly):
+    def __back_propagate(self, model, y0, y, lst_poly):
         def obj_func1(x, i): return x[i]
         def obj_func2(x, i): return -x[i]
 
@@ -264,20 +264,36 @@ class DeepCegarImpl():
         fun = generate_constrains(last_cons)
         constraints.append({'type': 'ineq', 'fun': fun})
 
+        len0 = len(lst_poly[0].lw)
         new_x0_poly = lst_poly[0].copy()
 
-        for i in range(len(lst_poly[0].lw)):
-            args = (i)
+        if len(constraints) < 100 and len0 < 100:
+            for i in range(len(lst_poly[0].lw)):
+                args = (i)
 
-            res1 = minimize(obj_func1, x, args=args, bounds=bounds, constraints=constraints)
-            res1.fun = round(res1.fun, 9)
-            print(res1.fun)
-            new_x0_poly.lw[i] = res1.fun
+                res1 = minimize(obj_func1, x, args=args, bounds=bounds, constraints=constraints)
+                res1.fun = round(res1.fun, 9)
+                print(res1.fun)
+                new_x0_poly.lw[i] = res1.fun
 
-            res2 = minimize(obj_func2, x, args=args, bounds=bounds, constraints=constraints)
-            res2.fun = round(res2.fun, 9)
-            print(-res2.fun)
-            new_x0_poly.up[i] = -res2.fun
+                res2 = minimize(obj_func2, x, args=args, bounds=bounds, constraints=constraints)
+                res2.fun = round(res2.fun, 9)
+                print(-res2.fun)
+                new_x0_poly.up[i] = -res2.fun
+        else:
+            bnds_clones, cons_clones = [], []
+
+            for i in range(len0):
+                bnds_clones.append(bounds)
+                cons_clones.append(constraints)
+
+            num_cores = 4
+            pool = multiprocessing.Pool(num_cores)
+            zz = zip(range(len0), bnds_clones, cons_clones)
+            for i, lw, up in pool.map(back_propagate, zz):
+                new_x0_poly.lw[i] = lw
+                new_x0_poly.up[i] = up
+            pool.close()
 
         return [new_x0_poly]
 
