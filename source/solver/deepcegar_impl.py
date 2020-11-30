@@ -173,16 +173,6 @@ class DeepCegarImpl():
         def obj_func1(x, i): return x[i]
         def obj_func2(x, i): return -x[i]
 
-        def generate_constrains(coefs):
-            def fun(x, coefs=coefs):
-                res = 0
-                lenx = len(x)
-                for i in range(lenx):
-                    res = res + coefs[i] * x[i]
-                res = res + coefs[lenx]
-                return res
-            return fun
-
         if self.cnt_ref == 0:
             # print('Refine! ')
             print('Refine! ', end='')
@@ -192,77 +182,10 @@ class DeepCegarImpl():
         if self.cnt_ref > self.max_ref:
             return None
 
-        len_lst = []
-        total_lw = np.empty(0)
-        total_up = np.empty(0)
+        bounds = self.__generate_bounds(model, lst_poly)
+        constraints, lenx = self.__generate_constraints(model, y0, y, lst_poly)
 
-        for poly in lst_poly:
-            len_lst.append(len(poly.lw))
-            total_lw = np.concatenate((total_lw, poly.lw))
-            total_up = np.concatenate((total_up, poly.up))
-
-        total_len = np.sum(len_lst)
-
-        print('total len = {}'.format(total_len))
-        print('total lw = {}'.format(total_lw))
-        print('total up = {}'.format(total_up))
-
-        x = np.zeros(total_len)
-        bounds = Bounds(total_lw, total_up)
-
-        constraints = list()
-
-        for i in range(len(lst_poly)):
-            if i == 0: continue
-
-            layer = model.layers[i-1]
-            poly_i = lst_poly[i]
-            poly_j = lst_poly[i-1]
-
-            # weights for other variables
-            w0 = np.zeros((len_lst[i], int(np.sum(len_lst[:i-1]))))
-            w1_lt = poly_i.lt[:, :-1] # weights for previous layer variables
-            w1_gt = poly_i.gt[:, :-1] # weights for previous layer variables
-            w2 = np.eye(len_lst[i]) # weights for current layer variable
-            # weights for other variables
-            w3 = np.zeros((len_lst[i], total_len - np.sum(len_lst[:i+1])))
-            b_lt = poly_i.lt[:, -1].reshape(len_lst[i], 1) # bias
-            b_gt = poly_i.gt[:, -1].reshape(len_lst[i], 1) # bias
-
-            if layer.is_poly_exact():
-                coefs_eq = np.concatenate((w0, -w1_gt, w2, w3, -b_gt), axis=1)
-
-                for coefs in coefs_eq:
-                    print('coef eq = {}'.format(coefs))
-                    fun = generate_constrains(coefs)
-                    constraints.append({'type': 'eq', 'fun': fun})
-            else:
-                coefs_lt = np.concatenate((w0, w1_lt, -w2, w3, b_lt), axis=1)
-                coefs_gt = np.concatenate((w0, -w1_gt, w2, w3, -b_gt), axis=1)
-
-                for k in range(len(coefs_lt)):
-                    if poly_j.lw[k] < 0 and poly_j.up[k] > 0:
-                        print('coef lt = {}'.format(coefs_lt[k]))
-                        fun = generate_constrains(coefs_lt[k])
-                        constraints.append({'type': 'ineq', 'fun': fun})
-
-                        print('coef gt = {}'.format(coefs_gt[k]))
-                        fun = generate_constrains(coefs_gt[k])
-                        constraints.append({'type': 'ineq', 'fun': fun})
-                    else:
-                        print('coef eq = {}'.format(coefs_gt[k]))
-                        fun = generate_constrains(coefs_gt[k])
-                        constraints.append({'type': 'eq', 'fun': fun})
-
-
-        last_cons = np.zeros(total_len + 1)
-        last_cons[-len_lst[-1] - 1 + y] = 1
-        last_cons[-len_lst[-1] - 1 + y0] = -1
-
-        print('last_cons = {}'.format(last_cons))
-
-        fun = generate_constrains(last_cons)
-        constraints.append({'type': 'ineq', 'fun': fun})
+        x = np.zeros(lenx)
 
         len0 = len(lst_poly[0].lw)
         new_x0_poly = lst_poly[0].copy()
@@ -296,6 +219,93 @@ class DeepCegarImpl():
             pool.close()
 
         return [new_x0_poly]
+
+
+    def __generate_bounds(self, model, lst_poly):
+        lw = np.empty(0)
+        up = np.empty(0)
+
+        for poly in lst_poly:
+            lw = np.concatenate((lw, poly.lw))
+            up = np.concatenate((up, poly.up))
+
+        print('all lw = {}'.format(lw))
+        print('all up = {}'.format(up))
+
+        bounds = Bounds(lw, up)
+        return bounds
+
+
+    def __generate_constraints(self, model, y0, y, lst_poly):
+        def generate(coefs):
+            def fun(x, coefs=coefs):
+                res = 0
+                lenx = len(x)
+                for i in range(lenx):
+                    res = res + coefs[i] * x[i]
+                res = res + coefs[lenx]
+                return res
+            return fun
+
+        lst_len = []
+        for poly in lst_poly:
+            lst_len.append(len(poly.lw))
+        total_len = np.sum(lst_len)
+
+        constraints = list()
+
+        for i in range(len(lst_poly)):
+            if i == 0: continue
+
+            layer = model.layers[i-1]
+            poly_i = lst_poly[i]
+            poly_j = lst_poly[i-1]
+
+            # weights for other variables
+            w0 = np.zeros((lst_len[i], int(np.sum(lst_len[:i-1]))))
+            w1_lt = poly_i.lt[:, :-1] # weights for previous layer variables
+            w1_gt = poly_i.gt[:, :-1] # weights for previous layer variables
+            w2 = np.eye(lst_len[i]) # weights for current layer variable
+            # weights for other variables
+            w3 = np.zeros((lst_len[i], total_len - np.sum(lst_len[:i+1])))
+            b_lt = poly_i.lt[:, -1].reshape(lst_len[i], 1) # bias
+            b_gt = poly_i.gt[:, -1].reshape(lst_len[i], 1) # bias
+
+            if layer.is_poly_exact():
+                coefs_eq = np.concatenate((w0, -w1_gt, w2, w3, -b_gt), axis=1)
+
+                for coefs in coefs_eq:
+                    print('coef eq = {}'.format(coefs))
+                    fun = generate(coefs)
+                    constraints.append({'type': 'eq', 'fun': fun})
+            else:
+                coefs_lt = np.concatenate((w0, w1_lt, -w2, w3, b_lt), axis=1)
+                coefs_gt = np.concatenate((w0, -w1_gt, w2, w3, -b_gt), axis=1)
+
+                for k in range(len(coefs_lt)):
+                    if poly_j.lw[k] < 0 and poly_j.up[k] > 0:
+                        print('coef lt = {}'.format(coefs_lt[k]))
+                        fun = generate(coefs_lt[k])
+                        constraints.append({'type': 'ineq', 'fun': fun})
+
+                        print('coef gt = {}'.format(coefs_gt[k]))
+                        fun = generate(coefs_gt[k])
+                        constraints.append({'type': 'ineq', 'fun': fun})
+                    else:
+                        print('coef eq = {}'.format(coefs_gt[k]))
+                        fun = generate(coefs_gt[k])
+                        constraints.append({'type': 'eq', 'fun': fun})
+
+        last_cons = np.zeros(total_len + 1)
+        last_cons[-lst_len[-1] - 1 + y] = 1
+        last_cons[-lst_len[-1] - 1 + y0] = -1
+
+        print('last_cons = {}'.format(last_cons))
+
+        fun = generate(last_cons)
+        constraints.append({'type': 'ineq', 'fun': fun})
+
+        return constraints, total_len
 
 
     def __verify(self, model, x0, y0, idx, lst_poly):
