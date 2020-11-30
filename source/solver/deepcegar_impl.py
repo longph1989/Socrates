@@ -214,29 +214,52 @@ class DeepCegarImpl():
 
         for i in range(len(lst_poly)):
             if i == 0: continue
+
+            layer = model.layers[i-1]
             poly_i = lst_poly[i]
+            poly_j = lst_poly[i-1]
 
             # weights for other variables
             w0 = np.zeros((len_lst[i], int(np.sum(len_lst[:i-1]))))
-            w1 = poly_i.lt[:, :-1] # weights for previous layer variables
+            w1_lt = poly_i.lt[:, :-1] # weights for previous layer variables
+            w1_gt = poly_i.gt[:, :-1] # weights for previous layer variables
             w2 = np.eye(len_lst[i]) # weights for current layer variable
             # weights for other variables
             w3 = np.zeros((len_lst[i], total_len - np.sum(len_lst[:i+1])))
-            b = poly_i.lt[:, -1].reshape(len_lst[i], 1) # bias
+            b_lt = poly_i.lt[:, -1].reshape(len_lst[i], 1) # bias
+            b_gt = poly_i.gt[:, -1].reshape(len_lst[i], 1) # bias
 
-            coefs_lt = np.concatenate((w0, w1, w2 * (-1), w3, b), axis=1)
-            coefs_gt = np.concatenate((w0, w1 * (-1), w2, w3, b), axis=1)
+            if layer.is_poly_exact():
+                coefs_eq = np.concatenate((w0, -w1_gt, w2, w3, -b_gt), axis=1)
 
-            for coefs in coefs_lt:
-                fun = generate_constrains(coefs)
-                constraints.append({'type': 'ineq', 'fun': fun})
-            for coefs in coefs_gt:
-                fun = generate_constrains(coefs)
-                constraints.append({'type': 'ineq', 'fun': fun})
+                for coefs in coefs_eq:
+                    print('coef eq = {}'.format(coefs))
+                    fun = generate_constrains(coefs)
+                    constraints.append({'type': 'eq', 'fun': fun})
+            else:
+                coefs_lt = np.concatenate((w0, w1_lt, -w2, w3, b_lt), axis=1)
+                coefs_gt = np.concatenate((w0, -w1_gt, w2, w3, -b_gt), axis=1)
+
+                for k in range(len(coefs_lt)):
+                    if poly_j.lw[k] < 0 and poly_j.up[k] > 0:
+                        print('coef lt = {}'.format(coefs_lt[k]))
+                        fun = generate_constrains(coefs_lt[k])
+                        constraints.append({'type': 'ineq', 'fun': fun})
+
+                        print('coef gt = {}'.format(coefs_gt[k]))
+                        fun = generate_constrains(coefs_gt[k])
+                        constraints.append({'type': 'ineq', 'fun': fun})
+                    else:
+                        print('coef eq = {}'.format(coefs_gt[k]))
+                        fun = generate_constrains(coefs_gt[k])
+                        constraints.append({'type': 'eq', 'fun': fun})
+
 
         last_cons = np.zeros(total_len + 1)
         last_cons[-len_lst[-1] - 1 + y] = 1
         last_cons[-len_lst[-1] - 1 + y0] = -1
+
+        print('last_cons = {}'.format(last_cons))
 
         fun = generate_constrains(last_cons)
         constraints.append({'type': 'ineq', 'fun': fun})
@@ -247,11 +270,13 @@ class DeepCegarImpl():
             args = (i)
 
             res1 = minimize(obj_func1, x, args=args, bounds=bounds, constraints=constraints)
+            res1.fun = round(res1.fun, 9)
             print(res1.fun)
             new_x0_poly.lw[i] = res1.fun
 
             res2 = minimize(obj_func2, x, args=args, bounds=bounds, constraints=constraints)
-            print(res2.fun)
+            res2.fun = round(res2.fun, 9)
+            print(-res2.fun)
             new_x0_poly.up[i] = -res2.fun
 
         return [new_x0_poly]
@@ -292,10 +317,10 @@ class DeepCegarImpl():
 
 
     def __run(self, model, x0, y0, idx, lst_poly):
-        print('\n############################\n')
-        print('idx = {}'.format(idx))
-        print('xi_poly.lw = {}'.format(lst_poly[idx].lw))
-        print('xi_poly.up = {}'.format(lst_poly[idx].up))
+        # print('\n############################\n')
+        # print('idx = {}'.format(idx))
+        # print('xi_poly.lw = {}'.format(lst_poly[idx].lw))
+        # print('xi_poly.up = {}'.format(lst_poly[idx].up))
 
         if idx == len(model.layers):
             x = lst_poly[idx]
