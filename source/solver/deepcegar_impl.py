@@ -102,7 +102,6 @@ class DeepCegarImpl():
 
             lst_poly = [x0_poly]
 
-            # res = self.__verify(model, x0, y0, 0, lst_poly)
             res = self.__verify_back_propagate(model, x0, y0, 0, lst_poly)
             if res == 0:
                 print('The network is robust around x0!')
@@ -162,25 +161,28 @@ class DeepCegarImpl():
                 return 2 # False, with adv
             else:
                 new_lst_poly = self.__back_propagate(model, y0, y, lst_poly)
+                diff_lw = np.abs(lst_poly[0].lw - new_lst_poly[0].lw)
+                diff_up = np.abs(lst_poly[0].up - new_lst_poly[0].up)
 
-                if new_lst_poly != None:
-                    return self.__verify_back_propagate(model, x0, y0, 0, new_lst_poly)
+                # no progess with back propagation 
+                if np.all(diff_lw < 1e-3) and np.all(diff_up < 1e-3):
+                    return self.__verify(model, x0, y0, 0, new_lst_poly)
                 else:
-                    return 1 # False, unknown
+                    return self.__verify_back_propagate(model, x0, y0, 0, new_lst_poly)
 
 
     def __back_propagate(self, model, y0, y, lst_poly):
         def obj_func1(x, i): return x[i]
         def obj_func2(x, i): return -x[i]
 
-        if self.cnt_ref == 0:
-            # print('Refine! ')
-            print('Refine! ', end='')
-
-        self.cnt_ref += 1
-
-        if self.cnt_ref > self.max_ref:
-            return None
+        # if self.cnt_ref == 0:
+        #     # print('Refine! ')
+        #     print('Refine! ', end='')
+        #
+        # self.cnt_ref += 1
+        #
+        # if self.cnt_ref > self.max_ref:
+        #     return None
 
         bounds = self.__generate_bounds(model, lst_poly)
         constraints, lenx = self.__generate_constraints(model, y0, y, lst_poly)
