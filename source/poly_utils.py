@@ -1,87 +1,86 @@
 import autograd.numpy as np
+import cvxpy as cp
 
 
 def back_substitute(args):
-    idx, lt_curr, gt_curr, lst_poly = args
-    lst_lt = []
-    lst_gt = []
+    idx, le_curr, ge_curr, lst_poly = args
+    lst_le = []
+    lst_ge = []
 
     best_lw = -1e9
     best_up = 1e9
 
     for k, e in reversed(list(enumerate(lst_poly))):
-        no_e_ns = len(e.lt)
-        no_coefs = len(e.lt[0])
+        no_e_ns = len(e.le)
+        no_coefs = len(e.le[0])
 
         lw = 0
         up = 0
 
         if k > 0:
-            lt = np.zeros([no_coefs])
-            gt = np.zeros([no_coefs])
+            le = np.zeros([no_coefs])
+            ge = np.zeros([no_coefs])
 
             for i in range(no_e_ns):
-                if lt_curr[i] > 0:
-                    up = up + lt_curr[i] * e.up[i]
-                    lt = lt + lt_curr[i] * e.lt[i]
-                elif lt_curr[i] < 0:
-                    up = up + lt_curr[i] * e.lw[i]
-                    lt = lt + lt_curr[i] * e.gt[i]
+                if le_curr[i] > 0:
+                    up = up + le_curr[i] * e.up[i]
+                    le = le + le_curr[i] * e.le[i]
+                elif le_curr[i] < 0:
+                    up = up + le_curr[i] * e.lw[i]
+                    le = le + le_curr[i] * e.ge[i]
 
-                if gt_curr[i] > 0:
-                    lw = lw + gt_curr[i] * e.lw[i]
-                    gt = gt + gt_curr[i] * e.gt[i]
-                elif gt_curr[i] < 0:
-                    lw = lw + gt_curr[i] * e.up[i]
-                    gt = gt + gt_curr[i] * e.lt[i]
+                if ge_curr[i] > 0:
+                    lw = lw + ge_curr[i] * e.lw[i]
+                    ge = ge + ge_curr[i] * e.ge[i]
+                elif ge_curr[i] < 0:
+                    lw = lw + ge_curr[i] * e.up[i]
+                    ge = ge + ge_curr[i] * e.le[i]
 
-            lw = lw + gt_curr[-1]
-            up = up + lt_curr[-1]
+            lw = lw + ge_curr[-1]
+            up = up + le_curr[-1]
 
-            lt[-1] = lt[-1] + lt_curr[-1]
-            gt[-1] = gt[-1] + gt_curr[-1]
+            le[-1] = le[-1] + le_curr[-1]
+            ge[-1] = ge[-1] + ge_curr[-1]
 
             best_lw = max(best_lw, lw)
             best_up = min(best_up, up)
 
-            lt_curr = lt
-            gt_curr = gt
+            le_curr = le
+            ge_curr = ge
 
-            lst_lt.insert(0, lt_curr)
-            lst_gt.insert(0, gt_curr)
+            lst_le.insert(0, le_curr)
+            lst_ge.insert(0, ge_curr)
         else:
             for i in range(no_e_ns):
-                if lt_curr[i] > 0:
-                    up = up + lt_curr[i] * e.up[i]
-                elif lt_curr[i] < 0:
-                    up = up + lt_curr[i] * e.lw[i]
+                if le_curr[i] > 0:
+                    up = up + le_curr[i] * e.up[i]
+                elif le_curr[i] < 0:
+                    up = up + le_curr[i] * e.lw[i]
 
-                if gt_curr[i] > 0:
-                    lw = lw + gt_curr[i] * e.lw[i]
-                elif gt_curr[i] < 0:
-                    lw = lw + gt_curr[i] * e.up[i]
+                if ge_curr[i] > 0:
+                    lw = lw + ge_curr[i] * e.lw[i]
+                elif ge_curr[i] < 0:
+                    lw = lw + ge_curr[i] * e.up[i]
 
-            lw = lw + gt_curr[-1]
-            up = up + lt_curr[-1]
+            lw = lw + ge_curr[-1]
+            up = up + le_curr[-1]
 
             best_lw = max(best_lw, lw)
             best_up = min(best_up, up)
 
-    # return idx, best_lw, best_up, lt_curr, gt_curr
-    return idx, best_lw, best_up, lst_lt, lst_gt
+    # return idx, best_lw, best_up, le_curr, ge_curr
+    return idx, best_lw, best_up, lst_le, lst_ge
 
 
 def back_propagate(args):
-    def obj_func1(x, i): return x[i]
-    def obj_func2(x, i): return -x[i]
+    idx, x, constraints = args
 
-    idx, bounds, constraints = args
+    objective = cp.Minimize(x[idx])
+    prob = cp.Problem(objective, constraints)
+    lw_i = round(prob.solve(), 9)
 
-    args = (idx)
-    res1 = minimize(obj_func1, x, args=args, bounds=bounds, constraints=constraints)
-    res2 = minimize(obj_func2, x, args=args, bounds=bounds, constraints=constraints)
+    objective = cp.Minimize(-x[idx])
+    prob = cp.Problem(objective, constraints)
+    up_i = -round(prob.solve(), 9)
 
-    res1.fun = round(res1.fun, 9)
-    res2.fun = round(res2.fun, 9)
-
-    return idx, res1.fun, -res2.fun
+    return idx, lw_i, up_i
