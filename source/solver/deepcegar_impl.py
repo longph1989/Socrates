@@ -56,11 +56,18 @@ class Poly():
         if get_ineq: return lst_le, lst_ge
 
 
+class Task():
+    def __init__(self, idx, lst_poly):
+        self.idx = idx
+        self.lst_poly = lst_poly
+
+
 class DeepCegarImpl():
     def __init__(self, max_ref):
         self.has_ref = True
         self.max_ref = 20
         self.cnt_ref = 0
+        self.tasks = []
 
 
     def __solve_local_robustness(self, model, spec, display):
@@ -90,8 +97,7 @@ class DeepCegarImpl():
 
             lst_poly = [x0_poly]
 
-            is_robust = self.__verify(model, x0, y0, 0, lst_poly)
-            # is_robust = self.__verify_with_input_tighten(model, x0, y0, 0, lst_poly)
+            is_robust = self.__verify_with_input_tighten(model, x0, y0, 0, lst_poly)
 
             if is_robust:
                 print('The network is robust around x0!')
@@ -149,7 +155,25 @@ class DeepCegarImpl():
 
             # no progess with back propagation
             if np.all(diff_lw < 1e-3) and np.all(diff_up < 1e-3):
-                return self.__verify(model, x0, y0, 0, new_lst_poly)
+                ref_layer, ref_index, ref_value = self.__choose_refinement(model, lst_poly, x, y0, y, lst_ge)
+
+                if ref_layer != None:
+                    lst_poly1, lst_poly2 = self.__refine(model, lst_poly, x, ref_layer, ref_index, ref_value)
+
+                    task1 = Task(ref_layer, lst_poly1)
+                    task2 = Task(ref_layer, lst_poly2)
+
+                    self.tasks.insert(0, task1)
+                    self.tasks.insert(1, task2)
+
+                    while len(self.tasks) > 0:
+                        task = self.tasks.pop()
+                        res = self.__verify(model, x0, y0, task.idx, task.lst_poly)
+                        if not res: return False
+
+                    return True
+                else:
+                    return False
             else:
                 return self.__verify_with_input_tighten(model, x0, y0, 0, new_lst_poly)
 
@@ -270,10 +294,17 @@ class DeepCegarImpl():
 
             if ref_layer != None:
                 lst_poly1, lst_poly2 = self.__refine(model, lst_poly, x, ref_layer, ref_index, ref_value)
-                if self.__verify(model, x0, y0, ref_layer, lst_poly1):
-                    return self.__verify(model, x0, y0, ref_layer, lst_poly2)
-                else:
-                    return False # False, unknown
+
+                task1 = Task(ref_layer, lst_poly1)
+                task2 = Task(ref_layer, lst_poly2)
+
+                self.tasks.insert(0, task1)
+                self.tasks.insert(1, task2)
+
+                for task in self.tasks:
+                    if task.idx > ref_layer: self.tasks.remove(task)
+
+                return True # to continue
             else:
                 return False # False, unknown
 
