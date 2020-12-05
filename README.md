@@ -11,7 +11,8 @@ Unlike most existing neural network verification approaches which are scattered 
 ```
 virtualenv -p python3 socrates_venv
 source socrates_venv/bin/activate
-pip install numpy scipy matplotlib torch autograd antlr4-python3-runtime
+sudo apt-get install coinor-cbc
+pip install numpy scipy matplotlib torch autograd antlr4-python3-runtime cvxpy cylp
 ```
 
 ## Publications:

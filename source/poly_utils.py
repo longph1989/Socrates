@@ -68,14 +68,16 @@ def back_substitute(args):
 
 
 def input_tighten(args):
-    idx, x, constraints = args
+    idx, x, constraints, lw_i, up_i = args
+
+    if lw_i == up_i: return idx, lw_i, up_i
 
     objective = cp.Minimize(x[idx])
     problem = cp.Problem(objective, constraints)
-    lw_i = round(problem.solve(), 9)
+    lw_i = round(problem.solve(solver=cp.CBC), 9)
 
     objective = cp.Minimize(-x[idx])
     problem = cp.Problem(objective, constraints)
-    up_i = -round(problem.solve(), 9)
+    up_i = -round(problem.solve(solver=cp.CBC), 9)
 
     return idx, lw_i, up_i

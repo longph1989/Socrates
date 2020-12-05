@@ -90,8 +90,8 @@ class DeepCegarImpl():
 
             lst_poly = [x0_poly]
 
-            # is_robust = self.__verify(model, x0, y0, 0, lst_poly)
-            is_robust = self.__verify_with_input_tighten(model, x0, y0, 0, lst_poly)
+            is_robust = self.__verify(model, x0, y0, 0, lst_poly)
+            # is_robust = self.__verify_with_input_tighten(model, x0, y0, 0, lst_poly)
 
             if is_robust:
                 print('The network is robust around x0!')
@@ -169,16 +169,17 @@ class DeepCegarImpl():
 
         if len0 < 100 and len(constraints_eq) + len(constraints_eq) < 100:
             for i in range(len0):
-                objective = cp.Minimize(x[i])
-                prob = cp.Problem(objective, constraints)
-                lw_i = round(prob.solve(), 9)
+                if (new_x0_poly.lw[i] < new_x0_poly.up[i]):
+                    objective = cp.Minimize(x[i])
+                    problem = cp.Problem(objective, constraints)
+                    lw_i = round(problem.solve(solver=cp.CBC), 9)
 
-                objective = cp.Minimize(-x[i])
-                prob = cp.Problem(objective, constraints)
-                up_i = -round(prob.solve(), 9)
+                    objective = cp.Minimize(-x[i])
+                    problem = cp.Problem(objective, constraints)
+                    up_i = -round(problem.solve(solver=cp.CBC), 9)
 
-                new_x0_poly.lw[i] = lw_i
-                new_x0_poly.up[i] = up_i
+                    new_x0_poly.lw[i] = lw_i
+                    new_x0_poly.up[i] = up_i
         else:
             clonesX, clonesC = [], []
 
@@ -188,7 +189,7 @@ class DeepCegarImpl():
 
             num_cores = os.cpu_count()
             pool = multiprocessing.Pool(num_cores)
-            zz = zip(range(len0), clonesX, clonesC)
+            zz = zip(range(len0), clonesX, clonesC, new_x0_poly.lw, new_x0_poly.up)
             for i, lw_i, up_i in pool.map(input_tighten, zz):
                 new_x0_poly.lw[i] = lw_i
                 new_x0_poly.up[i] = up_i
@@ -330,7 +331,7 @@ class DeepCegarImpl():
         constraints = [lw <= x, x <= up]
         problem = cp.Problem(objective, constraints)
 
-        result = problem.solve()
+        result = problem.solve(solver=cp.CBC)
 
         if result <= 0:
             return x.value[:-1]
