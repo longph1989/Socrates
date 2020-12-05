@@ -2,6 +2,7 @@ import autograd.numpy as np
 import cvxpy as cp
 import multiprocessing
 import ast
+import os
 
 from scipy.optimize import minimize
 from scipy.optimize import Bounds
@@ -13,11 +14,8 @@ from poly_utils import *
 
 class Poly():
     def __init__(self):
-        self.lw = None
-        self.up = None
-
-        self.le = None
-        self.ge = None
+        self.lw, self.up = None, None
+        self.le, self.ge = None, None
 
     def copy(self):
         new_poly = Poly()
@@ -31,35 +29,28 @@ class Poly():
         return new_poly
 
     def back_substitute(self, lst_poly, get_ineq=False):
-        le_curr = self.le
-        ge_curr = self.ge
-
-        no_neurons = len(le_curr)
+        no_neurons = len(self.lw)
 
         if no_neurons <= 100 or len(lst_poly) <= 2:
             for i in range(no_neurons):
-                args = (i, le_curr[i], ge_curr[i], lst_poly)
+                args = (i, self.le[i], self.ge[i], lst_poly)
                 _, lw_i, up_i, le, ge = back_substitute(args)
-                self.lw[i] = lw_i
-                self.up[i] = up_i
+                self.lw[i], self.up[i] = lw_i, up_i
 
                 # get_ineq only happens at the last step
                 # no_neurons in this case always be 1
-                if get_ineq:
-                    lst_le = le
-                    lst_ge = ge
+                if get_ineq: lst_le, lst_ge = le, ge
         else:
             clones = []
 
             for i in range(no_neurons):
                 clones.append(lst_poly)
 
-            num_cores = 4
+            num_cores = os.cpu_count()
             pool = multiprocessing.Pool(num_cores)
             zz = zip(range(no_neurons), self.le, self.ge, clones)
             for i, lw_i, up_i, _, _ in pool.map(back_substitute, zz):
-                self.lw[i] = lw_i
-                self.up[i] = up_i
+                self.lw[i], self.up[i] = lw_i, up_i
             pool.close()
 
         if get_ineq: return lst_le, lst_ge
@@ -68,7 +59,7 @@ class Poly():
 class DeepCegarImpl():
     def __init__(self, max_ref):
         self.has_ref = True
-        self.max_ref = 1
+        self.max_ref = 20
         self.cnt_ref = 0
 
 
@@ -83,34 +74,29 @@ class DeepCegarImpl():
 
         if 'fairness' in spec:
             sensitive = np.array(ast.literal_eval(read(spec['fairness'])))
-            for index in range(x0.size):
+            for index in range(len(x0)):
                 if not (index in sensitive):
-                    lw[index] = x0[index]
-                    up[index] = x0[index]
+                    lw[index], up[index] = x0[index], x0[index]
 
+        adv = self.__find_adv(model, x0, y0, lw, up)
 
-        res, x = self.__find_adv(model, x0, y0, lw, up)
-        if not res:
-            self.__validate_adv(model, x, y0)
-        else:
+        if len(adv) == 0:
             x0_poly = Poly()
 
-            x0_poly.lw = lw
-            x0_poly.up = up
+            x0_poly.lw, x0_poly.up = lw, up
 
-            x0_poly.le = np.eye(len(x0) + 1)[0:-1]
-            x0_poly.ge = np.eye(len(x0) + 1)[0:-1]
+            x0_poly.le = np.eye(len(x0) + 1)[:-1]
+            x0_poly.ge = np.eye(len(x0) + 1)[:-1]
 
             lst_poly = [x0_poly]
 
-            # res = self.__verify_back_propagate(model, x0, y0, 0, lst_poly)
-            res = self.__verify(model, x0, y0, 0, lst_poly)
-            if res == 0:
+            # is_robust = self.__verify(model, x0, y0, 0, lst_poly)
+            is_robust = self.__verify_with_input_tighten(model, x0, y0, 0, lst_poly)
+
+            if is_robust:
                 print('The network is robust around x0!')
-            elif res == 1:
+            else:
                 print('Unknown!')
-            elif res == 2:
-                print('True adversarial sample found in verifiction!')
 
 
     def __find_adv(self, model, x0, y0, lw, up):
@@ -134,9 +120,10 @@ class DeepCegarImpl():
         res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
 
         if res.fun == 0: # an adversarial sample is generated
-            return False, res.x
+            self.__validate_adv(model, res.x, y0)
+            return res.x
         else:
-            return True, np.empty(0)
+            return np.empty(0)
 
 
     def __validate_adv(self, model, x, y0):
@@ -146,34 +133,28 @@ class DeepCegarImpl():
             print('True adversarial sample found!')
             print('x = {}'.format(x))
             print('y = {}'.format(y))
-            return True
         else:
-            return False
+            assert False
 
 
-    def __verify_back_propagate(self, model, x0, y0, idx, lst_poly):
+    def __verify_with_input_tighten(self, model, x0, y0, idx, lst_poly):
         res, x, y, lst_ge = self.__run(model, x0, y0, idx, lst_poly)
 
         if res:
-            return 0 # True, robust
-        elif not self.has_ref:
-            return 1 # False, unknown
+            return True # True, robust
         else:
-            if self.__validate_adv(model, x, y0):
-                return 2 # False, with adv
+            new_lst_poly = self.__input_tighten(model, y0, y, lst_poly)
+            diff_lw = np.abs(lst_poly[0].lw - new_lst_poly[0].lw)
+            diff_up = np.abs(lst_poly[0].up - new_lst_poly[0].up)
+
+            # no progess with back propagation
+            if np.all(diff_lw < 1e-3) and np.all(diff_up < 1e-3):
+                return self.__verify(model, x0, y0, 0, new_lst_poly)
             else:
-                new_lst_poly = self.__back_propagate(model, y0, y, lst_poly)
-                diff_lw = np.abs(lst_poly[0].lw - new_lst_poly[0].lw)
-                diff_up = np.abs(lst_poly[0].up - new_lst_poly[0].up)
-
-                # no progess with back propagation
-                if np.all(diff_lw < 1e-3) and np.all(diff_up < 1e-3):
-                    return self.__verify(model, x0, y0, 0, new_lst_poly)
-                else:
-                    return self.__verify_back_propagate(model, x0, y0, 0, new_lst_poly)
+                return self.__verify_with_input_tighten(model, x0, y0, 0, new_lst_poly)
 
 
-    def __back_propagate(self, model, y0, y, lst_poly):
+    def __input_tighten(self, model, y0, y, lst_poly):
         lw, up = self.__generate_bounds(model, lst_poly)
         constraints_eq, constraints_ge, lenx = self.__generate_constraints(model, y0, y, lst_poly)
 
@@ -187,7 +168,7 @@ class DeepCegarImpl():
         constraints = [lw <= x, x <= up, constraints_eq @ x == 0, constraints_ge @ x >= 0]
 
         if len0 < 100 and len(constraints_eq) + len(constraints_eq) < 100:
-            for i in range(len(lst_poly[0].lw)):
+            for i in range(len0):
                 objective = cp.Minimize(x[i])
                 prob = cp.Problem(objective, constraints)
                 lw_i = round(prob.solve(), 9)
@@ -205,10 +186,10 @@ class DeepCegarImpl():
                 clonesX.append(x)
                 clonesC.append(constraints)
 
-            num_cores = 4
+            num_cores = os.cpu_count()
             pool = multiprocessing.Pool(num_cores)
             zz = zip(range(len0), clonesX, clonesC)
-            for i, lw_i, up_i in pool.map(back_propagate, zz):
+            for i, lw_i, up_i in pool.map(input_tighten, zz):
                 new_x0_poly.lw[i] = lw_i
                 new_x0_poly.up[i] = up_i
             pool.close()
@@ -280,251 +261,96 @@ class DeepCegarImpl():
         res, x, y, lst_ge = self.__run(model, x0, y0, idx, lst_poly)
 
         if res:
-            return 0 # True, robust
+            return True # True, robust
         elif not self.has_ref:
-            return 1 # False, unknown
+            return False # False, unknown
         else:
-            if self.__validate_adv(model, x, y0):
-                return 2 # False, with adv
-            else:
-                # ref_layer, ref_index, ref_value = self.__input_bisection(model, lst_poly, x, y0, y, lst_ge)
-                # ref_layer, ref_index, ref_value = self.__inner_refinement(model, lst_poly, x, y0, y, lst_ge)
-                # ref_layer, ref_index, ref_value = self.__cnt_refinement(model, lst_poly, x, y0, y, lst_ge)
-                # ref_layer, ref_index, ref_value = self.__negative_impact_refinement(model, lst_poly, x, y0, y, lst_ge)
-                ref_layer, ref_index, ref_value = self.__impact_refinement(model, lst_poly, x, y0, y, lst_ge)
+            ref_layer, ref_index, ref_value = self.__choose_refinement(model, lst_poly, x, y0, y, lst_ge)
 
-                # this makes res1 and res2 not symmetric
-                # there may be the chance res2 can find the true adv while
-                # res1 is false with unknown and so res2 is not run
-                # the problem is not too important for now because it is rare
-                # and we focus on verification
-                if ref_layer != -1:
-                    lst_poly1, lst_poly2 = self.__refine(model, lst_poly, x, ref_layer, ref_index, ref_value)
-                    res1 = self.__verify(model, x0, y0, ref_layer, lst_poly1)
-                    if res1 == 0:
-                        res2 = self.__verify(model, x0, y0, ref_layer, lst_poly2)
-                        return res2
-                    else:
-                        return res1
+            if ref_layer != None:
+                lst_poly1, lst_poly2 = self.__refine(model, lst_poly, x, ref_layer, ref_index, ref_value)
+                if self.__verify(model, x0, y0, ref_layer, lst_poly1):
+                    return self.__verify(model, x0, y0, ref_layer, lst_poly2)
                 else:
-                    return 1 # False, unknown
+                    return False # False, unknown
+            else:
+                return False # False, unknown
 
 
     def __run(self, model, x0, y0, idx, lst_poly):
         # print('\n############################\n')
         # print('idx = {}'.format(idx))
-        # print('xi_poly.lw = {}'.format(lst_poly[idx].lw))
-        # print('xi_poly.up = {}'.format(lst_poly[idx].up))
+        # print('poly.lw = {}'.format(lst_poly[idx].lw))
+        # print('poly.up = {}'.format(lst_poly[idx].up))
 
         if idx == len(model.layers):
-            x = lst_poly[idx]
-            no_neurons = len(x.lw)
+            poly_out = lst_poly[idx]
+            no_neurons = len(poly_out.lw)
 
-            # print('x.lw = {}'.format(x.lw))
-            # print('x.up = {}'.format(x.up))
+            # print('poly_out.lw = {}'.format(poly_out.lw))
+            # print('poly_out.up = {}'.format(poly_out.up))
 
             for y in range(no_neurons):
-                if y != y0 and x.lw[y0] <= x.up[y]:
-                    res_poly = Poly()
+                if y != y0 and poly_out.lw[y0] <= poly_out.up[y]:
+                    poly_res = Poly()
 
-                    res_poly.lw = np.zeros(1)
-                    res_poly.up = np.zeros(1)
+                    poly_res.lw = np.zeros(1)
+                    poly_res.up = np.zeros(1)
 
-                    res_poly.le = np.zeros([1, no_neurons + 1])
-                    res_poly.ge = np.zeros([1, no_neurons + 1])
+                    poly_res.le = np.zeros([1, no_neurons + 1])
+                    poly_res.ge = np.zeros([1, no_neurons + 1])
 
-                    res_poly.ge[0,y0] = 1
-                    res_poly.ge[0,y] = -1
+                    poly_res.ge[0,y0] = 1
+                    poly_res.ge[0,y] = -1
 
-                    lst_le, lst_ge = res_poly.back_substitute(lst_poly, True)
+                    lst_le, lst_ge = poly_res.back_substitute(lst_poly, True)
                     ge_x0 = lst_ge[0]
 
                     # print('y = {}'.format(y))
-                    # print('res.lw = {}'.format(res_poly.lw[0]))
+                    # print('res.lw = {}'.format(poly_res.lw[0]))
 
-                    if res_poly.lw[0] <= 0:
-                        res, x = self.__find_sus_adv(ge_x0, x0, lst_poly[0].lw, lst_poly[0].up)
+                    if poly_res.lw[0] <= 0:
+                        poly0 = lst_poly[0]
+                        x = self.__find_sus_adv(ge_x0, x0, poly0.lw, poly0.up)
                         return False, x, y, lst_ge
 
             return True, None, None, None
         else:
-            xi_poly_curr = model.forward(lst_poly[idx], idx, lst_poly)
-            lst_poly.append(xi_poly_curr)
+            poly_next = model.forward(lst_poly[idx], idx, lst_poly)
+            lst_poly.append(poly_next)
             return self.__run(model, x0, y0, idx + 1, lst_poly)
 
 
     def __find_sus_adv(self, ge_x0, x0, lw, up):
-        def obj_func(x, ge_x0):
-            res = 0
-            for i in range(len(x)):
-                res += x[i] * ge_x0[i]
-            res += ge_x0[-1]
-            return res if res >= 0 else np.sum(x - x)
+        x = cp.Variable(len(x0) + 1)
+        lw = np.append(lw, 1)
+        up = np.append(up, 1)
 
-        x = x0.copy()
+        objective = cp.Minimize(cp.sum(cp.multiply(x, ge_x0)))
+        constraints = [lw <= x, x <= up]
+        problem = cp.Problem(objective, constraints)
 
-        args = (ge_x0)
-        jac = grad(obj_func)
-        bounds = Bounds(lw, up)
+        result = problem.solve()
 
-        res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
-
-        if res.fun == 0: # an adversarial sample is generated
-            return False, res.x
+        if result <= 0:
+            return x.value[:-1]
         else:
-            return True, np.empty(0)
+            assert False
 
 
-    # # input bisection with largest coefs
-    # def __input_bisection(self, model, lst_poly, x, y0, y, lst_ge):
-    #     best_layer = -1
-    #     best_index = -1
-    #     best_value = -1
-    #     ref_value = 0
-    #
-    #     for i in range(1):
-    #         ge = np.abs(lst_ge[i])
-    #         poly_i = lst_poly[i]
-    #
-    #         for ref_idx in range(len(ge) - 1):
-    #             lw = poly_i.lw[ref_idx]
-    #             up = poly_i.up[ref_idx]
-    #             if lw < up and (best_layer == -1 or best_value < ge[ref_idx]):
-    #                 best_layer = i
-    #                 best_index = ref_idx
-    #                 best_value = ge[ref_idx]
-    #                 ref_value = (lw + up) / 2
-    #
-    #     return best_layer, best_index, ref_value
-    #
-    #
-    # # input or inner neuron refinement with largest coefs
-    # def __inner_refinement(self, model, lst_poly, x, y0, y, lst_ge):
-    #     best_layer = -1
-    #     best_index = -1
-    #     best_value = -1
-    #     ref_value = 0
-    #
-    #     for i in range(len(model.layers)):
-    #         layer = model.layers[i]
-    #
-    #         # if not layer.is_poly_exact():
-    #         if i == 0 or not layer.is_poly_exact():
-    #             ge = np.abs(lst_ge[i])
-    #             poly_i = lst_poly[i]
-    #
-    #             for ref_idx in range(len(ge) - 1):
-    #                 lw = poly_i.lw[ref_idx]
-    #                 up = poly_i.up[ref_idx]
-    #                 # if lw < 0 and up > 0 and (best_layer == -1 or best_value < ge[ref_idx]):
-    #                 if ((i == 0 and lw < up) or (lw < 0 and up > 0)) and \
-    #                         (best_layer == -1 or best_value < ge[ref_idx]):
-    #                     best_layer = i
-    #                     best_index = ref_idx
-    #                     best_value = ge[ref_idx]
-    #                     ref_value = (lw + up) / 2 if i == 0 else 0
-    #
-    #     return best_layer, best_index, ref_value
-    #
-    #
-    # # count and choose the layer with less number of possibly refined neurons
-    # def __cnt_refinement(self, model, lst_poly, x, y0, y, lst_ge):
-    #     best_layer = -1
-    #     best_cnt = 1e9
-    #
-    #     for i in range(len(model.layers)):
-    #         layer = model.layers[i]
-    #
-    #         if i == 0 or not layer.is_poly_exact():
-    #             cnt = 0
-    #             poly_i = lst_poly[i]
-    #
-    #             for ref_idx in range(len(poly_i.lw)):
-    #                 lw = poly_i.lw[ref_idx]
-    #                 up = poly_i.up[ref_idx]
-    #                 if (i == 0 and lw < up) or (lw < 0 and up > 0):
-    #                     cnt = cnt + 1
-    #
-    #             if best_cnt > cnt and cnt > 0:
-    #                 best_layer = i
-    #                 best_cnt = cnt
-    #
-    #     if best_layer == -1:
-    #         return -1, -1, -1
-    #
-    #     best_index = -1
-    #     best_value = -1
-    #     ref_val = 0
-    #
-    #     ge = np.abs(lst_ge[best_layer])
-    #     poly_i = lst_poly[best_layer]
-    #
-    #     for ref_idx in range(len(ge) - 1):
-    #         lw = poly_i.lw[ref_idx]
-    #         up = poly_i.up[ref_idx]
-    #         if ((best_layer == 0 and lw < up) or (lw < 0 and up > 0)) and \
-    #                 (best_index == -1 or best_value < ge[ref_idx]):
-    #             best_index = ref_idx
-    #             best_value = ge[ref_idx]
-    #             ref_value = (lw + up) / 2 if best_layer == 0 else 0
-    #
-    #     return best_layer, best_index, ref_value
-    #
-    #
-    # # negative impact
-    # def __negative_impact_refinement(self, model, lst_poly, x, y0, y, lst_ge):
-    #     best_layer = -1
-    #     best_index = -1
-    #     best_value = -1
-    #     ref_value = 0
-    #
-    #     for i in range(len(model.layers)):
-    #         layer = model.layers[i]
-    #         sum_impact = 0
-    #
-    #         if i == 0 or not layer.is_poly_exact():
-    #             poly_i = lst_poly[i]
-    #             ge_i = lst_ge[i]
-    #
-    #             for ref_idx in range(len(poly_i.lw)):
-    #                 lw = poly_i.lw[ref_idx]
-    #                 up = poly_i.up[ref_idx]
-    #                 cf = ge_i[ref_idx]
-    #
-    #                 if (i == 0 and lw < up) or (lw < 0 and up > 0):
-    #                     impact = min(cf * lw, cf * up)
-    #                     if impact < 0:
-    #                         sum_impact = sum_impact + impact
-    #
-    #             for ref_idx in range(len(poly_i.lw)):
-    #                 lw = poly_i.lw[ref_idx]
-    #                 up = poly_i.up[ref_idx]
-    #                 cf = ge_i[ref_idx]
-    #
-    #                 if (i == 0 and lw < up) or (lw < 0 and up > 0):
-    #                     impact = min(cf * lw, cf * up)
-    #                     if impact < 0:
-    #                         norm_impact = impact / sum_impact
-    #                         if best_layer == -1 or best_value < norm_impact:
-    #                             best_layer = i
-    #                             best_index = ref_idx
-    #                             best_value = norm_impact
-    #                             ref_value = (lw + up) / 2 if i == 0 else 0
-    #
-    #     return best_layer, best_index, ref_value
-
-
-    # impact refinement
-    def __impact_refinement(self, model, lst_poly, x, y0, y, lst_ge):
+    # choose refinement
+    def __choose_refinement(self, model, lst_poly, x, y0, y, lst_ge):
         if self.cnt_ref == 0:
             # print('Refine! ')
             print('Refine! ', end='')
 
         self.cnt_ref += 1
 
-        if self.cnt_ref > self.max_ref: return -1
+        best_layer, best_index, ref_value = None, None, None
+        if self.cnt_ref > self.max_ref:
+            return best_layer, best_index, ref_value
 
-        best_layer, best_index, best_value, ref_value = -1, -1, -1, 0
+        best_value = -1e9
 
         for i in range(len(model.layers)):
             layer = model.layers[i]
@@ -552,7 +378,7 @@ class DeepCegarImpl():
                         if (i == 0 and lw < up) or (lw < 0 and up > 0):
                             impact = max(abs(cf * lw), abs(cf * up))
                             norm_impact = impact / sum_impact
-                            if best_layer == -1 or best_value < norm_impact:
+                            if best_value < norm_impact:
                                 best_layer = i
                                 best_index = ref_idx
                                 best_value = norm_impact
