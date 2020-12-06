@@ -97,8 +97,8 @@ class DeepCegarImpl():
 
             lst_poly = [x0_poly]
 
-            is_robust = self.__verify_with_input_tighten(model, x0, y0, 0, lst_poly)
-            # is_robust = self.__verify_without_input_tighten(model, x0, y0, 0, lst_poly)
+            # is_robust = self.__verify_with_input_tighten(model, x0, y0, 0, lst_poly)
+            is_robust = self.__verify_without_input_tighten(model, x0, y0, 0, lst_poly)
 
             if is_robust:
                 print('The network is robust around x0!')
