@@ -67,6 +67,7 @@ class DeepCegarImpl():
         self.has_ref = True
         self.max_ref = 20
         self.cnt_ref = 0
+        self.cnt_tig = 0
         self.tasks = []
 
 
@@ -97,13 +98,16 @@ class DeepCegarImpl():
 
             lst_poly = [x0_poly]
 
-            # is_robust = self.__verify_with_input_tighten(model, x0, y0, 0, lst_poly)
-            is_robust = self.__verify_without_input_tighten(model, x0, y0, 0, lst_poly)
+            is_robust = self.__verify_with_input_tighten(model, x0, y0, 0, lst_poly)
+            # is_robust = self.__verify_without_input_tighten(model, x0, y0, 0, lst_poly)
 
             if is_robust:
                 print('The network is robust around x0!')
             else:
                 print('Unknown!')
+
+            print('Input tighten: {} times!'.format(self.cnt_tig))
+            print('Refinement: {} times!'.format(self.cnt_ref))
 
 
     def __find_adv(self, model, x0, y0, lw, up):
@@ -166,7 +170,7 @@ class DeepCegarImpl():
             diff_lw = np.abs(lst_poly[0].lw - new_lst_poly[0].lw)
             diff_up = np.abs(lst_poly[0].up - new_lst_poly[0].up)
 
-            # no progess with back propagation
+            # no progess with input tighten
             if np.all(diff_lw < 1e-3) and np.all(diff_up < 1e-3):
                 ref_layer, ref_index, ref_value = self.__choose_refinement(model, lst_poly, x, y0, y, lst_ge)
 
@@ -192,6 +196,8 @@ class DeepCegarImpl():
 
 
     def __input_tighten(self, model, y0, y, lst_poly):
+        self.cnt_tig += 1
+
         lw, up = self.__generate_bounds(model, lst_poly)
         constraints_eq, constraints_ge, lenx = self.__generate_constraints(model, y0, y, lst_poly)
 
@@ -385,16 +391,11 @@ class DeepCegarImpl():
 
     # choose refinement
     def __choose_refinement(self, model, lst_poly, x, y0, y, lst_ge):
-        if self.cnt_ref == 0:
-            # print('Refine! ')
-            print('Refine! ', end='')
-
-        self.cnt_ref += 1
-
         best_layer, best_index, ref_value = None, None, None
-        if self.cnt_ref > self.max_ref:
+        if self.cnt_ref >= self.max_ref:
             return best_layer, best_index, ref_value
 
+        self.cnt_ref += 1
         best_value = -1e9
 
         for i in range(len(model.layers)):

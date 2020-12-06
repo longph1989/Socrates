@@ -2,7 +2,7 @@ mkdir results_cegar
 mkdir results_cegar/cegar_0.01
 
 (time python -u source/run_eran.py --spec benchmark/cegar/nnet/mnist_relu_3_10/spec.json --algorithm deepcegar --eps 0.01 --dataset mnist_fc) &> results_cegar/cegar_0.01/log_mnist_relu_3_10.txt
-(time python -u source/run_eran.py --spec benchmark/cegar/nnet/mnist_relu_3_100/spec.json --algorithm deepcegar --eps 0.01 --dataset mnist_fc) &> results_cegar/cegar_0.01/log_mnist_relu_3_100.txt
+# (time python -u source/run_eran.py --spec benchmark/cegar/nnet/mnist_relu_3_100/spec.json --algorithm deepcegar --eps 0.01 --dataset mnist_fc) &> results_cegar/cegar_0.01/log_mnist_relu_3_100.txt
 # (time python -u source/run_eran.py --spec benchmark/cegar/nnet/mnist_relu_3_150/spec.json --algorithm deepcegar --eps 0.01 --dataset mnist_fc) &> results_cegar/cegar_0.01/log_mnist_relu_3_150.txt
 # (time python -u source/run_eran.py --spec benchmark/cegar/nnet/mnist_relu_3_20/spec.json --algorithm deepcegar --eps 0.01 --dataset mnist_fc) &> results_cegar/cegar_0.01/log_mnist_relu_3_20.txt
 # (time python -u source/run_eran.py --spec benchmark/cegar/nnet/mnist_relu_3_200/spec.json --algorithm deepcegar --eps 0.01 --dataset mnist_fc) &> results_cegar/cegar_0.01/log_mnist_relu_3_200.txt
