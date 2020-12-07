@@ -66,6 +66,7 @@ class DeepCegarImpl():
     def __init__(self):
         self.has_ref = True
         self.max_ref = 20
+        self.max_tig = 20
         self.cnt_ref = 0
         self.cnt_tig = 0
         self.tasks = []
@@ -171,7 +172,7 @@ class DeepCegarImpl():
             diff_up = np.abs(lst_poly[0].up - new_lst_poly[0].up)
 
             # no progess with input tighten
-            if np.all(diff_lw < 1e-3) and np.all(diff_up < 1e-3):
+            if np.all(diff_lw < 1e-9) and np.all(diff_up < 1e-9):
                 ref_layer, ref_index, ref_value = self.__choose_refinement(model, lst_poly, x, y0, y, lst_ge)
 
                 if ref_layer != None:
@@ -196,6 +197,12 @@ class DeepCegarImpl():
 
 
     def __input_tighten(self, model, y0, y, lst_poly):
+        len0 = len(lst_poly[0].lw)
+        new_x0_poly = lst_poly[0].copy()
+
+        if self.cnt_tig >= self.max_tig:
+            return [new_x0_poly]
+
         self.cnt_tig += 1
 
         lw, up = self.__generate_bounds(model, lst_poly)
@@ -203,9 +210,6 @@ class DeepCegarImpl():
 
         constraints_eq = np.array(constraints_eq)
         constraints_ge = np.array(constraints_ge)
-
-        len0 = len(lst_poly[0].lw)
-        new_x0_poly = lst_poly[0].copy()
 
         x = cp.Variable(lenx)
         constraints = [lw <= x, x <= up, constraints_eq @ x == 0, constraints_ge @ x >= 0]
