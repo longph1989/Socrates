@@ -63,7 +63,7 @@ class Task():
 
 
 class DeepCegarImpl():
-    def __init__(self, max_ref):
+    def __init__(self):
         self.has_ref = True
         self.max_ref = 20
         self.cnt_ref = 0

@@ -221,9 +221,7 @@ def parse_solver(spec):
 
         solver = SPRT(threshold, alpha, beta, delta)
     elif algorithm == 'deepcegar':
-        max_ref = ast.literal_eval(read(spec['max_ref']))
-
-        solver = DeepCegar(max_ref)
+        solver = DeepCegar()
 
     return solver
 
