@@ -65,6 +65,7 @@ class Task():
 class DeepCegarImpl():
     def __init__(self):
         self.has_ref = True
+        self.has_tig = True
         self.max_ref = 20
         self.max_tig = 20
         self.cnt_ref = 0
@@ -99,8 +100,10 @@ class DeepCegarImpl():
 
             lst_poly = [x0_poly]
 
-            is_robust = self.__verify_with_input_tighten(model, x0, y0, 0, lst_poly)
-            # is_robust = self.__verify_without_input_tighten(model, x0, y0, 0, lst_poly)
+            if self.has_tig:
+                is_robust = self.__verify_with_input_tighten(model, x0, y0, 0, lst_poly)
+            else:
+                is_robust = self.__verify_without_input_tighten(model, x0, y0, 0, lst_poly)
 
             if is_robust:
                 print('The network is robust around x0!')
@@ -173,7 +176,10 @@ class DeepCegarImpl():
 
             # no progess with input tighten
             if np.all(diff_lw < 1e-9) and np.all(diff_up < 1e-9):
-                ref_layer, ref_index, ref_value = self.__choose_refinement(model, lst_poly, x, y0, y, lst_ge)
+                if self.has_ref:
+                    ref_layer, ref_index, ref_value = self.__choose_refinement(model, lst_poly, x, y0, y, lst_ge)
+                else:
+                    ref_layer = None
 
                 if ref_layer != None:
                     lst_poly1, lst_poly2 = self.__refine(model, lst_poly, x, ref_layer, ref_index, ref_value)
