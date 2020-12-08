@@ -64,13 +64,24 @@ class Task():
 
 class DeepCegarImpl():
     def __init__(self):
-        self.has_ref = False
+        self.has_ref = True
         self.has_tig = False
         self.max_ref = 20
         self.max_tig = 20
         self.cnt_ref = 0
         self.cnt_tig = 0
+        self.ref_typ = 0
         self.tasks = []
+
+        if self.has_ref:
+            print('Run with refinement!')
+        if self.has_tig:
+            print('Run with input tighten!')
+
+        if self.has_ref:
+            print('Refinement type: ', end='')
+            if self.ref_typ == 0:
+                print('Greatest norm impact based on abs(coef * (lw,up))')
 
 
     def __solve_local_robustness(self, model, spec, display):
@@ -177,7 +188,7 @@ class DeepCegarImpl():
             # no progess with input tighten
             if np.all(diff_lw < 1e-9) and np.all(diff_up < 1e-9):
                 if self.has_ref:
-                    ref_layer, ref_index, ref_value = self.__choose_refinement(model, lst_poly, x, y0, y, lst_ge)
+                    ref_layer, ref_index, ref_value = self.__choose_refinement(model, lst_poly, x, y0, y, lst_ge, self.ref_typ)
                 else:
                     ref_layer = None
 
@@ -319,7 +330,7 @@ class DeepCegarImpl():
         elif not self.has_ref:
             return False # False, unknown
         else:
-            ref_layer, ref_index, ref_value = self.__choose_refinement(model, lst_poly, x, y0, y, lst_ge)
+            ref_layer, ref_index, ref_value = self.__choose_refinement(model, lst_poly, x, y0, y, lst_ge, self.ref_typ)
 
             if ref_layer != None:
                 lst_poly1, lst_poly2 = self.__refine(model, lst_poly, x, ref_layer, ref_index, ref_value)
@@ -400,7 +411,13 @@ class DeepCegarImpl():
 
 
     # choose refinement
-    def __choose_refinement(self, model, lst_poly, x, y0, y, lst_ge):
+    def __choose_refinement(self, model, lst_poly, x, y0, y, lst_ge, ref_typ):
+        if ref_typ == 0:
+            return self.__impact_refinement(model, lst_poly, x, y0, y, lst_ge)
+
+
+    # impact refinement
+    def __impact_refinement(self, model, lst_poly, x, y0, y, lst_ge):
         best_layer, best_index, ref_value = None, None, None
         if self.cnt_ref >= self.max_ref:
             return best_layer, best_index, ref_value
