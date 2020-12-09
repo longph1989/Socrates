@@ -46,8 +46,7 @@ class Poly():
             for i in range(no_neurons):
                 clones.append(lst_poly)
 
-            # num_cores = os.cpu_count()
-            num_cores = 8
+            num_cores = os.cpu_count()
             pool = multiprocessing.Pool(num_cores)
             zz = zip(range(no_neurons), self.le, self.ge, clones)
             for i, lw_i, up_i, _, _ in pool.map(back_substitute, zz):
@@ -252,8 +251,7 @@ class DeepCegarImpl():
                 clonesX.append(x)
                 clonesC.append(constraints)
 
-            # num_cores = os.cpu_count()
-            num_cores = 8
+            num_cores = os.cpu_count()
             pool = multiprocessing.Pool(num_cores)
             zz = zip(range(len0), clonesX, clonesC, new_x0_poly.lw, new_x0_poly.up)
             for i, lw_i, up_i in pool.map(input_tighten, zz):
