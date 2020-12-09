@@ -112,14 +112,14 @@ class DeepCegarImpl():
             lst_poly = [x0_poly]
 
             if self.has_tig:
-                is_robust = self.__verify_with_input_tighten(model, x0, y0, 0, lst_poly)
+                res = self.__verify_with_input_tighten(model, x0, y0, 0, lst_poly)
             else:
-                is_robust = self.__verify_without_input_tighten(model, x0, y0, 0, lst_poly)
+                res = self.__verify_without_input_tighten(model, x0, y0, 0, lst_poly)
 
-            if is_robust:
-                print('The network is robust around x0!')
-            else:
+            if res == 0:
                 print('Unknown!')
+            elif res == 1:
+                print('The network is robust around x0!')
 
             print('Input tighten: {} times!'.format(self.cnt_tig))
             print('Refinement: {} times!'.format(self.cnt_ref))
@@ -146,7 +146,8 @@ class DeepCegarImpl():
         res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
 
         if res.fun == 0: # an adversarial sample is generated
-            self.__validate_adv(model, res.x, y0)
+            valid = self.__validate_adv(model, res.x, y0)
+            assert valid
             return res.x
         else:
             return np.empty(0)
@@ -159,8 +160,9 @@ class DeepCegarImpl():
             print('True adversarial sample found!')
             print('x = {}'.format(x))
             print('y = {}'.format(y))
+            return True
         else:
-            assert False
+            return False
 
 
     def __verify_without_input_tighten(self, model, x0, y0, idx, lst_poly):
@@ -170,16 +172,18 @@ class DeepCegarImpl():
         while len(self.tasks) > 0:
             task = self.tasks.pop()
             res = self.__verify(model, x0, y0, task.idx, task.lst_poly)
-            if not res: return False
+            if res == 0 or res == 2: return res # False, unknown or with adv
 
-        return True
+        return 1 # True, robust
 
 
     def __verify_with_input_tighten(self, model, x0, y0, idx, lst_poly):
         res, x, y, lst_ge = self.__run(model, x0, y0, idx, lst_poly)
 
         if res:
-            return True # True, robust
+            return 1 # True, robust
+        elif self.__validate_adv(model, x, y0):
+            return 2 # False, true adv found
         else:
             new_lst_poly = self.__input_tighten(model, y0, y, lst_poly)
             diff_lw = np.abs(lst_poly[0].lw - new_lst_poly[0].lw)
@@ -204,11 +208,11 @@ class DeepCegarImpl():
                     while len(self.tasks) > 0:
                         task = self.tasks.pop()
                         res = self.__verify(model, x0, y0, task.idx, task.lst_poly)
-                        if not res: return False
+                        if res == 0 or res == 2: return res # False, unknown or with adv
 
-                    return True
+                    return 1 # True, robust
                 else:
-                    return False
+                    return 0 # False, unknown
             else:
                 return self.__verify_with_input_tighten(model, x0, y0, 0, new_lst_poly)
 
@@ -326,9 +330,11 @@ class DeepCegarImpl():
         res, x, y, lst_ge = self.__run(model, x0, y0, idx, lst_poly)
 
         if res:
-            return True # True, robust
+            return 1 # True, robust
+        elif self.__validate_adv(model, x, y0):
+            return 2 # False, true adv found
         elif not self.has_ref:
-            return False # False, unknown
+            return 0 # False, unknown
         else:
             ref_layer, ref_index, ref_value = self.__choose_refinement(model, lst_poly, x, y0, y, lst_ge, self.ref_typ)
 
@@ -344,9 +350,9 @@ class DeepCegarImpl():
                 for task in self.tasks:
                     if task.idx > ref_layer: self.tasks.remove(task)
 
-                return True # to continue
+                return 1 # to continue
             else:
-                return False # False, unknown
+                return 0 # False, unknown
 
 
     def __run(self, model, x0, y0, idx, lst_poly):
