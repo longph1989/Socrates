@@ -8,11 +8,7 @@ from utils import *
 
 from solver.lib_solvers import DeepCegar
 
-
 import time
-import gc
-
-
 
 def add_assertion(args, spec):
     assertion = dict()
@@ -26,7 +22,17 @@ def add_assertion(args, spec):
 
 def add_solver(args, spec):
     solver = dict()
+
+    assert args.algorithm == 'deepcegar'
     solver['algorithm'] = args.algorithm
+
+    solver['has_ref'] = str(args.has_ref)
+    solver['max_ref'] = str(args.max_ref)
+    solver['ref_typ'] = str(args.ref_typ)
+
+    solver['has_tig'] = str(args.has_tig)
+    solver['max_tig'] = str(args.max_tig)
+
     spec['solver'] = solver
 
 
@@ -44,14 +50,25 @@ def main():
                         help='the specification file')
     parser.add_argument('--algorithm', type=str,
                         help='the chosen algorithm')
-    parser.add_argument('--threshold', type=float,
-                        help='the threshold in sprt')
     parser.add_argument('--eps', type=float,
                         help='the distance value')
+    parser.add_argument('--has_ref', action='store_true',
+                        help='turn on/off refinement')
+    parser.add_argument('--max_ref', type=int, default=20,
+                        help='maximum times of refinement')
+    parser.add_argument('--ref_typ', type=int, default=0,
+                        help='type of refinement')
+    parser.add_argument('--has_tig', action='store_true',
+                        help='turn on/off input tighten')
+    parser.add_argument('--max_tig', type=int, default=20,
+                        help='maximum times of input tighten')
     parser.add_argument('--dataset', type=str,
                         help='the data set for CEGAR experiments')
 
     args = parser.parse_args()
+
+    print('Local robustness with eps = {}'.format(args.eps))
+    print('\n============================\n')
 
     with open(args.spec, 'r') as f:
         spec = json.load(f)

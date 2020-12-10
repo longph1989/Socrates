@@ -1,5 +1,5 @@
 import autograd.numpy as np
-import torch
+# import torch
 
 class Model:
     def __init__(self, shape, lower, upper, layers, path):

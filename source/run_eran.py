@@ -8,11 +8,7 @@ from utils import *
 
 from solver.lib_solvers import DeepCegar
 
-
 import time
-import gc
-
-
 
 def add_assertion(args, spec):
     assertion = dict()
