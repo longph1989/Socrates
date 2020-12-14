@@ -32,4 +32,4 @@ class DeepCegar():
 
     def solve(self, model, assertion, display=None):
         impl = DeepCegarImpl(self.has_ref, self.max_ref, self.ref_typ, self.has_tig, self.max_tig)
-        impl.solve(model, assertion, display)
+        return impl.solve(model, assertion, display)

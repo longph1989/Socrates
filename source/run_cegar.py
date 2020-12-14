@@ -67,9 +67,6 @@ def main():
 
     args = parser.parse_args()
 
-    print('Local robustness with eps = {}'.format(args.eps))
-    print('\n============================\n')
-
     with open(args.spec, 'r') as f:
         spec = json.load(f)
 
@@ -98,19 +95,61 @@ def main():
         print('lbl_x0 = {}'.format(lbl_x0))
         print('y0 = {}\n'.format(y0s[i]))
 
-        t0 = time.time()
-
         if lbl_x0 == y0s[i]:
-            update_bounds(args, model, x0, lower, upper)
-            print('Run at data {}\n'.format(i))
-            solver.solve(model, assertion)
+            best_verified, best_failed = 0, 1e9
+            eps, step_eps = 0.01, 0.01
+
+            while True:
+                t0 = time.time()
+
+                args.eps = eps
+                update_bounds(args, model, x0, lower, upper)
+                print('Run at data {}\n'.format(i))
+
+                res = solver.solve(model, assertion)
+
+                if res == 1:
+                    print('Verified at {:.3f}'.format(eps))
+                    best_verified = max(best_verified, eps)
+                elif res == 0:
+                    print('Failed at {:.3f}'.format(eps))
+                    best_failed = min(best_failed, eps)
+                else: break
+
+                t1 = time.time()
+
+                print('time = {}'.format(t1 - t0))
+                print('\n============================\n')
+
+                if best_verified == round(best_failed - 0.001, 3): break
+
+                if res == 1:
+                    if step_eps == 0.01:
+                        eps = round(eps + step_eps, 3)
+                    elif step_eps == -0.005:
+                        step_eps = 0.001
+                        eps = round(eps + step_eps, 3)
+                    elif step_eps == 0.001:
+                        eps = round(eps + step_eps, 3)
+                elif res == 0:
+                    if step_eps == 0.01:
+                        step_eps = -0.005
+                        eps = round(eps + step_eps, 3)
+                    elif step_eps == -0.005:
+                        step_eps = -0.001
+                        eps = round(eps + step_eps, 3)
+                    elif step_eps == -0.001:
+                        eps = round(eps + step_eps, 3)
+
+            print("img {} Verified {} with {:.3f} and Failed with {:.3f}".format(i, lbl_x0, best_verified, best_failed))
         else:
             print('Skip at data {}'.format(i))
+            res = -1
 
-        t1 = time.time()
-
-        print('time = {}'.format(t1 - t0))
         print('\n============================\n')
+
+
+
 
 
 if __name__ == '__main__':

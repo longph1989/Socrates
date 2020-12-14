@@ -108,7 +108,7 @@ class DeepCegarImpl():
                 if not (index in sensitive):
                     lw[index], up[index] = x0[index], x0[index]
 
-        adv = self.__find_adv(model, x0, y0, lw, up)
+        res, adv = 0, self.__find_adv(model, x0, y0, lw, up)
 
         if len(adv) == 0:
             x0_poly = Poly()
@@ -132,6 +132,8 @@ class DeepCegarImpl():
 
             print('Input tighten: {} times!'.format(self.cnt_tig))
             print('Refinement: {} times!'.format(self.cnt_ref))
+
+        return res == 1
 
 
     def __find_adv(self, model, x0, y0, lw, up):
