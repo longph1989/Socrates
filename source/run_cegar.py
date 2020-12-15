@@ -148,7 +148,7 @@ def main():
             print("img {} Verified at {:.3f} and Failed at {:.3f}".format(i, best_verified, best_failed))
         else:
             print('Skip at data {}'.format(i))
-            print("img {} Verified at {:.3f} and Failed at {:.3f}".format(i, 0, 0))
+            print("img {} Verified at {:.3f} and Failed at {:.3f}".format(i, -1, -1))
             res = -1
 
         print('\n============================\n')
