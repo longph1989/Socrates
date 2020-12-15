@@ -33,6 +33,8 @@ def add_solver(args, spec):
     solver['has_tig'] = str(args.has_tig)
     solver['max_tig'] = str(args.max_tig)
 
+    solver['max_time'] = str(args.max_time)
+
     spec['solver'] = solver
 
 
@@ -62,6 +64,8 @@ def main():
                         help='turn on/off input tighten')
     parser.add_argument('--max_tig', type=int, default=20,
                         help='maximum times of input tighten')
+    parser.add_argument('--max_time', type=int, default=0,
+                        help='maximum running time for each task')
     parser.add_argument('--dataset', type=str,
                         help='the data set for CEGAR experiments')
 
@@ -141,9 +145,10 @@ def main():
                     elif step_eps == -0.001:
                         eps = round(eps + step_eps, 3)
 
-            print("img {} Verified {} with {:.3f} and Failed with {:.3f}".format(i, lbl_x0, best_verified, best_failed))
+            print("img {} Verified at {:.3f} and Failed at {:.3f}".format(i, best_verified, best_failed))
         else:
             print('Skip at data {}'.format(i))
+            print("img {} Verified at {:.3f} and Failed at {:.3f}".format(i, 0, 0))
             res = -1
 
         print('\n============================\n')

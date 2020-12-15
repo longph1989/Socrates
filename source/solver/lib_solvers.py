@@ -22,7 +22,7 @@ class SPRT():
 
 
 class DeepCegar():
-    def __init__(self, has_ref, max_ref, ref_typ, has_tig, max_tig):
+    def __init__(self, has_ref, max_ref, ref_typ, has_tig, max_tig, max_time):
         self.has_ref = has_ref
         self.max_ref = max_ref
         self.ref_typ = ref_typ
@@ -30,6 +30,8 @@ class DeepCegar():
         self.has_tig = has_tig
         self.max_tig = max_tig
 
+        self.max_time = max_time
+
     def solve(self, model, assertion, display=None):
-        impl = DeepCegarImpl(self.has_ref, self.max_ref, self.ref_typ, self.has_tig, self.max_tig)
+        impl = DeepCegarImpl(self.has_ref, self.max_ref, self.ref_typ, self.has_tig, self.max_tig, self.max_time)
         return impl.solve(model, assertion, display)

@@ -3,6 +3,7 @@ import cvxpy as cp
 import multiprocessing
 import ast
 import os
+import time
 
 from scipy.optimize import minimize
 from scipy.optimize import Bounds
@@ -63,13 +64,20 @@ class Task():
 
 
 class DeepCegarImpl():
-    def __init__(self, has_ref, max_ref, ref_typ, has_tig, max_tig):
+    def __init__(self, has_ref, max_ref, ref_typ, has_tig, max_tig, max_time):
         self.has_ref = has_ref
         self.max_ref = max_ref
         self.ref_typ = ref_typ
 
         self.has_tig = has_tig
         self.max_tig = max_tig
+
+        self.max_time = max_time
+
+        # use time if possible, this is only an approximated value
+        if self.max_time > 0:
+            self.max_ref = 1e9
+            self.max_tig = 1e9
 
         self.cnt_ref = 0
         self.cnt_tig = 0
@@ -80,6 +88,8 @@ class DeepCegarImpl():
             print('Run with refinement!')
         if self.has_tig:
             print('Run with input tighten!')
+        if self.max_time > 0:
+            print('Run with max time = {}s'.format(self.max_time))
 
         if self.has_ref:
             print('Refinement type: ', end='')
@@ -129,6 +139,8 @@ class DeepCegarImpl():
                 print('Unknown!')
             elif res == 1:
                 print('The network is robust around x0!')
+            elif res == 3:
+                print('Timeout!')
 
             print('Input tighten: {} times!'.format(self.cnt_tig))
             print('Refinement: {} times!'.format(self.cnt_ref))
@@ -180,12 +192,17 @@ class DeepCegarImpl():
         task = Task(idx, lst_poly)
         self.tasks.insert(0, task)
 
-        while len(self.tasks) > 0:
+        start = time.time()
+        while len(self.tasks) > 0 and (self.max_time == 0 or \
+            self.max_time > 0 and time.time() - start < self.max_time):
             task = self.tasks.pop()
             res = self.__verify(model, x0, y0, task.idx, task.lst_poly)
             if res == 0 or res == 2: return res # False, unknown or with adv
 
-        return 1 # True, robust
+        if len(self.tasks) == 0:
+            return 1 # True, robust
+        else:
+            return 3 # False, timeout
 
 
     def __verify_with_input_tighten(self, model, x0, y0, idx, lst_poly):
@@ -216,12 +233,17 @@ class DeepCegarImpl():
                     self.tasks.insert(0, task1)
                     self.tasks.insert(1, task2)
 
-                    while len(self.tasks) > 0:
+                    start = time.time()
+                    while len(self.tasks) > 0 and (self.max_time == 0 or \
+                        self.max_time > 0 and time.time() - start < self.max_time):
                         task = self.tasks.pop()
                         res = self.__verify(model, x0, y0, task.idx, task.lst_poly)
                         if res == 0 or res == 2: return res # False, unknown or with adv
 
-                    return 1 # True, robust
+                    if len(self.tasks) == 0:
+                        return 1 # True, robust
+                    else:
+                        return 3 # False, timeout
                 else:
                     return 0 # False, unknown
             else:
