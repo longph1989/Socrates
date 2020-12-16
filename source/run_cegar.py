@@ -145,10 +145,10 @@ def main():
                     elif step_eps == -0.001:
                         eps = round(eps + step_eps, 3)
 
-            print("img {} Verified at {:.3f} and Failed at {:.3f}".format(i, best_verified, best_failed))
+            print("Image {} Verified at {:.3f} and Failed at {:.3f}".format(i, best_verified, best_failed))
         else:
             print('Skip at data {}'.format(i))
-            print("img {} Verified at {:.3f} and Failed at {:.3f}".format(i, -1, -1))
+            print("Image {} Verified at {:.3f} and Failed at {:.3f}".format(i, -1, -1))
             res = -1
 
         print('\n============================\n')

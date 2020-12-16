@@ -82,6 +82,9 @@ class DeepCegarImpl():
         self.cnt_ref = 0
         self.cnt_tig = 0
 
+        self.cnt_verified = 0
+        self.cnt_removed = 0
+
         self.tasks = []
 
         if self.has_ref:
@@ -144,6 +147,8 @@ class DeepCegarImpl():
 
             print('Input tighten: {} times!'.format(self.cnt_tig))
             print('Refinement: {} times!'.format(self.cnt_ref))
+            print('Verified sub tasks: {} tasks!'.format(self.cnt_verified))
+            print('Removed sub tasks: {} tasks!'.format(self.cnt_removed))
 
         return res == 1
 
@@ -194,7 +199,7 @@ class DeepCegarImpl():
 
         start = time.time()
         while len(self.tasks) > 0 and (self.max_time == 0 or \
-            self.max_time > 0 and time.time() - start < self.max_time):
+                self.max_time > 0 and time.time() - start < self.max_time):
             task = self.tasks.pop()
             res = self.__verify(model, x0, y0, task.idx, task.lst_poly)
             if res == 0 or res == 2: return res # False, unknown or with adv
@@ -209,6 +214,7 @@ class DeepCegarImpl():
         res, x, y, lst_ge = self.__run(model, x0, y0, idx, lst_poly)
 
         if res:
+            self.cnt_verified += 1
             return 1 # True, robust
         elif self.__validate_adv(model, x, y0):
             return 2 # False, true adv found
@@ -235,7 +241,7 @@ class DeepCegarImpl():
 
                     start = time.time()
                     while len(self.tasks) > 0 and (self.max_time == 0 or \
-                        self.max_time > 0 and time.time() - start < self.max_time):
+                            self.max_time > 0 and time.time() - start < self.max_time):
                         task = self.tasks.pop()
                         res = self.__verify(model, x0, y0, task.idx, task.lst_poly)
                         if res == 0 or res == 2: return res # False, unknown or with adv
@@ -363,6 +369,7 @@ class DeepCegarImpl():
         res, x, y, lst_ge = self.__run(model, x0, y0, idx, lst_poly)
 
         if res:
+            self.cnt_verified += 1
             return 1 # True, robust
         elif self.__validate_adv(model, x, y0):
             return 2 # False, true adv found
@@ -381,7 +388,9 @@ class DeepCegarImpl():
                 self.tasks.insert(1, task2)
 
                 for task in self.tasks:
-                    if task.idx > ref_layer: self.tasks.remove(task)
+                    if task.idx > ref_layer:
+                        self.cnt_removed += 1
+                        self.tasks.remove(task)
 
                 return 1 # to continue
             else:
@@ -470,7 +479,7 @@ class DeepCegarImpl():
             return best_layer, best_index, ref_value
 
         self.cnt_ref += 1
-        best_value = -1e9
+        best_value = 0
 
         for i in range(len(model.layers)):
             layer = model.layers[i]
@@ -480,12 +489,15 @@ class DeepCegarImpl():
                 poly_i = lst_poly[i]
                 ge_i = lst_ge[i]
 
+                func = None if i == 0 else layer.func
+
                 for ref_idx in range(len(poly_i.lw)):
                     lw = poly_i.lw[ref_idx]
                     up = poly_i.up[ref_idx]
                     cf = ge_i[ref_idx]
 
-                    if (i == 0 and lw < up) or (lw < 0 and up > 0):
+                    if ((i == 0 or func == sigmoid or func == tanh) and lw < up) \
+                            or (func == relu and lw < 0 and up > 0):
                         impact = max(abs(cf * lw), abs(cf * up))
                         sum_impact = sum_impact + impact
 
@@ -495,14 +507,15 @@ class DeepCegarImpl():
                         up = poly_i.up[ref_idx]
                         cf = ge_i[ref_idx]
 
-                        if (i == 0 and lw < up) or (lw < 0 and up > 0):
+                        if ((i == 0 or func == sigmoid or func == tanh) and lw < up) \
+                                or (func == relu and lw < 0 and up > 0):
                             impact = max(abs(cf * lw), abs(cf * up))
                             norm_impact = impact / sum_impact
                             if best_value < norm_impact:
                                 best_layer = i
                                 best_index = ref_idx
                                 best_value = norm_impact
-                                ref_value = (lw + up) / 2 if i == 0 else 0
+                                ref_value = 0 if func == relu else (lw + up) / 2
 
         return best_layer, best_index, ref_value
 
@@ -514,7 +527,7 @@ class DeepCegarImpl():
             return best_layer, best_index, ref_value
 
         self.cnt_ref += 1
-        best_value = -1e9
+        best_value = 0
 
         poly_i = lst_poly[0] # only work with input layer
 
@@ -562,7 +575,7 @@ class DeepCegarImpl():
             return best_layer, best_index, ref_value
 
         self.cnt_ref += 1
-        best_value = -1e9
+        best_value = 0
 
         for i in range(len(model.layers)):
             layer = model.layers[i]
@@ -571,10 +584,15 @@ class DeepCegarImpl():
                 poly_i = lst_poly[i]
                 ge_i = lst_ge[i]
 
+                func = None if i == 0 else layer.func
+
                 for ref_idx in range(len(poly_i.lw)):
                     lw = poly_i.lw[ref_idx]
                     up = poly_i.up[ref_idx]
                     cf = ge_i[ref_idx]
+
+                    if ((i == 0 or func == sigmoid or func == tanh) and lw >= up) \
+                        or (func == relu and (lw >= 0 or up <= 0)): continue
 
                     impact = abs(cf * (up - lw))
 
@@ -582,7 +600,7 @@ class DeepCegarImpl():
                         best_layer = i
                         best_index = ref_idx
                         best_value = impact
-                        ref_value = (lw + up) / 2 if i == 0 else 0
+                        ref_value = 0 if func == relu else (lw + up) / 2
 
         return best_layer, best_index, ref_value
 
