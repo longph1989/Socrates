@@ -88,9 +88,9 @@ class DeepCegarImpl():
         self.tasks = []
 
         if self.has_ref:
-            print('Run with refinement!')
+            print('Run with refinement! Max refinement = {}'.format(self.max_ref))
         if self.has_tig:
-            print('Run with input tighten!')
+            print('Run with input tighten! Max tightening = {}'.format(self.max_tig))
         if self.max_time > 0:
             print('Run with max time = {}s'.format(self.max_time))
 
