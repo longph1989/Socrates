@@ -404,6 +404,8 @@ class DeepCegarImpl():
         # print('poly.up = {}'.format(lst_poly[idx].up))
 
         if idx == len(model.layers):
+            assert len(lst_poly) == len(model.layers) + 1
+
             poly_out = lst_poly[idx]
             no_neurons = len(poly_out.lw)
 
@@ -424,6 +426,9 @@ class DeepCegarImpl():
                     poly_res.ge[0,y] = -1
 
                     lst_le, lst_ge = poly_res.back_substitute(lst_poly, True)
+
+                    assert len(lst_ge) == len(lst_poly) - 1
+
                     ge_x0 = lst_ge[0]
 
                     # print('y = {}'.format(y))
