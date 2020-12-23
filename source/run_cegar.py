@@ -68,6 +68,8 @@ def main():
                         help='maximum running time for each task')
     parser.add_argument('--dataset', type=str,
                         help='the data set for CEGAR experiments')
+    parser.add_argument('--num_tests', type=int, default=100,
+                        help='maximum number of tests')
 
     args = parser.parse_args()
 
@@ -86,7 +88,7 @@ def main():
 
     y0s = np.array(ast.literal_eval(read(pathY)))
 
-    for i in range(100):
+    for i in range(args.num_tests):
         assertion['x0'] = pathX + 'data' + str(i) + '.txt'
         x0 = np.array(ast.literal_eval(read(assertion['x0'])))
 
