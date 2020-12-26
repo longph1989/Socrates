@@ -119,8 +119,6 @@ class DeepCegarImpl():
                 print('Unknown!')
             elif res == 1:
                 print('The network is robust around x0!')
-            elif res == 3:
-                print('Timeout!')
 
             print('Refinement: {} times!'.format(self.cnt_ref))
             print('Verified sub tasks: {} tasks!'.format(self.cnt_verified))
@@ -183,10 +181,7 @@ class DeepCegarImpl():
             res = self.__verify(model, x0, y0, task.idx, task.lst_poly)
             if res == 0 or res == 2: return res # False, unknown or with adv
 
-        if len(self.tasks) == 0:
-            return 1 # True, robust
-        else:
-            return 3 # False, timeout
+        return 1 # True, robust
 
 
     def __verify(self, model, x0, y0, idx, lst_poly):
