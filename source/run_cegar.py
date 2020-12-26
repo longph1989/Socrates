@@ -30,11 +30,6 @@ def add_solver(args, spec):
     solver['max_ref'] = str(args.max_ref)
     solver['ref_typ'] = str(args.ref_typ)
 
-    solver['has_tig'] = str(args.has_tig)
-    solver['max_tig'] = str(args.max_tig)
-
-    solver['max_time'] = str(args.max_time)
-
     spec['solver'] = solver
 
 
@@ -60,12 +55,6 @@ def main():
                         help='maximum times of refinement')
     parser.add_argument('--ref_typ', type=int, default=0,
                         help='type of refinement')
-    parser.add_argument('--has_tig', action='store_true',
-                        help='turn on/off input tighten')
-    parser.add_argument('--max_tig', type=int, default=20,
-                        help='maximum times of input tighten')
-    parser.add_argument('--max_time', type=int, default=0,
-                        help='maximum running time for each task')
     parser.add_argument('--dataset', type=str,
                         help='the data set for CEGAR experiments')
     parser.add_argument('--num_tests', type=int, default=100,

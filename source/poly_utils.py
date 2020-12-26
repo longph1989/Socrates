@@ -5,16 +5,16 @@ import cvxpy as cp
 def back_substitute(args):
     idx, le_curr, ge_curr, lst_poly = args
 
-    lst_le, lst_ge = [], []
+    lst_le, lst_ge = [le_curr], [ge_curr]
     best_lw, best_up = -1e9, 1e9
 
     for k, e in reversed(list(enumerate(lst_poly))):
-        no_e_ns = len(e.le)
-        no_coefs = len(e.le[0])
-
+        no_e_ns = len(e.lw)
         lw, up = 0, 0
 
         if k > 0:
+            no_coefs = len(e.le[0])
+
             le = np.zeros([no_coefs])
             ge = np.zeros([no_coefs])
 

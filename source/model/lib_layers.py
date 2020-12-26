@@ -48,8 +48,9 @@ class Function(Layer):
                     lam = 0 if x_poly.up[i] <= -x_poly.lw[i] else 1
 
                     res.ge[i,i] = lam
+                    res.lw[i] = 0 # it seems safe to set lw = 0 anyway
+                    # res.lw[i] = lam * x_poly.lw[i] # notice: mnist_relu_5_10.tf
                     res.up[i] = x_poly.up[i]
-                    res.lw[i] = lam * x_poly.lw[i]
 
         elif self.func == sigmoid:
             res.lw = sigmoid(x_poly.lw)

@@ -23,7 +23,7 @@ class Model:
         return output
 
 
-    def apply(self, x, y0=None, y=None):
+    def apply(self, x):
         if self.layers == None:
             return self.__apply_ptmodel(x)
 
@@ -41,12 +41,7 @@ class Model:
         for layer in self.layers:
             layer.reset()
 
-        if y0 == None:
-            return output
-        elif y == None:
-            return output[0, y0]
-        else:
-            return output[0, y0] - output[0, y]
+        return output
 
 
     def forward(self, x_poly, idx, lst_poly):
