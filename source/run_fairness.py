@@ -30,6 +30,7 @@ def add_solver(args, spec):
         solver['has_ref'] = str(args.has_ref)
         solver['max_ref'] = str(args.max_ref)
         solver['ref_typ'] = str(args.ref_typ)
+        solver['max_sus'] = str(args.max_sus)
 
     spec['solver'] = solver
 
@@ -52,6 +53,8 @@ def main():
                         help='maximum times of refinement')
     parser.add_argument('--ref_typ', type=int, default=0,
                         help='type of refinement')
+    parser.add_argument('--max_sus', type=int, default=1,
+                        help='maximum times of finding adversarial sample')
     parser.add_argument('--dataset', type=str,
                         help='the data set for fairness experiments')
     parser.add_argument('--num_tests', type=int, default=100,

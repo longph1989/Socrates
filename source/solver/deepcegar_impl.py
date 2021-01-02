@@ -64,10 +64,11 @@ class Task():
 
 
 class DeepCegarImpl():
-    def __init__(self, has_ref, max_ref, ref_typ):
+    def __init__(self, has_ref, max_ref, ref_typ, max_sus):
         self.has_ref = has_ref
         self.max_ref = max_ref
         self.ref_typ = ref_typ
+        self.max_sus = max_sus
 
         self.cnt_ref = 0
         self.cnt_verified = 0
@@ -137,20 +138,26 @@ class DeepCegarImpl():
 
             return y0_score - max_score
 
-        x = x0.copy()
+        print('Finding adversarial sample! Try {} times'.format(self.max_sus))
 
-        args = (model, y0)
-        jac = grad(obj_func)
-        bounds = Bounds(lw, up)
+        for i in range(self.max_sus):
+            if self.max_sus == 1:
+                x = x0.copy()
+            else:
+                x = generate_x(len(x0), lw, up)
 
-        res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
+            args = (model, y0)
+            jac = grad(obj_func)
+            bounds = Bounds(lw, up)
 
-        if res.fun <= 0: # an adversarial sample is generated
-            valid = self.__validate_adv(model, res.x, y0)
-            assert valid
-            return res.x
-        else:
-            return None
+            res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
+
+            if res.fun <= 0: # an adversarial sample is generated
+                valid = self.__validate_adv(model, res.x, y0)
+                assert valid
+                return res.x
+
+        return None
 
 
     def __validate_adv(self, model, x, y0):
@@ -203,13 +210,13 @@ class DeepCegarImpl():
                 task1 = Task(ref_layer, lst_poly1)
                 task2 = Task(ref_layer, lst_poly2)
 
-                self.tasks.append(task1)
-                self.tasks.append(task2)
-
                 for task in self.tasks:
                     if task.idx > ref_layer:
                         self.cnt_removed += 1
                         self.tasks.remove(task)
+
+                self.tasks.append(task1)
+                self.tasks.append(task2)
 
                 return 1 # to continue
             else:
@@ -309,13 +316,14 @@ class DeepCegarImpl():
 
         for i in range(len(model.layers)):
             layer = model.layers[i]
-            sum_impact = 0
 
             if i == 0 or not layer.is_poly_exact():
                 poly_i = lst_poly[i]
                 ge_i = lst_ge[i]
 
                 func = None if i == 0 else layer.func
+
+                sum_impact = 0
 
                 for ref_idx in range(len(poly_i.lw)):
                     lw = poly_i.lw[ref_idx]

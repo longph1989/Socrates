@@ -224,8 +224,9 @@ def parse_solver(spec):
         has_ref = ast.literal_eval(read(spec['has_ref']))
         max_ref = ast.literal_eval(read(spec['max_ref']))
         ref_typ = ast.literal_eval(read(spec['ref_typ']))
+        max_sus = ast.literal_eval(read(spec['max_sus']))
 
-        solver = DeepCegar(has_ref, max_ref, ref_typ)
+        solver = DeepCegar(has_ref, max_ref, ref_typ, max_sus)
 
     return solver
 

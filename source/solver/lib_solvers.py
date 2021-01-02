@@ -22,11 +22,12 @@ class SPRT():
 
 
 class DeepCegar():
-    def __init__(self, has_ref, max_ref, ref_typ):
+    def __init__(self, has_ref, max_ref, ref_typ, max_sus):
         self.has_ref = has_ref
         self.max_ref = max_ref
         self.ref_typ = ref_typ
+        self.max_sus = max_sus
 
     def solve(self, model, assertion, display=None):
-        impl = DeepCegarImpl(self.has_ref, self.max_ref, self.ref_typ)
+        impl = DeepCegarImpl(self.has_ref, self.max_ref, self.ref_typ, self.max_sus)
         return impl.solve(model, assertion, display)
