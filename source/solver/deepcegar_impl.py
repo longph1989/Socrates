@@ -4,6 +4,7 @@ import multiprocessing
 import ast
 import os
 import time
+import random
 
 from scipy.optimize import minimize
 from scipy.optimize import Bounds
@@ -84,9 +85,7 @@ class DeepCegarImpl():
             elif self.ref_typ == 1:
                 print('Greatest input range (up - lw).')
             elif self.ref_typ == 2:
-                print('Greatest input lower bound.')
-            elif self.ref_typ == 3:
-                print('Greatest abs(coef * range) for input/relu nodes.')
+                print('Random choice.')
 
 
     def __solve_local_robustness(self, model, spec, display):
@@ -298,9 +297,7 @@ class DeepCegarImpl():
         elif ref_typ == 1:
             return self.__input_range_refinement(model, x0, x, y0, y, lst_poly, lst_ge)
         elif ref_typ == 2:
-            return self.__input_lower_refinement(model, x0, x, y0, y, lst_poly, lst_ge)
-        elif ref_typ == 3:
-            return self.__impact_range_refinement(model, x0, x, y0, y, lst_poly, lst_ge)
+            return self.__random_refinement(model, x0, x, y0, y, lst_poly, lst_ge)
         else:
             assert False
 
@@ -354,89 +351,60 @@ class DeepCegarImpl():
         return best_layer, best_index, ref_value
 
 
-    # # input range refinement
-    # def __input_range_refinement(self, model, x0, x, y0, y, lst_poly, lst_ge):
-    #     best_layer, best_index, ref_value = None, None, None
-    #     if self.cnt_ref >= self.max_ref:
-    #         return best_layer, best_index, ref_value
-    #
-    #     self.cnt_ref += 1
-    #     best_value = 0
-    #
-    #     poly_i = lst_poly[0] # only work with input layer
-    #
-    #     for ref_idx in range(len(poly_i.lw)):
-    #         lw = poly_i.lw[ref_idx]
-    #         up = poly_i.up[ref_idx]
-    #
-    #         if best_value < (up - lw):
-    #             best_layer = 0
-    #             best_index = ref_idx
-    #             best_value = up - lw
-    #             ref_value = (lw + up) / 2
-    #
-    #     return best_layer, best_index, ref_value
-    #
-    #
-    # # input lower refinement
-    # def __input_lower_refinement(self, model, x0, x, y0, y, lst_poly, lst_ge):
-    #     best_layer, best_index, ref_value = None, None, None
-    #     if self.cnt_ref >= self.max_ref:
-    #         return best_layer, best_index, ref_value
-    #
-    #     self.cnt_ref += 1
-    #     best_value = -1e9
-    #
-    #     poly_i = lst_poly[0] # only work with input layer
-    #
-    #     for ref_idx in range(len(poly_i.lw)):
-    #         lw = poly_i.lw[ref_idx]
-    #         up = poly_i.up[ref_idx]
-    #
-    #         if best_value < lw:
-    #             best_layer = 0
-    #             best_index = ref_idx
-    #             best_value = lw
-    #             ref_value = (lw + up) / 2
-    #
-    #     return best_layer, best_index, ref_value
-    #
-    #
-    # # impact range refinement
-    # def __impact_range_refinement(self, model, x0, x, y0, y, lst_poly, lst_ge):
-    #     best_layer, best_index, ref_value = None, None, None
-    #     if self.cnt_ref >= self.max_ref:
-    #         return best_layer, best_index, ref_value
-    #
-    #     self.cnt_ref += 1
-    #     best_value = 0
-    #
-    #     for i in range(len(model.layers)):
-    #         layer = model.layers[i]
-    #
-    #         if i == 0 or not layer.is_poly_exact():
-    #             poly_i = lst_poly[i]
-    #             ge_i = lst_ge[i]
-    #
-    #             func = None if i == 0 else layer.func
-    #
-    #             for ref_idx in range(len(poly_i.lw)):
-    #                 lw = poly_i.lw[ref_idx]
-    #                 up = poly_i.up[ref_idx]
-    #                 cf = ge_i[ref_idx]
-    #
-    #                 if ((i == 0 or func == sigmoid or func == tanh) and lw >= up) \
-    #                     or (func == relu and (lw >= 0 or up <= 0)): continue
-    #
-    #                 impact = abs(cf * (up - lw))
-    #
-    #                 if best_value < impact:
-    #                     best_layer = i
-    #                     best_index = ref_idx
-    #                     best_value = impact
-    #                     ref_value = 0 if func == relu else (lw + up) / 2
-    #
-    #     return best_layer, best_index, ref_value
+    # input range refinement
+    def __input_range_refinement(self, model, x0, x, y0, y, lst_poly, lst_ge):
+        best_layer, best_index, ref_value = None, None, None
+        if self.cnt_ref >= self.max_ref:
+            return best_layer, best_index, ref_value
+
+        self.cnt_ref += 1
+        best_value = 0
+
+        poly_i = lst_poly[0] # only work with input layer
+
+        for ref_idx in range(len(poly_i.lw)):
+            lw = poly_i.lw[ref_idx]
+            up = poly_i.up[ref_idx]
+
+            if best_value < (up - lw):
+                best_layer = 0
+                best_index = ref_idx
+                best_value = up - lw
+                ref_value = (lw + up) / 2
+
+        return best_layer, best_index, ref_value
+
+
+    # random refinement
+    def __random_refinement(self, model, x0, x, y0, y, lst_poly, lst_ge):
+        best_layer, best_index, ref_value = None, None, None
+        if self.cnt_ref >= self.max_ref:
+            return best_layer, best_index, ref_value
+
+        self.cnt_ref += 1
+        choice_lst = []
+
+        for i in range(len(model.layers)):
+            layer = model.layers[i]
+
+            if i == 0 or not layer.is_poly_exact():
+                poly_i = lst_poly[i]
+
+                func = None if i == 0 else layer.func
+
+                for ref_idx in range(len(poly_i.lw)):
+                    lw = poly_i.lw[ref_idx]
+                    up = poly_i.up[ref_idx]
+
+                    if ((i == 0 or func == sigmoid or func == tanh) and lw < up) \
+                            or (func == relu and lw < 0 and up > 0):
+                        ref_value = 0 if func == relu else (lw + up) / 2
+                        choice_lst.append((i, ref_idx, ref_value))
+
+        choice_idx = random.randrange(len(choice_lst))
+        best_layer, best_index, ref_value = choice_lst[choice_idx]
+
+        return best_layer, best_index, ref_value
 
 
     def __refine(self, lst_poly, ref_layer, ref_index, ref_value):
