@@ -13,8 +13,8 @@ import time
 def add_assertion(args, spec):
     assertion = dict()
 
-    assertion['size'] = '(1,1)'
-    assertion['position'] = '783'
+    assertion['size'] = '(2,2)'
+    assertion['position'] = '(0,0)'
     assertion['target'] = args.target
 
     spec['assert'] = assertion

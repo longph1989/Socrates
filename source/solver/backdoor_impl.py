@@ -5,6 +5,7 @@ import ast
 import os
 import time
 import random
+import math
 
 from scipy.optimize import minimize
 from scipy.optimize import Bounds
@@ -14,6 +15,8 @@ from utils import *
 from poly_utils import *
 from solver.deepcegar_impl import Poly
 
+import matplotlib.pyplot as plt
+
 
 class BackDoorImpl():
     def __solve_backdoor(self, model, spec, display):
@@ -21,15 +24,31 @@ class BackDoorImpl():
         output_x0 = model.apply(x0)
         y0 = np.argmax(output_x0, axis=1)[0]
 
+        # x0[0], x0[1], x0[28], x0[29] = 1, 1, 1, 1
+        # x0[754], x0[755], x0[782], x0[783] = 1, 1, 1, 1
+
+        # fig, ax = plt.subplots(1, 1)
+
+        # ax.imshow((x0 * 255).astype('uint8').reshape(28,28), cmap='gray')
+        # plt.show()
+
+        # raise Exception()
+        
         output_x0_prob = softmax(output_x0.reshape(-1))
 
-        print('output_x0_prob = {}'.format(output_x0_prob))
+        print('output_x0_prob = {}\n'.format(output_x0_prob))
 
-        lw, up = model.lower, model.upper
+        size = np.array(ast.literal_eval(read(spec['size'])))
+        position = np.array(ast.literal_eval(read(spec['position'])))
 
-        for index in range(784):
-            if index != 783:
-                lw[index], up[index] = x0[index], x0[index]
+        backdoor_indexes = self.__get_backdoor_indexes(size, position, model.shape)
+        print('backdoor_indexes = {}\n'.format(backdoor_indexes))
+
+        lw, up = x0.copy(), x0.copy()
+
+        for index in backdoor_indexes:
+            if index < len(model.lower):
+                lw[index], up[index] = model.lower[index], model.upper[index]
 
         x0_poly = Poly()
         x0_poly.lw, x0_poly.up = lw, up
@@ -49,6 +68,22 @@ class BackDoorImpl():
 
         print('up_target_prob = {}'.format(up_target_prob))          
 
+
+    def __get_backdoor_indexes(self, size, position, shape):
+        if len(shape) == 2:
+            cols = int(math.sqrt(shape[-1]))
+        else:
+            cols = shape[-1]
+
+        indexes = []
+        index = position[0] * cols + position[1]
+
+        for i in range(size[0]):
+            for j in range(size[1]):
+                indexes.append(index + j)
+            index += cols
+
+        return indexes
 
 
     def __run(self, model, idx, lst_poly):
