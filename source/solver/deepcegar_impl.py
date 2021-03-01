@@ -36,12 +36,12 @@ class Poly():
         if no_neurons <= 100 or len(lst_poly) <= 2:
             for i in range(no_neurons):
                 args = (i, self.le[i], self.ge[i], lst_poly)
-                _, lw_i, up_i, le, ge = back_substitute(args)
+                _, lw_i, up_i, lst_le_i, lst_ge_i = back_substitute(args)
                 self.lw[i], self.up[i] = lw_i, up_i
 
                 # get_ineq only happens at the last step
                 # no_neurons in this case always be 1
-                if get_ineq: lst_le, lst_ge = le, ge
+                if get_ineq: lst_le, lst_ge = lst_le_i, lst_ge_i
         else:
             clones = []
 
@@ -137,7 +137,7 @@ class DeepCegarImpl():
 
             return y0_score - max_score
 
-        print('Finding adversarial sample! Try {} times'.format(self.max_sus))
+        # print('Finding adversarial sample! Try {} times'.format(self.max_sus))
 
         for i in range(self.max_sus):
             if self.max_sus == 1:
