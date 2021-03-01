@@ -227,6 +227,8 @@ def parse_solver(spec):
         max_sus = ast.literal_eval(read(spec['max_sus']))
 
         solver = DeepCegar(has_ref, max_ref, ref_typ, max_sus)
+    elif algorithm == 'backdoor':
+        solver = BackDoor()
 
     return solver
 

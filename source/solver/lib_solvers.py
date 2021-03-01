@@ -1,6 +1,7 @@
 from solver.optimize_impl import OptimizeImpl
 from solver.sprt_impl import SPRTImpl
 from solver.deepcegar_impl import DeepCegarImpl
+from solver.backdoor_impl import BackDoorImpl
 
 
 class Optimize():
@@ -31,3 +32,9 @@ class DeepCegar():
     def solve(self, model, assertion, display=None):
         impl = DeepCegarImpl(self.has_ref, self.max_ref, self.ref_typ, self.max_sus)
         return impl.solve(model, assertion, display)
+
+
+class BackDoor():
+    def solve(self, model, assertion, display=None):
+        impl = BackDoorImpl()
+        impl.solve(model, assertion, display)

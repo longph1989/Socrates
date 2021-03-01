@@ -24,6 +24,9 @@ def sigmoid(x):
 def tanh(x):
     return np.tanh(x)
 
+def softmax(x):
+    return np.exp(x) / np.sum(np.exp(x))
+
 def get_func(name, params):
     if name == None:
         return None
