@@ -31,12 +31,14 @@ def add_solver(args, spec):
     spec['solver'] = solver
 
 
-def get_position(position_lst):
+def get_position(position_lst, threshold):
     occurence_count = Counter(position_lst)
     position_candidate = occurence_count.most_common(1)
 
-    if position_candidate[0][1] > 1:
-        return position_candidate[0][0] 
+    if position_candidate[0][1] > threshold:
+        return position_candidate[0][0]
+    else:
+        return None
 
 
 def main():
@@ -72,7 +74,7 @@ def main():
 
         print('Backdoor target = {}'.format(target))
 
-        position_lst = []
+        position_lst, total_cnt = [], 0
 
         pathX = 'benchmark/backdoor/data/mnist_fc/'
         pathY = 'benchmark/backdoor/data/labels/y_mnist.txt'
@@ -91,12 +93,16 @@ def main():
             if lbl_x0 == y0s[i] and lbl_x0 != target:
                 jac = grad(model.apply)
                 position_lst.append(np.argmax(jac(x0, target)))
+                total_cnt += 1
 
-        args.position = str(get_position(position_lst))
+        args.position = get_position(position_lst, total_cnt / 2)
 
         print('Backdoor position = {}'.format(args.position))
 
         print('\n============================\n')
+
+        if args.position is None: continue
+        else: args.position = str(args.position)
 
         add_assertion(args, spec)
         add_solver(args, spec)
@@ -104,7 +110,7 @@ def main():
         assertion = parse_assertion(spec['assert'])
         solver = parse_solver(spec['solver'])
 
-        backdoor_cnt, total_cnt = 0, 0
+        backdoor_cnt = 0
 
         for i in range(args.num_tests):
             assertion['x0'] = pathX + 'data' + str(i) + '.txt'
@@ -122,7 +128,6 @@ def main():
             if lbl_x0 == y0s[i] and lbl_x0 != target:
                 if solver.solve(model, assertion):
                     backdoor_cnt += 1
-                total_cnt += 1
             else:
                 print('Skip at Data {}'.format(i))
 

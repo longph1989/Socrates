@@ -42,7 +42,7 @@ class BackDoorImpl():
         threshold = ast.literal_eval(read(spec['threshold']))
 
         size = np.array(ast.literal_eval(read(spec['size'])))
-        position = np.array(ast.literal_eval(read(spec['position'])))
+        position = ast.literal_eval(read(spec['position']))
 
         backdoor_indexes = self.__get_backdoor_indexes(size, position, model.shape)
         print('backdoor_indexes = {}\n'.format(backdoor_indexes))
@@ -84,12 +84,11 @@ class BackDoorImpl():
             cols = shape[-1]
 
         indexes = []
-        index = position
 
         for i in range(size[0]):
             for j in range(size[1]):
-                indexes.append(index + j)
-            index += cols
+                indexes.append(position + j)
+            position += cols
 
         return indexes
 
