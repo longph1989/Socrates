@@ -38,6 +38,9 @@ class BackDoorImpl():
 
         print('output_x0_prob = {}\n'.format(output_x0_prob))
 
+        target = ast.literal_eval(read(spec['target']))
+        threshold = ast.literal_eval(read(spec['threshold']))
+
         size = np.array(ast.literal_eval(read(spec['size'])))
         position = np.array(ast.literal_eval(read(spec['position'])))
 
@@ -59,14 +62,19 @@ class BackDoorImpl():
 
         output_lw, output_up = lst_poly[-1].lw, lst_poly[-1].up
 
-        target = ast.literal_eval(read(spec['target']))
-
         up_target = output_lw.copy()
         up_target[target] = output_up[target]
 
         up_target_prob = softmax(up_target)
 
-        print('up_target_prob = {}'.format(up_target_prob))          
+        print('up_target_prob = {}\n'.format(up_target_prob))
+
+        if up_target_prob[target] - output_x0_prob[target] > threshold:
+            print('Detect backdoor!')
+            return True
+        else:
+            print('No backdoor!')
+            return False
 
 
     def __get_backdoor_indexes(self, size, position, shape):
@@ -76,7 +84,7 @@ class BackDoorImpl():
             cols = shape[-1]
 
         indexes = []
-        index = position[0] * cols + position[1]
+        index = position
 
         for i in range(size[0]):
             for j in range(size[1]):

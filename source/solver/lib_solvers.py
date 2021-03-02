@@ -37,4 +37,4 @@ class DeepCegar():
 class BackDoor():
     def solve(self, model, assertion, display=None):
         impl = BackDoorImpl()
-        impl.solve(model, assertion, display)
+        return impl.solve(model, assertion, display)
