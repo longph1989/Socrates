@@ -20,75 +20,105 @@ import matplotlib.pyplot as plt
 
 class BackDoorImpl():
     def __solve_backdoor(self, model, spec, display):
-        x0 = np.array(ast.literal_eval(read(spec['x0'])))
-        output_x0 = model.apply(x0)
-        y0 = np.argmax(output_x0, axis=1)[0]
-
-        # x0[0], x0[1], x0[28], x0[29] = 1, 1, 1, 1
-        # x0[754], x0[755], x0[782], x0[783] = 1, 1, 1, 1
-
-        # fig, ax = plt.subplots(1, 1)
-
-        # ax.imshow((x0 * 255).astype('uint8').reshape(28,28), cmap='gray')
-        # plt.show()
-
-        # raise Exception()
-        
-        output_x0_prob = softmax(output_x0.reshape(-1))
-
-        print('output_x0_prob = {}\n'.format(output_x0_prob))
-
         target = ast.literal_eval(read(spec['target']))
+        size = np.array(ast.literal_eval(read(spec['size'])))
         threshold = ast.literal_eval(read(spec['threshold']))
 
-        size = np.array(ast.literal_eval(read(spec['size'])))
-        position = ast.literal_eval(read(spec['position']))
+        curr_positions = list(range(784))
 
-        backdoor_indexes = self.__get_backdoor_indexes(size, position, model.shape)
-        print('backdoor_indexes = {}\n'.format(backdoor_indexes))
+        y0s = np.array(ast.literal_eval(read(spec['pathY'])))
 
-        lw, up = x0.copy(), x0.copy()
+        for i in range(100):
+            print('\n==============\n')
 
-        for index in backdoor_indexes:
-            if index < len(model.lower):
-                lw[index], up[index] = model.lower[index], model.upper[index]
+            if len(curr_positions) <= 0: break
 
-        x0_poly = Poly()
-        x0_poly.lw, x0_poly.up = lw, up
-        # just let x0_poly.le and x0_poly.ge is None
+            pathX = spec['pathX'] + 'data' + str(i) + '.txt'
+            x0 = np.array(ast.literal_eval(read(pathX)))
 
-        lst_poly = [x0_poly]
-        self.__run(model, 0, lst_poly)
+            output_x0 = model.apply(x0)
+            y0 = np.argmax(output_x0, axis=1)[0]
 
-        output_lw, output_up = lst_poly[-1].lw, lst_poly[-1].up
+            print('Data {}\n'.format(i))
+            print('x0 = {}'.format(x0))
+            print('output_x0 = {}'.format(output_x0))
+            print('y0 = {}'.format(y0))
+            print('y0[i] = {}\n'.format(y0s[i]))
 
-        up_target = output_lw.copy()
-        up_target[target] = output_up[target]
+            if y0 != y0s[i] or y0 == target:
+                print('Skip at data {}'.format(i))
+                continue
+            else:
+                output_x0_prob = softmax(output_x0.reshape(-1))
+                print('output_x0_prob = {}'.format(output_x0_prob))
 
-        up_target_prob = softmax(up_target)
+                prev_positions = curr_positions.copy()
+                curr_positions = list()
 
-        print('up_target_prob = {}\n'.format(up_target_prob))
+                for position in prev_positions:
+                    print('\n==============\n')
 
-        if up_target_prob[target] - output_x0_prob[target] > threshold:
-            print('Detect backdoor!')
-            return True
+                    backdoor_indexes = self.__get_backdoor_indexes(size, position, model.shape)
+                    print('backdoor_indexes = {}\n'.format(backdoor_indexes))
+
+                    if backdoor_indexes is None:
+                        print('Skip position!')
+                        continue
+
+                    lw, up = x0.copy(), x0.copy()
+
+                    for index in backdoor_indexes:
+                        if index < len(model.lower):
+                            lw[index], up[index] = model.lower[index], model.upper[index]
+
+                    x0_poly = Poly()
+                    x0_poly.lw, x0_poly.up = lw, up
+                    # just let x0_poly.le and x0_poly.ge is None
+
+                    lst_poly = [x0_poly]
+                    self.__run(model, 0, lst_poly)
+
+                    output_lw, output_up = lst_poly[-1].lw, lst_poly[-1].up
+
+                    up_target = output_lw.copy()
+                    up_target[target] = output_up[target]
+
+                    up_target_prob = softmax(up_target)
+
+                    print('up_target_prob = {}\n'.format(up_target_prob))
+
+                    if up_target_prob[target] - output_x0_prob[target] > threshold:
+                        print('Detect backdoor!')
+                        curr_positions.append(position)
+                    else:
+                        print('No backdoor!')
+
+        if len(curr_positions) > 0:
+            print('Detect backdoor with target = {}!'.format(target))
         else:
-            print('No backdoor!')
-            return False
+            print('No backdoor with target = {}!'.format(target))
 
 
     def __get_backdoor_indexes(self, size, position, shape):
         if len(shape) == 2:
-            cols = int(math.sqrt(shape[-1]))
+            num_rows = int(math.sqrt(shape[-1]))
+            num_cols = num_rows
         else:
-            cols = shape[-1]
+            num_rows = shape[-2]
+            num_cols = shape[-1]
+
+        row_idx = int(position / num_cols)
+        col_idx = position - row_idx * num_cols
+
+        if row_idx + size[0] > num_rows or col_idx + size[1] > num_cols:
+            return None
 
         indexes = []
 
         for i in range(size[0]):
             for j in range(size[1]):
                 indexes.append(position + j)
-            position += cols
+            position += num_cols
 
         return indexes
 
