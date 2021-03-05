@@ -37,7 +37,7 @@ def main():
 
     parser.add_argument('--spec', type=str, default='spec.json',
                         help='the specification file')
-    parser.add_argument('--size', type=str, default='(2,2)',
+    parser.add_argument('--size', type=str, default='(3,3)',
                         help='the size of the backdoor')
     parser.add_argument('--threshold', type=str, default='0.1',
                         help='the threshold')
