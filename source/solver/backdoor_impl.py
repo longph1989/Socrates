@@ -68,8 +68,7 @@ class BackDoorImpl():
                     lw, up = x0.copy(), x0.copy()
 
                     for index in backdoor_indexes:
-                        if index < len(model.lower):
-                            lw[index], up[index] = model.lower[index], model.upper[index]
+                        lw[index], up[index] = model.lower[index], model.upper[index]
 
                     x0_poly = Poly()
                     x0_poly.lw, x0_poly.up = lw, up
