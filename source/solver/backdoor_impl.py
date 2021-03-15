@@ -27,7 +27,7 @@ class BackDoorImpl():
         valid_x0s = []
         y0s = np.array(ast.literal_eval(read(spec['pathY'])))
 
-        for i in range(100):
+        for i in range(10):
             print('\n==============\n')
 
             pathX = spec['pathX'] + 'data' + str(i) + '.txt'
@@ -44,7 +44,7 @@ class BackDoorImpl():
 
             if y0 == y0s[i] or y0 != target:
                 print('Check at data {}'.format(i))
-                valid_x0s.append(x0)
+                valid_x0s.append((x0, output_x0))
             else:
                 print('Skip at data {}'.format(i))
 
@@ -63,7 +63,7 @@ class BackDoorImpl():
                 print('Skip position!')
                 continue
 
-            for x0 in valid_x0s:
+            for x0, output_x0 in valid_x0s:
                 lw, up = x0.copy(), x0.copy()
 
                 for index in backdoor_indexes:
@@ -76,8 +76,11 @@ class BackDoorImpl():
                 lst_poly = [x0_poly]
                 self.__run(model, 0, lst_poly)
 
-                output_lw, output_up = lst_poly[-1].lw, lst_poly[-1].up
+                output_lw, output_up = lst_poly[-1].lw.copy(), lst_poly[-1].up.copy()
 
+                # output_lw[target] = output_up[target]
+
+                # if softmax(output_lw)[target] - softmax(output_x0)[target] > 0.5:
                 if np.all(output_lw < output_up[target]):
                     cnt += 1
                     continue
