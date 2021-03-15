@@ -24,14 +24,11 @@ class BackDoorImpl():
         size = np.array(ast.literal_eval(read(spec['size'])))
         threshold = ast.literal_eval(read(spec['threshold']))
 
-        curr_positions = list(range(784))
-
+        valid_x0s = []
         y0s = np.array(ast.literal_eval(read(spec['pathY'])))
 
         for i in range(100):
             print('\n==============\n')
-
-            if len(curr_positions) <= 0: break
 
             pathX = spec['pathX'] + 'data' + str(i) + '.txt'
             x0 = np.array(ast.literal_eval(read(pathX)))
@@ -45,57 +42,91 @@ class BackDoorImpl():
             print('y0 = {}'.format(y0))
             print('y0[i] = {}\n'.format(y0s[i]))
 
-            if y0 != y0s[i] or y0 == target:
-                print('Skip at data {}'.format(i))
-                continue
+            if y0 == y0s[i] or y0 != target:
+                print('Check at data {}'.format(i))
+                valid_x0s.append(x0)
             else:
-                output_x0_prob = softmax(output_x0.reshape(-1))
-                print('output_x0_prob = {}'.format(output_x0_prob))
+                print('Skip at data {}'.format(i))
 
-                prev_positions = curr_positions.copy()
-                curr_positions = list()
+        if len(valid_x0s) == 0: return
 
-                for position in prev_positions:
-                    print('\n==============\n')
+        positions = list(range(784))
+        for position in positions:
+            cnt = 0
 
-                    backdoor_indexes = self.__get_backdoor_indexes(size, position, model.shape)
-                    print('backdoor_indexes = {}\n'.format(backdoor_indexes))
+            print('\n==============\n')
 
-                    if backdoor_indexes is None:
-                        print('Skip position!')
-                        continue
+            backdoor_indexes = self.__get_backdoor_indexes(size, position, model.shape)
+            print('backdoor_indexes = {}\n'.format(backdoor_indexes))
 
-                    lw, up = x0.copy(), x0.copy()
+            if backdoor_indexes is None:
+                print('Skip position!')
+                continue
 
-                    for index in backdoor_indexes:
-                        lw[index], up[index] = model.lower[index], model.upper[index]
+            for x0 in valid_x0s:
+                lw, up = x0.copy(), x0.copy()
 
-                    x0_poly = Poly()
-                    x0_poly.lw, x0_poly.up = lw, up
-                    # just let x0_poly.le and x0_poly.ge is None
+                for index in backdoor_indexes:
+                    lw[index], up[index] = model.lower[index], model.upper[index]
 
-                    lst_poly = [x0_poly]
-                    self.__run(model, 0, lst_poly)
+                x0_poly = Poly()
+                x0_poly.lw, x0_poly.up = lw, up
+                # just let x0_poly.le and x0_poly.ge is None
 
-                    output_lw, output_up = lst_poly[-1].lw, lst_poly[-1].up
+                lst_poly = [x0_poly]
+                self.__run(model, 0, lst_poly)
 
-                    up_target = output_lw.copy()
-                    up_target[target] = output_up[target]
+                output_lw, output_up = lst_poly[-1].lw, lst_poly[-1].up
 
-                    up_target_prob = softmax(up_target)
+                if np.all(output_lw < output_up[target]):
+                    cnt += 1
+                    continue
+                else:
+                    break
 
-                    print('up_target_prob = {}\n'.format(up_target_prob))
+            if cnt == len(valid_x0s):
+                print('Detect backdoor with target = {}!'.format(target))
+                self.__validate(model, valid_x0s, target, backdoor_indexes)
+                return
 
-                    if up_target_prob[target] - output_x0_prob[target] > threshold:
-                        print('Detect backdoor!')
-                        curr_positions.append(position)
-                    else:
-                        print('No backdoor!')
+        print('No backdoor with target = {}!'.format(target))
+        return
 
-        if len(curr_positions) > 0:
-            print('Detect backdoor with target = {}!'.format(target))
-        else:
-            print('No backdoor with target = {}!'.format(target))
+
+    def __validate(self, model, valid_x0s, target, backdoor_indexes):
+        def obj_func(x, model, valid_x0s, target, backdoor_indexes):
+            res = 0
+
+            for x0 in valid_x0s:
+                x0[backdoor_indexes] = x
+
+                output = model.apply(x0).reshape(-1)
+                target_score = output[target]
+
+                output_no_target = output - np.eye(len(output))[target] * 1e9
+                max_score = np.max(output_no_target)
+
+                if target_score > max_score: res += 0
+                else: res += max_score - target_score
+
+            return res
+
+        x = np.zeros(len(backdoor_indexes))
+        lw = model.lower[backdoor_indexes]
+        up = model.upper[backdoor_indexes]
+
+        args = (model, valid_x0s, target, backdoor_indexes)
+        # jac = grad(obj_func)
+        jac = None
+        bounds = Bounds(lw, up)
+
+        res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
+
+        if res.fun <= 0: # an adversarial sample is generated
+            print('res.x = {}'.format(res.x))
+            return res.x
+
+        return None
 
 
     def __get_backdoor_indexes(self, size, position, shape):
