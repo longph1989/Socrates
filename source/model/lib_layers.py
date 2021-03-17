@@ -349,11 +349,23 @@ class Conv2d(Layer):
                     base = np.roll(base, f_w)
                     w_idx = 0
 
-        del_index = []
+        del_idx = []
+        if self.padding > 0:
+            del_idx = del_idx + list(range(self.padding * (x_w + 1)))
+            mx = x_h - self.padding
+            for i in range(self.padding + 1, mx):
+                tmp = i * x_w
+                del_idx = del_idx + list(range(tmp - self.padding, tmp + self.padding))
+            del_idx = del_idx + list(range(mx * x_h - self.padding, x_h * x_w))
 
-        res.le = np.delete(res.le, del_index, 1)
-        res.ge = np.delete(res.ge, del_index, 1)
-        
+        tmp = np.array(del_idx)
+
+        for i in range(2, x_c + 1):
+            del_idx = del_idx + list((tmp * i).copy())
+
+        res.le = np.delete(res.le, del_idx, 1)
+        res.ge = np.delete(res.ge, del_idx, 1)
+
         res.back_substitute(lst_poly)
 
         return res
