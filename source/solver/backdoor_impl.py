@@ -77,7 +77,6 @@ class BackDoorImpl():
                 self.__run(model, 0, lst_poly)
 
                 output_lw, output_up = lst_poly[-1].lw.copy(), lst_poly[-1].up.copy()
-
                 # output_lw[target] = output_up[target]
 
                 # if softmax(output_lw)[target] - softmax(output_x0)[target] > 0.5:

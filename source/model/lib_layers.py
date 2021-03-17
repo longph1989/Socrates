@@ -306,6 +306,58 @@ class Conv2d(Layer):
 
         return res
 
+    def apply_poly(self, x_poly, lst_poly):
+        import math
+
+        res = Poly()
+
+        f_n, f_c, f_h, f_w = self.filter.shape
+
+        len_x = len(x_poly.lw)
+        x_wh = int(math.sqrt(len_x / f_c)) + 2 * self.padding
+
+        x_n, x_c, x_h, x_w = 1, f_c, x_wh, x_wh
+
+        res_h = int((x_h - f_h) / self.stride) + 1
+        res_w = int((x_w - f_w) / self.stride) + 1
+
+        len_pad = x_c * x_h * x_w
+        len_res = f_n * res_h * res_w
+
+        res.lw = np.zeros(len_res)
+        res.up = np.zeros(len_res)
+
+        res.le = np.zeros([len_res, len_pad + 1])
+        res.ge = np.zeros([len_res, len_pad + 1])
+
+        np.zeros([x_c, x_h, x_w])
+        base[:x_c, :x_h, :x_w] = self.filter[i]
+
+        for i in range(f_n):
+            base = np.zeros([x_c, x_h, x_w])
+            base[:f_c, :f_h, :f_w] = self.filter[i]
+            base = np.reshape(base, -1)
+            w_idx = f_w
+
+            for j in range(res_h * res_w):
+                res.le[i * res_h * res_w + j] = np.append(base, [self.bias[i]])
+                res.ge[i * res_h * res_w + j] = np.append(base, [self.bias[i]])
+                base = np.roll(base, self.stride)
+
+                w_idx += self.stride
+                if w_idx == x_w:
+                    base = np.roll(base, f_w)
+                    w_idx = 0
+
+        del_index = []
+
+        res.le = np.delete(res.le, del_index, 1)
+        res.ge = np.delete(res.ge, del_index, 1)
+        
+        res.back_substitute(lst_poly)
+
+        return res
+
 
 class Conv3d(Layer):
     def __init__(self, filters, bias, stride, padding):
