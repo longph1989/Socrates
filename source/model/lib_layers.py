@@ -382,6 +382,9 @@ class Conv2d(Layer):
 
         return res
 
+    def is_poly_exact(self):
+        return True
+
 
 class Conv3d(Layer):
     def __init__(self, filters, bias, stride, padding):
@@ -568,6 +571,10 @@ class MaxPool2d(Layer):
         res.ge = np.delete(res.ge, del_idx, 1)
 
         return res
+
+    def is_poly_exact(self):
+        # may be should be False
+        return True
 
 
 class MaxPool3d(Layer):
