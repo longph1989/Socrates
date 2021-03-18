@@ -31,6 +31,8 @@ class Function(Layer):
         res.le = np.zeros([no_neurons, no_neurons + 1])
         res.ge = np.zeros([no_neurons, no_neurons + 1])
 
+        res.shape = x_poly.shape
+
         if self.func == relu:
             for i in range(no_neurons):
                 if x_poly.up[i] <= 0:
@@ -152,6 +154,8 @@ class Linear(Layer):
 
         res.le = np.concatenate([weights, bias], axis=1)
         res.ge = np.concatenate([weights, bias], axis=1)
+
+        res.shape = (1, no_neurons)
 
         res.back_substitute(lst_poly)
 
@@ -330,6 +334,8 @@ class Conv2d(Layer):
         res.le = np.zeros([len_res, len_pad + 1])
         res.ge = np.zeros([len_res, len_pad + 1])
 
+        res.shape = (1, f_n, res_h, res_w)
+
         np.zeros([x_c, x_h, x_w])
         base[:x_c, :x_h, :x_w] = self.filter[i]
 
@@ -454,6 +460,106 @@ class MaxPool2d(Layer):
 
         res = np.max(res, axis=1)
         res = res.reshape(1, x_c, res_h, res_w)
+
+        return res
+
+    def apply_poly(self, x_poly, lst_poly):
+        res = Poly()
+
+        k_h, k_w = self.kernel
+
+        lw, up = x_poly.lw.copy(), x_poly.up.copy()
+
+        lw = lw.reshape(x_poly.shape)
+        up = up.reshape(x_poly.shape)
+
+        p = self.padding
+        lw_pad = np.pad(lw, ((0,0), (0,0), (p,p), (p,p)), mode='constant')
+        up_pad = np.pad(up, ((0,0), (0,0), (p,p), (p,p)), mode='constant')
+        x_n, x_c, x_h, x_w = lw_pad.shape
+
+        res_h = int((x_h - k_h) / self.stride) + 1
+        res_w = int((x_w - k_w) / self.stride) + 1
+
+        len_pad = x_c * x_h * x_w
+        len_res = x_c * res_h * res_w
+
+        c_idx, h_idx, w_idx = index2d(x_c, self.stride, self.kernel, (x_h, x_w))
+
+        res_lw, res_up = [], []
+        mx_lw_idx_lst, mx_up_idx_lst = [], []
+
+        for c in range(x_c):
+            for i in range(res_h * res_w):
+
+                mx_lw_val, mx_lw_idx = -1e9, None
+                
+                for k in range(k_h * k_w):
+
+                    h, w = h_idx[k, i], w_idx[k, i]
+                    val = lw_pad[0, c, h, w]
+                    
+                    if val > mx_lw_val:
+                        mx_lw_val, mx_lw_idx = val, (c, h, w)
+
+                mx_up_val, cnt = -1e9, 0
+
+                for k in range(k_h * k_w):
+
+                    h, w = h_idx[k, i], w_idx[k, i]
+                    val = up_pad[0, c, h, w]
+
+                    if val > mx_up_val:
+                        mx_up_val = val
+
+                    if mx_lw_idx != (c, h, w) and val > mx_lw_val:
+                        cnt += 1
+
+                res_lw.append(mx_lw_val)
+                res_up.append(mx_up_val)
+
+                mx_lw_idx_lst.append(mx_lw_idx)
+                if cnt > 0: mx_up_idx_lst.append(None)
+                else: mx_up_idx_lst.append(mx_lw_idx)
+
+
+        res.lw = np.array(res_lw)
+        res.up = np.array(res_up)
+
+        res.le = np.zeros([len_res, len_pad + 1])
+        res.ge = np.zeros([len_res, len_pad + 1])
+
+        res.shape = (1, x_c, res_h, res_w)
+
+        for i in range(len_res):
+            c = mx_lw_idx_lst[i][0]
+            h = mx_lw_idx_lst[i][1]
+            w = mx_lw_idx_lst[i][2]
+
+            idx = c * x_h * x_w + h * x_w + w
+            res.ge[i, idx] = 1
+
+            if mx_up_idx_lst[i] is None:
+                res.le[i, -1] = res.up[i]
+            else:
+                res.le[i, idx] = 1 
+
+        del_idx = []
+        if self.padding > 0:
+            del_idx = del_idx + list(range(self.padding * (x_w + 1)))
+            mx = x_h - self.padding
+            for i in range(self.padding + 1, mx):
+                tmp = i * x_w
+                del_idx = del_idx + list(range(tmp - self.padding, tmp + self.padding))
+            del_idx = del_idx + list(range(mx * x_h - self.padding, x_h * x_w))
+
+        tmp = np.array(del_idx)
+
+        for i in range(2, x_c + 1):
+            del_idx = del_idx + list((tmp * i).copy())
+
+        res.le = np.delete(res.le, del_idx, 1)
+        res.ge = np.delete(res.ge, del_idx, 1)
 
         return res
 

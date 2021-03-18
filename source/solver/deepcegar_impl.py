@@ -18,6 +18,7 @@ class Poly():
     def __init__(self):
         self.lw, self.up = None, None
         self.le, self.ge = None, None
+        self.shape = None
 
     def copy(self):
         new_poly = Poly()
@@ -27,6 +28,8 @@ class Poly():
 
         new_poly.le = None if self.le is None else self.le.copy()
         new_poly.ge = None if self.ge is None else self.ge.copy()
+
+        new_poly.shape = self.shape.copy()
 
         return new_poly
 
@@ -110,6 +113,7 @@ class DeepCegarImpl():
 
             x0_poly.lw, x0_poly.up = lw, up
             # just let x0_poly.le and x0_poly.ge is None
+            x0_poly.shape = model.shape
 
             lst_poly = [x0_poly]
 

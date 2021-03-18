@@ -50,6 +50,8 @@ def main():
         spec = json.load(f)
 
     for target in range(10):
+        if target != 5: continue
+
         args.target = str(target)
         args.pathX = 'benchmark/backdoor/data/mnist_fc/'
         args.pathY = 'benchmark/backdoor/data/labels/y_mnist.txt'
