@@ -29,7 +29,7 @@ class Poly():
         new_poly.le = None if self.le is None else self.le.copy()
         new_poly.ge = None if self.ge is None else self.ge.copy()
 
-        new_poly.shape = self.shape.copy()
+        new_poly.shape = self.shape
 
         return new_poly
 

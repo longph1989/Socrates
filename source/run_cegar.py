@@ -36,6 +36,14 @@ def add_solver(args, spec):
 
 def update_bounds(args, model, x0, lower, upper):
     eps = np.full(x0.shape, args.eps)
+
+    if args.dataset == 'cifar_conv':
+        eps[0:1024] = eps[0:1024] / 0.2023
+        eps[1024:2048] = eps[1024:2048] / 0.1994
+        eps[2048:3072] = eps[2048:3072] / 0.2010
+    elif args.dataset == 'mnist_conv':
+        eps = eps / 0.3081
+
     model.lower = np.maximum(lower, x0 - eps)
     model.upper = np.minimum(upper, x0 + eps)
 
@@ -75,7 +83,10 @@ def main():
     lower = model.lower
     upper = model.upper
 
-    pathX = 'benchmark/cegar/data/mnist_fc/'
+    if args.dataset == 'mnist_fc':
+        pathX = 'benchmark/cegar/data/mnist_fc/'
+    elif args.dataset == 'mnist_conv':
+        pathX = 'benchmark/cegar/data/mnist_conv/'
     pathY = 'benchmark/cegar/data/labels/y_mnist.txt'
 
     y0s = np.array(ast.literal_eval(read(pathY)))
@@ -106,13 +117,12 @@ def main():
 
                 res = solver.solve(model, assertion)
 
-                if res == 1:
+                if res:
                     print('Verified at {:.3f}'.format(eps))
                     best_verified = max(best_verified, eps)
-                elif res == 0:
+                else:
                     print('Failed at {:.3f}'.format(eps))
                     best_failed = min(best_failed, eps)
-                else: break
 
                 t1 = time.time()
 

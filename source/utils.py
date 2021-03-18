@@ -27,26 +27,36 @@ def tanh(x):
 def softmax(x):
     return np.exp(x) / np.sum(np.exp(x))
 
+def reshape(params):
+    import numpy as rnp
+    return wrapped_partial(rnp.reshape, newshape=params)
+
+def transpose(params):
+    import numpy as rnp
+    return wrapped_partial(rnp.transpose, axes=params)
+
 def get_func(name, params):
-    if name == None:
+    if name is None:
         return None
-    elif name.lower() == 'relu':
+    elif name == 'relu':
         return relu
-    elif name.lower() == 'sigmoid':
+    elif name == 'sigmoid':
         return sigmoid
-    elif name.lower() == 'tanh':
+    elif name == 'tanh':
         return tanh
-    elif name.lower() == 'softmax':
+    elif name == 'softmax':
         # normally softmax only uses in the last layer to return the probabilities
         # between different labels, which is not necessary for our problems for now,
         # will change it later if we have the problems which need the real softmax
         return None
-    elif name.lower() == 'reshape':
-        import numpy as rnp
-        return wrapped_partial(rnp.reshape, newshape=params)
-    elif name.lower() == 'transpose':
-        import numpy as rnp
-        return wrapped_partial(rnp.transpose, axes=params)
+    elif name == 'reshape':
+        return reshape(params)
+        # import numpy as rnp
+        # return wrapped_partial(rnp.reshape, newshape=params)
+    elif name == 'transpose':
+        return transpose(params)
+        # import numpy as rnp
+        # return wrapped_partial(rnp.transpose, axes=params)
     else:
         raise NameError('Not support yet!')
 

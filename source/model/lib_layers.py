@@ -35,7 +35,7 @@ class Function(Layer):
 
         res.shape = x_poly.shape
 
-        if self.func == relu:
+        if self.name == 'relu':
             for i in range(no_neurons):
                 if x_poly.up[i] <= 0:
                     pass
@@ -56,7 +56,7 @@ class Function(Layer):
                     # res.lw[i] = lam * x_poly.lw[i] # notice: mnist_relu_5_10.tf
                     res.up[i] = x_poly.up[i]
 
-        elif self.func == sigmoid:
+        elif self.name == 'sigmoid':
             res.lw = sigmoid(x_poly.lw)
             res.up = sigmoid(x_poly.up)
 
@@ -88,7 +88,7 @@ class Function(Layer):
                     res.le[i,i] = lam2
                     res.le[i,-1] = res.up[i] - lam2 * x_poly.up[i]
 
-        elif self.func == tanh:
+        elif self.name == 'tanh':
             res.lw = tanh(x_poly.lw)
             res.up = tanh(x_poly.up)
 
@@ -120,7 +120,7 @@ class Function(Layer):
                     res.le[i,i] = lam2
                     res.le[i,-1] = res.up[i] - lam2 * x_poly.up[i]
         
-        elif self.func == reshape:
+        elif self.name == 'reshape':
             res.lw = x_poly.lw.copy()
             res.up = x_poly.up.copy()
 
@@ -324,7 +324,7 @@ class Conv2d(Layer):
     def apply_poly(self, x_poly, lst_poly):
         res = Poly()
 
-        f_n, f_c, f_h, f_w = self.filter.shape
+        f_n, f_c, f_h, f_w = self.filters.shape
         x_n, x_c, x_h, x_w = x_poly.shape
 
         x_w += 2 * self.padding
@@ -346,7 +346,7 @@ class Conv2d(Layer):
 
         for i in range(f_n):
             base = np.zeros([x_c, x_h, x_w])
-            base[:f_c, :f_h, :f_w] = self.filter[i]
+            base[:f_c, :f_h, :f_w] = self.filters[i]
             base = np.reshape(base, -1)
             w_idx = f_w
 
@@ -358,7 +358,7 @@ class Conv2d(Layer):
                     base = np.roll(base, self.stride)
                     w_idx += self.stride
                 else:
-                    base = np.roll(base, x_w - w_idx + f_w)
+                    base = np.roll(base, self.stride * x_w - w_idx + f_w)
                     w_idx = f_w
 
         del_idx = []
@@ -370,10 +370,10 @@ class Conv2d(Layer):
                 del_idx = del_idx + list(range(tmp - self.padding, tmp + self.padding))
             del_idx = del_idx + list(range(mx * x_w - self.padding, x_h * x_w))
 
-        tmp = np.array(del_idx)
+            tmp = np.array(del_idx)
 
-        for i in range(2, x_c + 1):
-            del_idx = del_idx + list((tmp * i).copy())
+            for i in range(2, x_c + 1):
+                del_idx = del_idx + list((tmp * i).copy())
 
         res.le = np.delete(res.le, del_idx, 1)
         res.ge = np.delete(res.ge, del_idx, 1)
@@ -562,10 +562,10 @@ class MaxPool2d(Layer):
                 del_idx = del_idx + list(range(tmp - self.padding, tmp + self.padding))
             del_idx = del_idx + list(range(mx * x_h - self.padding, x_h * x_w))
 
-        tmp = np.array(del_idx)
+            tmp = np.array(del_idx)
 
-        for i in range(2, x_c + 1):
-            del_idx = del_idx + list((tmp * i).copy())
+            for i in range(2, x_c + 1):
+                del_idx = del_idx + list((tmp * i).copy())
 
         res.le = np.delete(res.le, del_idx, 1)
         res.ge = np.delete(res.ge, del_idx, 1)

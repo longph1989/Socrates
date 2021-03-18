@@ -24,7 +24,7 @@ def parse_layers(spec):
 
             weights = np.array(ast.literal_eval(read(layer['weights'])))
             bias = np.array(ast.literal_eval(read(layer['bias'])))
-            name = layer['func'] if 'func' in layer else None
+            name = layer['func'].lower() if 'func' in layer else None
 
             layers.append(Linear(weights, bias, name))
 
@@ -122,7 +122,7 @@ def parse_layers(spec):
             weights = np.array(ast.literal_eval(read(layer['weights'])))
             bias = np.array(ast.literal_eval(read(layer['bias'])))
             h0 = np.array(ast.literal_eval(read(layer['h0'])))
-            name = layer['func'] if 'func' in layer else None
+            name = layer['func'].lower() if 'func' in layer else None
 
             layers.append(BasicRNN(weights, bias, h0, name))
 
