@@ -15,6 +15,8 @@ class Layer:
 
 class Function(Layer):
     def __init__(self, name, params):
+        self.name = name
+        self.params = params
         self.func = get_func(name, params)
 
     def apply(self, x):
@@ -117,6 +119,15 @@ class Function(Layer):
 
                     res.le[i,i] = lam2
                     res.le[i,-1] = res.up[i] - lam2 * x_poly.up[i]
+        
+        elif self.func == reshape:
+            res.lw = x_poly.lw.copy()
+            res.up = x_poly.up.copy()
+
+            res.le = np.eye(no_neurons + 1)[:-1]
+            res.ge = np.eye(no_neurons + 1)[:-1]
+
+            res.shape = self.params[0]
 
         return res
 
@@ -311,16 +322,13 @@ class Conv2d(Layer):
         return res
 
     def apply_poly(self, x_poly, lst_poly):
-        import math
-
         res = Poly()
 
         f_n, f_c, f_h, f_w = self.filter.shape
+        x_n, x_c, x_h, x_w = x_poly.shape
 
-        len_x = len(x_poly.lw)
-        x_wh = int(math.sqrt(len_x / f_c)) + 2 * self.padding
-
-        x_n, x_c, x_h, x_w = 1, f_c, x_wh, x_wh
+        x_w += 2 * self.padding
+        x_h += 2 * self.padding        
 
         res_h = int((x_h - f_h) / self.stride) + 1
         res_w = int((x_w - f_w) / self.stride) + 1
@@ -336,9 +344,6 @@ class Conv2d(Layer):
 
         res.shape = (1, f_n, res_h, res_w)
 
-        np.zeros([x_c, x_h, x_w])
-        base[:x_c, :x_h, :x_w] = self.filter[i]
-
         for i in range(f_n):
             base = np.zeros([x_c, x_h, x_w])
             base[:f_c, :f_h, :f_w] = self.filter[i]
@@ -348,12 +353,13 @@ class Conv2d(Layer):
             for j in range(res_h * res_w):
                 res.le[i * res_h * res_w + j] = np.append(base, [self.bias[i]])
                 res.ge[i * res_h * res_w + j] = np.append(base, [self.bias[i]])
-                base = np.roll(base, self.stride)
 
-                w_idx += self.stride
-                if w_idx == x_w:
-                    base = np.roll(base, f_w)
-                    w_idx = 0
+                if w_idx + self.stride <= x_w:
+                    base = np.roll(base, self.stride)
+                    w_idx += self.stride
+                else:
+                    base = np.roll(base, x_w - w_idx + f_w)
+                    w_idx = f_w
 
         del_idx = []
         if self.padding > 0:
@@ -362,7 +368,7 @@ class Conv2d(Layer):
             for i in range(self.padding + 1, mx):
                 tmp = i * x_w
                 del_idx = del_idx + list(range(tmp - self.padding, tmp + self.padding))
-            del_idx = del_idx + list(range(mx * x_h - self.padding, x_h * x_w))
+            del_idx = del_idx + list(range(mx * x_w - self.padding, x_h * x_w))
 
         tmp = np.array(del_idx)
 
