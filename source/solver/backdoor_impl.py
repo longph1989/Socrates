@@ -27,8 +27,8 @@ class BackDoorImpl():
         valid_x0s = []
         y0s = np.array(ast.literal_eval(read(spec['pathY'])))
 
-        for i in range(10):
-            print('\n==============\n')
+        for i in range(100):
+            # print('\n==============\n')
 
             pathX = spec['pathX'] + 'data' + str(i) + '.txt'
             x0 = np.array(ast.literal_eval(read(pathX)))
@@ -36,17 +36,18 @@ class BackDoorImpl():
             output_x0 = model.apply(x0)
             y0 = np.argmax(output_x0, axis=1)[0]
 
-            print('Data {}\n'.format(i))
-            print('x0 = {}'.format(x0))
-            print('output_x0 = {}'.format(output_x0))
-            print('y0 = {}'.format(y0))
-            print('y0[i] = {}\n'.format(y0s[i]))
+            # print('Data {}\n'.format(i))
+            # print('x0 = {}'.format(x0))
+            # print('output_x0 = {}'.format(output_x0))
+            # print('y0 = {}'.format(y0))
+            # print('y0[i] = {}\n'.format(y0s[i]))
 
-            if y0 == y0s[i] or y0 != target:
-                print('Check at data {}'.format(i))
+            if y0 == y0s[i] and y0 != target:
+                # print('Check at data {}'.format(i))
                 valid_x0s.append((x0, output_x0))
             else:
-                print('Skip at data {}'.format(i))
+                pass
+                # print('Skip at data {}'.format(i))
 
         if len(valid_x0s) == 0: return
 
@@ -54,13 +55,13 @@ class BackDoorImpl():
         for position in positions:
             cnt = 0
 
-            print('\n==============\n')
+            # print('\n==============\n')
 
             backdoor_indexes = self.__get_backdoor_indexes(size, position, model.shape)
-            print('backdoor_indexes = {}\n'.format(backdoor_indexes))
+            # print('backdoor_indexes = {}\n'.format(backdoor_indexes))
 
             if backdoor_indexes is None:
-                print('Skip position!')
+                # print('Skip position!')
                 continue
 
             for x0, output_x0 in valid_x0s:
@@ -84,11 +85,12 @@ class BackDoorImpl():
                     cnt += 1
                     continue
                 else:
+                    # print('Failed at {}!'.format(cnt))
                     break
 
             if cnt == len(valid_x0s):
                 print('Detect backdoor with target = {}!'.format(target))
-                self.__validate(model, valid_x0s, target, backdoor_indexes)
+                # self.__validate(model, valid_x0s, target, backdoor_indexes)
                 return
 
         print('No backdoor with target = {}!'.format(target))
@@ -99,7 +101,7 @@ class BackDoorImpl():
         def obj_func(x, model, valid_x0s, target, backdoor_indexes):
             res = 0
 
-            for x0 in valid_x0s:
+            for x0, output_x0 in valid_x0s:
                 x0[backdoor_indexes] = x
 
                 output = model.apply(x0).reshape(-1)
@@ -165,5 +167,4 @@ class BackDoorImpl():
 
 
     def solve(self, model, assertion, display=None):
-        # only solve for local robustness
         return self.__solve_backdoor(model, assertion, display)

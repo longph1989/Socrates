@@ -2,12 +2,14 @@ import autograd.numpy as np
 import argparse
 import json
 import ast
+import os
 
 from json_parser import parse
 from autograd import grad
 from utils import *
 
 import time
+import multiprocessing
 
 def add_assertion(args, spec):
     assertion = dict()
@@ -31,8 +33,9 @@ def add_solver(args, spec):
     spec['solver'] = solver
 
 
-def main():
-    np.set_printoptions(threshold=20)
+def run(indexes):
+    start, end = indexes[0], indexes[1]
+
     parser = argparse.ArgumentParser(description='nSolver')
 
     parser.add_argument('--spec', type=str, default='spec.json',
@@ -49,9 +52,7 @@ def main():
     with open(args.spec, 'r') as f:
         spec = json.load(f)
 
-    for target in range(10):
-        if target != 5: continue
-
+    for target in range(start, end):
         args.target = str(target)
         args.pathX = 'benchmark/backdoor/data/mnist_fc/'
         args.pathY = 'benchmark/backdoor/data/labels/y_mnist.txt'
@@ -68,6 +69,37 @@ def main():
         solver.solve(model, assertion)
 
         print('\n============================\n')
+
+
+def main():
+    np.set_printoptions(threshold=20)
+
+    # run((0, 10))
+
+    output_size = 10
+    num_cores = os.cpu_count()
+
+    pool_size = num_cores if num_cores <= output_size else output_size
+
+    quo = int(output_size / num_cores)
+    rem = int(output_size % num_cores)
+
+    idx, start, end = 0, [], []
+
+    for i in range(pool_size):
+        start.append(idx)
+        idx += quo
+        if rem > 0:
+            idx += 1
+            rem -= 1
+        end.append(idx)
+
+    indexes = zip(start, end)
+
+    pool = multiprocessing.Pool(pool_size)
+
+    pool.map(run, indexes)
+    pool.close()
 
 
 if __name__ == '__main__':

@@ -19,6 +19,7 @@ class Poly():
         self.lw, self.up = None, None
         self.le, self.ge = None, None
         self.shape = None
+        self.is_activation = False
 
     def copy(self):
         new_poly = Poly()
@@ -30,35 +31,22 @@ class Poly():
         new_poly.ge = None if self.ge is None else self.ge.copy()
 
         new_poly.shape = self.shape
+        new_poly.is_activation = self.is_activation
 
         return new_poly
 
     def back_substitute(self, lst_poly, get_ineq=False):
         no_neurons = len(self.lw)
+        num_cores = os.cpu_count()
 
-        if no_neurons <= 100 or len(lst_poly) <= 2:
-            for i in range(no_neurons):
-                args = (i, self.le[i], self.ge[i], lst_poly)
-                _, lw_i, up_i, lst_le_i, lst_ge_i = back_substitute(args)
-                self.lw[i], self.up[i] = lw_i, up_i
+        for i in range(no_neurons):
+            args = (i, self.le[i], self.ge[i], lst_poly)
+            _, lw_i, up_i, lst_le_i, lst_ge_i = back_substitute(args)
+            self.lw[i], self.up[i] = lw_i, up_i
 
-                # get_ineq only happens at the last step
-                # no_neurons in this case always be 1
-                if get_ineq: lst_le, lst_ge = lst_le_i, lst_ge_i
-        else:
-            clones = []
-
-            for i in range(no_neurons):
-                clones.append(lst_poly)
-
-            num_cores = os.cpu_count()
-            pool = multiprocessing.Pool(num_cores)
-            zz = zip(range(no_neurons), self.le, self.ge, clones)
-            for i, lw_i, up_i, _, _ in pool.map(back_substitute, zz):
-                self.lw[i], self.up[i] = lw_i, up_i
-            pool.close()
-
-        if get_ineq: return lst_le, lst_ge
+            # get_ineq only happens at the last step
+            # no_neurons in this case always be 1
+            if get_ineq: return lst_le_i, lst_ge_i
 
 
 class Task():

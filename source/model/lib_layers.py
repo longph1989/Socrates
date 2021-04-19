@@ -34,6 +34,7 @@ class Function(Layer):
         res.ge = np.zeros([no_neurons, no_neurons + 1])
 
         res.shape = x_poly.shape
+        res.is_activation = True
 
         if self.name == 'relu':
             for i in range(no_neurons):
@@ -372,8 +373,9 @@ class Conv2d(Layer):
 
             tmp = np.array(del_idx)
 
-            for i in range(2, x_c + 1):
-                del_idx = del_idx + list((tmp * i).copy())
+            for i in range(1, x_c):
+                offset = i * x_h * x_w
+                del_idx = del_idx + list((tmp + offset).copy())
 
         res.le = np.delete(res.le, del_idx, 1)
         res.ge = np.delete(res.ge, del_idx, 1)
@@ -564,8 +566,9 @@ class MaxPool2d(Layer):
 
             tmp = np.array(del_idx)
 
-            for i in range(2, x_c + 1):
-                del_idx = del_idx + list((tmp * i).copy())
+            for i in range(1, x_c):
+                offset = i * x_h * x_w
+                del_idx = del_idx + list((tmp + offset).copy())
 
         res.le = np.delete(res.le, del_idx, 1)
         res.ge = np.delete(res.ge, del_idx, 1)
