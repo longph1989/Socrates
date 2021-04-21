@@ -46,18 +46,33 @@ def run(indexes):
                         help='the threshold')
     parser.add_argument('--algorithm', type=str, default='backdoor',
                         help='the chosen algorithm')
+    parser.add_argument('--dataset', type=str,
+                        help='the data set for BACKDOOR experiments')
 
     args = parser.parse_args()
 
     with open(args.spec, 'r') as f:
         spec = json.load(f)
 
+    if args.dataset == 'cifar_conv':
+        args.pathX = 'benchmark/cegar/data/cifar_conv/'
+        args.pathY = 'benchmark/cegar/data/labels/y_cifar.txt'
+    elif args.dataset == 'cifar_fc':
+        args.pathX = 'benchmark/cegar/data/cifar_fc/'
+        args.pathY = 'benchmark/cegar/data/labels/y_cifar.txt'
+    elif args.dataset == 'mnist_conv':
+        args.pathX = 'benchmark/cegar/data/mnist_conv/'
+        args.pathY = 'benchmark/cegar/data/labels/y_mnist.txt'
+    elif args.dataset == 'mnist_fc':
+        args.pathX = 'benchmark/cegar/data/mnist_fc/'
+        args.pathY = 'benchmark/cegar/data/labels/y_mnist.txt'
+
+    target_lst = []
+
     for target in range(start, end):
         args.target = str(target)
-        args.pathX = 'benchmark/backdoor/data/mnist_fc/'
-        args.pathY = 'benchmark/backdoor/data/labels/y_mnist.txt'
 
-        print('\n============================\n')
+        # print('\n============================\n')
 
         print('Backdoor target = {}'.format(target))
 
@@ -66,15 +81,20 @@ def run(indexes):
 
         model, assertion, solver, display = parse(spec)
 
-        solver.solve(model, assertion)
+        res = solver.solve(model, assertion)
 
-        print('\n============================\n')
+        if res is not None:
+            target_lst.append(res)
+
+        # print('\n============================\n')
+
+    return target_lst
 
 
 def main():
     np.set_printoptions(threshold=20)
 
-    # run((0, 10))
+    # res = run((0, 10))
 
     output_size = 10
     num_cores = os.cpu_count()
@@ -97,9 +117,18 @@ def main():
     indexes = zip(start, end)
 
     pool = multiprocessing.Pool(pool_size)
+    res = []
 
-    pool.map(run, indexes)
+    for target_lst in pool.map(run, indexes):
+        res += target_lst
     pool.close()
+
+    if len(res) == 0:
+        print('No backdoor!')
+    else:
+        res.sort()
+        for target in res:
+            print('Detect backdoor with target = {}!'.format(target))
 
 
 if __name__ == '__main__':

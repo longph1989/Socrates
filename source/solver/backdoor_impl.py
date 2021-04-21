@@ -73,6 +73,7 @@ class BackDoorImpl():
                 x0_poly = Poly()
                 x0_poly.lw, x0_poly.up = lw, up
                 # just let x0_poly.le and x0_poly.ge is None
+                x0_poly.shape = model.shape
 
                 lst_poly = [x0_poly]
                 self.__run(model, 0, lst_poly)
@@ -89,12 +90,12 @@ class BackDoorImpl():
                     break
 
             if cnt == len(valid_x0s):
-                print('Detect backdoor with target = {}!'.format(target))
+                # print('Detect backdoor with target = {}!'.format(target))
                 # self.__validate(model, valid_x0s, target, backdoor_indexes)
-                return
+                return target
 
-        print('No backdoor with target = {}!'.format(target))
-        return
+        # print('No backdoor with target = {}!'.format(target))
+        return None
 
 
     def __validate(self, model, valid_x0s, target, backdoor_indexes):
