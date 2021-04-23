@@ -18,6 +18,11 @@ def add_assertion(args, spec):
     assertion['size'] = args.size
     assertion['threshold'] = args.threshold
 
+    if 'mnist' in args.dataset:
+        assertion['dataset'] = 'mnist'
+    elif 'cifar' in args.dataset:
+        assertion['dataset'] = 'cifar'
+
     assertion['pathX'] = args.pathX
     assertion['pathY'] = args.pathY
 
@@ -101,8 +106,8 @@ def main():
 
     pool_size = num_cores if num_cores <= output_size else output_size
 
-    quo = int(output_size / num_cores)
-    rem = int(output_size % num_cores)
+    quo = int(output_size / pool_size)
+    rem = int(output_size % pool_size)
 
     idx, start, end = 0, [], []
 
