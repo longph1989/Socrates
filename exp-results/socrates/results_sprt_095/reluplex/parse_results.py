@@ -30,6 +30,6 @@ for path in paths:
     time = round(time)
 
     print('H0 = {}'.format(H0))
-    print('H0 = {}'.format(H1))
+    print('H1 = {}'.format(H1))
     print('Time = {}s'.format(time))
     print('Samples: {}'.format(samples))
