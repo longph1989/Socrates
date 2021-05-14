@@ -23,6 +23,7 @@ class BackDoorImpl():
         target = ast.literal_eval(read(spec['target']))
         size = np.array(ast.literal_eval(read(spec['size'])))
         threshold = ast.literal_eval(read(spec['threshold']))
+        fix_pos = ast.literal_eval(read(spec['fix_pos']))
 
         dataset = spec['dataset']
 
@@ -44,28 +45,32 @@ class BackDoorImpl():
             # print('y0 = {}'.format(y0))
             # print('y0[i] = {}\n'.format(y0s[i]))
 
-            if y0 == y0s[i] and y0 != target and softmax(output_x0)[target] < 0.01:
-                # print('Check at data {}'.format(i))
+            if y0 == y0s[i] and y0 != target:
                 valid_x0s.append((x0, output_x0))
-            else:
-                # print('Skip at data {}'.format(i))
-                pass
 
-        if len(valid_x0s) == 0: return
+        if len(valid_x0s) == 0: return None
+
+        valid_pos = []
 
         if dataset == 'mnist': positions = 784
         elif dataset == 'cifar': positions = 1024
 
         for position in range(positions):
-            # print('\n==============\n')
-
             backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
-            # print('backdoor_indexes = {}\n'.format(backdoor_indexes))
 
-            if backdoor_indexes is None:
-                # print('Skip position!')
-                continue
+            if not(backdoor_indexes is None):
+                valid_pos.append(backdoor_indexes)
 
+        if fix_pos:
+            print('solve fix_pos')
+            return self.__solve_fix_pos(model, valid_x0s, valid_pos, target, threshold)
+        else:
+            print('solve not_fix_pos')
+            return self.__solve_not_fix_pos(model, valid_x0s, valid_pos, target, threshold)
+
+
+    def __solve_fix_pos(self, model, valid_x0s, valid_pos, target, threshold):
+        for backdoor_indexes in valid_pos:
             cnt = 0
 
             for x0, output_x0 in valid_x0s:
@@ -85,19 +90,45 @@ class BackDoorImpl():
                 output_lw, output_up = lst_poly[-1].lw.copy(), lst_poly[-1].up.copy()
                 output_lw[target] = output_up[target]
 
-                if softmax(output_lw)[target] / softmax(output_x0)[target] < 95:
-                    # print('No backdoor at {}!'.format(cnt))
-                    break
-                else:
+                if (threshold == -1 and np.argmax(output_lw) == target) or \
+                    (threshold > 0 and softmax(output_lw)[target] - softmax(output_x0)[target] >= threshold):
                     cnt += 1
+                else: break
 
-            if cnt == len(valid_x0s):
-                # print('Detect backdoor with target = {} and position = {}!'.format(target, position))
-                # self.__validate(model, valid_x0s, target, backdoor_indexes)
-                return target
-
-        # print('No backdoor with target = {}!'.format(target))
+            if cnt == len(valid_x0s): return target
+        
         return None
+
+
+    def __solve_not_fix_pos(self, model, valid_x0s, valid_pos, target, threshold):
+        for x0, output_x0 in valid_x0s:
+            has_backdoor = False
+
+            for backdoor_indexes in valid_pos:
+                lw, up = x0.copy(), x0.copy()
+
+                for index in backdoor_indexes:
+                    lw[index], up[index] = model.lower[index], model.upper[index]
+
+                x0_poly = Poly()
+                x0_poly.lw, x0_poly.up = lw, up
+                # just let x0_poly.le and x0_poly.ge is None
+                x0_poly.shape = model.shape
+
+                lst_poly = [x0_poly]
+                self.__run(model, 0, lst_poly)
+
+                output_lw, output_up = lst_poly[-1].lw.copy(), lst_poly[-1].up.copy()
+                output_lw[target] = output_up[target]
+
+                if (threshold == -1 and np.argmax(output_lw) == target) or \
+                    (threshold > 0 and softmax(output_lw)[target] - softmax(output_x0)[target] >= threshold):
+                    has_backdoor = True
+                    break
+
+            if not has_backdoor: return None
+        
+        return target
 
 
     # def __validate(self, model, valid_x0s, target, backdoor_indexes):

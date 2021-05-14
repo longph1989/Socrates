@@ -17,6 +17,7 @@ def add_assertion(args, spec):
     assertion['target'] = args.target
     assertion['size'] = args.size
     assertion['threshold'] = args.threshold
+    assertion['fix_pos'] = args.fix_pos
 
     if 'mnist' in args.dataset:
         assertion['dataset'] = 'mnist'
@@ -49,6 +50,8 @@ def run(indexes):
                         help='the size of the backdoor')
     parser.add_argument('--threshold', type=str, default='0.1',
                         help='the threshold')
+    parser.add_argument('--fix_pos', type=str, default='True',
+                        help='turn on/off fixed position')
     parser.add_argument('--algorithm', type=str, default='backdoor',
                         help='the chosen algorithm')
     parser.add_argument('--dataset', type=str,
@@ -79,12 +82,12 @@ def run(indexes):
 
         # print('\n============================\n')
 
-        print('Backdoor target = {}'.format(target))
-
         add_assertion(args, spec)
         add_solver(args, spec)
 
         model, assertion, solver, display = parse(spec)
+
+        print('Backdoor target = {} with threshold = {}'.format(args.target, args.threshold))
 
         res = solver.solve(model, assertion)
 
