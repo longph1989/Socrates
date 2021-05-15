@@ -18,6 +18,7 @@ def add_assertion(args, spec):
     assertion['size'] = args.size
     assertion['threshold'] = args.threshold
     assertion['fix_pos'] = args.fix_pos
+    assertion['filter_bd'] = args.filter_bd
 
     if 'mnist' in args.dataset:
         assertion['dataset'] = 'mnist'
@@ -52,6 +53,8 @@ def run(indexes):
                         help='the threshold')
     parser.add_argument('--fix_pos', type=str, default='True',
                         help='turn on/off fixed position')
+    parser.add_argument('--filter_bd', type=str, default='False',
+                        help='turn on/off filter backdoor')
     parser.add_argument('--algorithm', type=str, default='backdoor',
                         help='the chosen algorithm')
     parser.add_argument('--dataset', type=str,

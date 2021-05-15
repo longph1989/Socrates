@@ -24,6 +24,7 @@ class BackDoorImpl():
         size = np.array(ast.literal_eval(read(spec['size'])))
         threshold = ast.literal_eval(read(spec['threshold']))
         fix_pos = ast.literal_eval(read(spec['fix_pos']))
+        filter_bd = ast.literal_eval(read(spec['filter_bd']))
 
         dataset = spec['dataset']
 
@@ -48,6 +49,10 @@ class BackDoorImpl():
             if y0 == y0s[i] and y0 != target:
                 valid_x0s.append((x0, output_x0))
 
+        print('before filter len =', len(valid_x0s))
+        if filter_bd: self.__filter_bd(model, valid_x0s, target, size, fix_pos, dataset)
+        print('after filter len =', len(valid_x0s))
+
         if len(valid_x0s) == 0: return None
 
         valid_pos = []
@@ -59,25 +64,56 @@ class BackDoorImpl():
             backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
 
             if not(backdoor_indexes is None):
-                valid_pos.append(backdoor_indexes)
+                valid_bdi.append(backdoor_indexes)
 
         if fix_pos:
-            print('solve fix_pos')
-            return self.__solve_fix_pos(model, valid_x0s, valid_pos, target, threshold)
+            return self.__solve_fix_pos(model, valid_x0s, valid_bdi, target, threshold)
         else:
-            print('solve not_fix_pos')
-            return self.__solve_not_fix_pos(model, valid_x0s, valid_pos, target, threshold)
+            return self.__solve_not_fix_pos(model, valid_x0s, valid_bdi, target, threshold)
 
 
-    def __solve_fix_pos(self, model, valid_x0s, valid_pos, target, threshold):
-        for backdoor_indexes in valid_pos:
+    def __filter_bd(self, model, valid_x0s, target, size, fix_pos, dataset):
+        if fix_pos:
+            positions = [0]
+        else:
+            if dataset == 'mnist':
+                positions = [0, 28 - size, 756 - 28 * (size - 1), 784 - 28 * (size - 1) - size]
+            elif dataset == 'cifar':
+                positions = [0, 32 - size, 1024 - 32 * (size - 1), 1024 - 32 * (size - 1) - size]
+
+        removed_x0s = []
+        for i in range(len(valid_x0s)):
+            x0, output_x0 = valid_x0s[i]
+            is_valid = False
+
+            for position in positions:
+                backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
+                
+                x_bd = x0.copy()
+                x_bd[backdoor_indexes] = 1.0
+
+                output_x_bd = model.apply(x_bd).reshape(-1)
+                target_x_bd = np.argmax(output_x_bd)
+
+                if target_x_bd == target:
+                    is_valid = True
+                    break
+
+            if not is_valid: removed_x0s.insert(0, i)
+
+        for i in removed_x0s:
+            valid_x0s.pop(i)
+
+
+    def __solve_fix_pos(self, model, valid_x0s, valid_bdi, target, threshold):
+        for backdoor_indexes in valid_bdi:
             cnt = 0
 
             for x0, output_x0 in valid_x0s:
                 lw, up = x0.copy(), x0.copy()
 
-                for index in backdoor_indexes:
-                    lw[index], up[index] = model.lower[index], model.upper[index]
+                lw[backdoor_indexes] = model.lower[backdoor_indexes]
+                up[backdoor_indexes] = model.upper[backdoor_indexes]
 
                 x0_poly = Poly()
                 x0_poly.lw, x0_poly.up = lw, up
@@ -90,7 +126,7 @@ class BackDoorImpl():
                 output_lw, output_up = lst_poly[-1].lw.copy(), lst_poly[-1].up.copy()
                 output_lw[target] = output_up[target]
 
-                if (threshold == -1 and np.argmax(output_lw) == target) or \
+                if (np.argmax(output_lw) == target) or \
                     (threshold > 0 and softmax(output_lw)[target] - softmax(output_x0)[target] >= threshold):
                     cnt += 1
                 else: break
@@ -100,15 +136,15 @@ class BackDoorImpl():
         return None
 
 
-    def __solve_not_fix_pos(self, model, valid_x0s, valid_pos, target, threshold):
+    def __solve_not_fix_pos(self, model, valid_x0s, valid_bdi, target, threshold):
         for x0, output_x0 in valid_x0s:
             has_backdoor = False
 
-            for backdoor_indexes in valid_pos:
+            for backdoor_indexes in valid_bdi:
                 lw, up = x0.copy(), x0.copy()
 
-                for index in backdoor_indexes:
-                    lw[index], up[index] = model.lower[index], model.upper[index]
+                lw[backdoor_indexes] = model.lower[backdoor_indexes]
+                up[backdoor_indexes] = model.upper[backdoor_indexes]
 
                 x0_poly = Poly()
                 x0_poly.lw, x0_poly.up = lw, up
@@ -121,7 +157,7 @@ class BackDoorImpl():
                 output_lw, output_up = lst_poly[-1].lw.copy(), lst_poly[-1].up.copy()
                 output_lw[target] = output_up[target]
 
-                if (threshold == -1 and np.argmax(output_lw) == target) or \
+                if (np.argmax(output_lw) == target) or \
                     (threshold > 0 and softmax(output_lw)[target] - softmax(output_x0)[target] >= threshold):
                     has_backdoor = True
                     break
