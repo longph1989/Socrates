@@ -55,7 +55,7 @@ class BackDoorImpl():
 
         if len(valid_x0s) == 0: return None
 
-        valid_pos = []
+        valid_bdi = []
 
         if dataset == 'mnist': positions = 784
         elif dataset == 'cifar': positions = 1024
@@ -73,20 +73,17 @@ class BackDoorImpl():
 
 
     def __filter_bd(self, model, valid_x0s, target, size, fix_pos, dataset):
-        if fix_pos:
-            positions = [0]
+        if fix_pos: positions = 1    
         else:
-            if dataset == 'mnist':
-                positions = [0, 28 - size, 756 - 28 * (size - 1), 784 - 28 * (size - 1) - size]
-            elif dataset == 'cifar':
-                positions = [0, 32 - size, 1024 - 32 * (size - 1), 1024 - 32 * (size - 1) - size]
+            if dataset == 'mnist': positions = 784  
+            elif dataset == 'cifar': positions = 1024
 
         removed_x0s = []
         for i in range(len(valid_x0s)):
             x0, output_x0 = valid_x0s[i]
             is_valid = False
 
-            for position in positions:
+            for position in range(positions):
                 backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
                 
                 x_bd = x0.copy()
