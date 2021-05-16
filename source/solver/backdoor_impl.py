@@ -24,7 +24,6 @@ class BackDoorImpl():
         size = np.array(ast.literal_eval(read(spec['size'])))
         threshold = ast.literal_eval(read(spec['threshold']))
         fix_pos = ast.literal_eval(read(spec['fix_pos']))
-        filter_bd = ast.literal_eval(read(spec['filter_bd']))
 
         dataset = spec['dataset']
 
@@ -49,10 +48,6 @@ class BackDoorImpl():
             if y0 == y0s[i] and y0 != target:
                 valid_x0s.append((x0, output_x0))
 
-        print('before filter len =', len(valid_x0s))
-        if filter_bd: self.__filter_bd(model, valid_x0s, target, size, fix_pos, dataset)
-        print('after filter len =', len(valid_x0s))
-
         if len(valid_x0s) == 0: return None
 
         valid_bdi = []
@@ -70,36 +65,6 @@ class BackDoorImpl():
             return self.__solve_fix_pos(model, valid_x0s, valid_bdi, target, threshold)
         else:
             return self.__solve_not_fix_pos(model, valid_x0s, valid_bdi, target, threshold)
-
-
-    def __filter_bd(self, model, valid_x0s, target, size, fix_pos, dataset):
-        if fix_pos: positions = 1    
-        else:
-            if dataset == 'mnist': positions = 784  
-            elif dataset == 'cifar': positions = 1024
-
-        removed_x0s = []
-        for i in range(len(valid_x0s)):
-            x0, output_x0 = valid_x0s[i]
-            is_valid = False
-
-            for position in range(positions):
-                backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
-                
-                x_bd = x0.copy()
-                x_bd[backdoor_indexes] = 1.0
-
-                output_x_bd = model.apply(x_bd).reshape(-1)
-                target_x_bd = np.argmax(output_x_bd)
-
-                if target_x_bd == target:
-                    is_valid = True
-                    break
-
-            if not is_valid: removed_x0s.insert(0, i)
-
-        for i in removed_x0s:
-            valid_x0s.pop(i)
 
 
     def __solve_fix_pos(self, model, valid_x0s, valid_bdi, target, threshold):
