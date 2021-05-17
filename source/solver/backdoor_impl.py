@@ -93,12 +93,16 @@ class BackDoorImpl():
                     cnt += 1
                 else: break
 
-            if cnt == len(valid_x0s): return target
+            if cnt == len(valid_x0s):
+                stamp = self.__validate_fix_pos(model, valid_x0s, target, backdoor_indexes, threshold)
+                return target, stamp
         
-        return None
+        return None, None
 
 
     def __solve_not_fix_pos(self, model, valid_x0s, valid_bdi, target, threshold):
+        backdoor_indexes_lst = []
+
         for x0, output_x0 in valid_x0s:
             has_backdoor = False
 
@@ -122,47 +126,111 @@ class BackDoorImpl():
                 if (np.argmax(output_lw) == target) or \
                     (threshold > 0 and softmax(output_lw)[target] - softmax(output_x0)[target] >= threshold):
                     has_backdoor = True
+                    backdoor_indexes_lst.append(backdoor_indexes)
                     break
 
-            if not has_backdoor: return None
+            if not has_backdoor: return None, None
+
+        stamp = self.__validate_not_fix_pos(model, valid_x0s, target, backdoor_indexes_lst, threshold)
         
-        return target
+        return target, stamp
 
 
-    # def __validate(self, model, valid_x0s, target, backdoor_indexes):
-    #     def obj_func(x, model, valid_x0s, target, backdoor_indexes):
-    #         res = 0
+    def __validate_fix_pos(self, model, valid_x0s, target, backdoor_indexes, threshold):
+        def obj_func(x, model, valid_x0s, target, backdoor_indexes):
+            res = 0
 
-    #         for x0, output_x0 in valid_x0s:
-    #             x0[backdoor_indexes] = x
+            for x0, output_x0 in valid_x0s:
+                xi = x0.copy()
+                xi[backdoor_indexes] = x
 
-    #             output = model.apply(x0).reshape(-1)
-    #             target_score = output[target]
+                output = model.apply(xi).reshape(-1)
+                target_score = output[target]
 
-    #             output_no_target = output - np.eye(len(output))[target] * 1e9
-    #             max_score = np.max(output_no_target)
+                output_no_target = output - np.eye(len(output))[target] * 1e9
+                max_score = np.max(output_no_target)
 
-    #             if target_score > max_score: res += 0
-    #             else: res += max_score - target_score
+                if target_score > max_score:
+                    res += 0
+                elif threshold == -1:
+                    res += max_score - target_score
+                else:
+                    diff = softmax(output)[target] - softmax(output_x0)[target]
+                    if diff >= threshold:
+                        res += 0
+                    else:
+                        res += threshold - diff
 
-    #         return res
+            return res
 
-    #     x = np.zeros(len(backdoor_indexes))
-    #     lw = model.lower[backdoor_indexes]
-    #     up = model.upper[backdoor_indexes]
+        x = np.zeros(len(backdoor_indexes))
+        lw = model.lower[backdoor_indexes]
+        up = model.upper[backdoor_indexes]
 
-    #     args = (model, valid_x0s, target, backdoor_indexes)
-    #     # jac = grad(obj_func)
-    #     jac = None
-    #     bounds = Bounds(lw, up)
+        args = (model, valid_x0s, target, backdoor_indexes)
+        # jac = grad(obj_func)
+        jac = None
+        bounds = Bounds(lw, up)
 
-    #     res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
+        res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
 
-    #     if res.fun <= 0: # an adversarial sample is generated
-    #         print('res.x = {}'.format(res.x))
-    #         return res.x
+        if res.fun <= 0: # an adversarial sample is generated
+            print('res.x = {}'.format(res.x))
+            return res.x
 
-    #     return None
+        return None
+
+
+    def __validate_not_fix_pos(self, model, valid_x0s, target, backdoor_indexes_lst, threshold):
+        def obj_func(x, model, valid_x0s, target, backdoor_indexes_lst):
+            res = 0
+
+            for i in range(len(valid_x0s)):
+                x0, output_x0 = valid_x0s[i]
+                backdoor_indexes = backdoor_indexes_lst[i]
+
+                xi = x0.copy()
+                xi[backdoor_indexes] = x
+
+                output = model.apply(xi).reshape(-1)
+                target_score = output[target]
+
+                output_no_target = output - np.eye(len(output))[target] * 1e9
+                max_score = np.max(output_no_target)
+
+                if target_score > max_score:
+                    res += 0
+                elif threshold == -1:
+                    res += max_score - target_score
+                else:
+                    diff = softmax(output)[target] - softmax(output_x0)[target]
+                    if diff >= threshold:
+                        res += 0
+                    else:
+                        res += threshold - diff
+
+            return res
+
+        x = np.zeros(len(backdoor_indexes_lst[0]))
+        lw = model.lower[backdoor_indexes_lst[0]]
+        up = model.upper[backdoor_indexes_lst[0]]
+
+        for backdoor_indexes in backdoor_indexes_lst:
+            lw = np.maximum(lw, model.lower[backdoor_indexes])
+            up = np.minimum(up, model.upper[backdoor_indexes])
+
+        args = (model, valid_x0s, target, backdoor_indexes_lst)
+        # jac = grad(obj_func)
+        jac = None
+        bounds = Bounds(lw, up)
+
+        res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
+
+        if res.fun <= 0: # an adversarial sample is generated
+            print('res.x = {}'.format(res.x))
+            return res.x
+
+        return None
 
 
     def __get_backdoor_indexes(self, size, position, dataset):

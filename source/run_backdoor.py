@@ -75,7 +75,7 @@ def run(indexes):
         args.pathX = 'benchmark/cegar/data/mnist_fc/'
         args.pathY = 'benchmark/cegar/data/labels/y_mnist.txt'
 
-    target_lst = []
+    bd_target, fa_target = [], []
 
     for target in range(start, end):
         args.target = str(target)
@@ -89,14 +89,16 @@ def run(indexes):
 
         print('Backdoor target = {} with threshold = {} and fix_pos = {}'.format(args.target, args.threshold, args.fix_pos))
 
-        res = solver.solve(model, assertion)
+        res, stamp = solver.solve(model, assertion)
 
         if res is not None:
-            target_lst.append(res)
+            bd_target.append(res)
+            if stamp is None:
+                fa_target.append(res)
 
         # print('\n============================\n')
 
-    return target_lst
+    return bd_target, fa_target
 
 
 def main():
@@ -125,18 +127,26 @@ def main():
     indexes = zip(start, end)
 
     pool = multiprocessing.Pool(pool_size)
-    res = []
+    bd_target_lst, fa_target_lst = [], []
 
-    for target_lst in pool.map(run, indexes):
-        res += target_lst
+    for bd_target, fa_target in pool.map(run, indexes):
+        bd_target_lst += bd_target
+        fa_target_lst += fa_target
     pool.close()
 
-    if len(res) == 0:
+    if len(bd_target_lst) == 0:
         print('No backdoor!')
     else:
-        res.sort()
-        for target in res:
+        bd_target_lst.sort()
+        for target in bd_target_lst:
             print('Detect backdoor with target = {}!'.format(target))
+
+    if len(fa_target_lst) == 0:
+        print('No false alarm!')
+    else:
+        fa_target_lst.sort()
+        for target in fa_target_lst:
+            print('False alarm with target = {}!'.format(target))
 
 
 if __name__ == '__main__':
