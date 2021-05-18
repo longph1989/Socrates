@@ -24,6 +24,7 @@ class BackDoorImpl():
         size = np.array(ast.literal_eval(read(spec['size'])))
         threshold = ast.literal_eval(read(spec['threshold']))
         fix_pos = ast.literal_eval(read(spec['fix_pos']))
+        attack_only = ast.literal_eval(read(spec['attack_only']))
 
         dataset = spec['dataset']
 
@@ -48,7 +49,28 @@ class BackDoorImpl():
             if y0 == y0s[i] and y0 != target:
                 valid_x0s.append((x0, output_x0))
 
-        if len(valid_x0s) == 0: return None
+        if len(valid_x0s) == 0: return None, None
+
+        if attack_only:
+            if dataset == 'mnist':
+                positions = [0, 28 - size[0], 784 - 28 * size[1], 812 - size[0] - 28 * size[1]]
+            elif dataset == 'cifar':
+                positions = [0, 32 - size[0], 1024 - 32 * size[1], 1056 - size[0] - 32 * size[1]]
+
+            for position in positions:
+                backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
+
+                valid_x0s_with_bd = valid_x0s.copy()
+                self.__filter_x0s_with_bd(model, valid_x0s_with_bd, backdoor_indexes, target, threshold)
+
+                if len(valid_x0s_with_bd) / len(valid_x0s) >= 0.8:
+                    stamp = self.__attack_fix_pos(model, valid_x0s_with_bd, backdoor_indexes, target, threshold)
+
+                    if stamp is not None:
+                        print('position =', position)
+                        return target, stamp
+
+            return None, None
 
         valid_bdi = []
 
@@ -62,12 +84,31 @@ class BackDoorImpl():
                 valid_bdi.append(backdoor_indexes)
 
         if fix_pos:
-            return self.__solve_fix_pos(model, valid_x0s, valid_bdi, target, threshold)
+            return self.__verify_fix_pos(model, valid_x0s, valid_bdi, target, threshold)
         else:
-            return self.__solve_not_fix_pos(model, valid_x0s, valid_bdi, target, threshold)
+            return self.__verify_not_fix_pos(model, valid_x0s, valid_bdi, target, threshold)
 
 
-    def __solve_fix_pos(self, model, valid_x0s, valid_bdi, target, threshold):
+    def __filter_x0s_with_bd(self, model, valid_x0s, backdoor_indexes, target, threshold):
+        removed_x0s = []
+        for i in range(len(valid_x0s)):
+            x0, output_x0 = valid_x0s[i]
+
+            x_bd = x0.copy()
+            x_bd[backdoor_indexes] = 1.0
+
+            output_x_bd = model.apply(x_bd).reshape(-1)
+            target_x_bd = np.argmax(output_x_bd)
+
+            if (target_x_bd != target) and \
+                (threshold == -1 or softmax(output_lw)[target] - softmax(output_x0)[target] < threshold):
+                removed_x0s.insert(0, i)
+
+        for i in removed_x0s:
+            valid_x0s.pop(i)
+
+
+    def __verify_fix_pos(self, model, valid_x0s, valid_bdi, target, threshold):
         for backdoor_indexes in valid_bdi:
             cnt = 0
 
@@ -94,13 +135,13 @@ class BackDoorImpl():
                 else: break
 
             if cnt == len(valid_x0s):
-                stamp = self.__validate_fix_pos(model, valid_x0s, target, backdoor_indexes, threshold)
+                stamp = self.__attack_fix_pos(model, valid_x0s, backdoor_indexes, target, threshold)
                 return target, stamp
         
         return None, None
 
 
-    def __solve_not_fix_pos(self, model, valid_x0s, valid_bdi, target, threshold):
+    def __verify_not_fix_pos(self, model, valid_x0s, valid_bdi, target, threshold):
         backdoor_indexes_lst = []
 
         for x0, output_x0 in valid_x0s:
@@ -131,13 +172,13 @@ class BackDoorImpl():
 
             if not has_backdoor: return None, None
 
-        stamp = self.__validate_not_fix_pos(model, valid_x0s, target, backdoor_indexes_lst, threshold)
+        stamp = self.__attack_not_fix_pos(model, valid_x0s, backdoor_indexes_lst, target, threshold)
         
         return target, stamp
 
 
-    def __validate_fix_pos(self, model, valid_x0s, target, backdoor_indexes, threshold):
-        def obj_func(x, model, valid_x0s, target, backdoor_indexes):
+    def __attack_fix_pos(self, model, valid_x0s, backdoor_indexes, target, threshold):
+        def obj_func(x, model, valid_x0s, backdoor_indexes, target, threshold):
             res = 0
 
             for x0, output_x0 in valid_x0s:
@@ -167,7 +208,7 @@ class BackDoorImpl():
         lw = model.lower[backdoor_indexes]
         up = model.upper[backdoor_indexes]
 
-        args = (model, valid_x0s, target, backdoor_indexes)
+        args = (model, valid_x0s, backdoor_indexes, target, threshold)
         # jac = grad(obj_func)
         jac = None
         bounds = Bounds(lw, up)
@@ -181,8 +222,8 @@ class BackDoorImpl():
         return None
 
 
-    def __validate_not_fix_pos(self, model, valid_x0s, target, backdoor_indexes_lst, threshold):
-        def obj_func(x, model, valid_x0s, target, backdoor_indexes_lst):
+    def __attacks_not_fix_pos(self, model, valid_x0s, backdoor_indexes_lst, target, threshold):
+        def obj_func(x, model, valid_x0s, backdoor_indexes_lst, target, threshold):
             res = 0
 
             for i in range(len(valid_x0s)):
@@ -219,7 +260,7 @@ class BackDoorImpl():
             lw = np.maximum(lw, model.lower[backdoor_indexes])
             up = np.minimum(up, model.upper[backdoor_indexes])
 
-        args = (model, valid_x0s, target, backdoor_indexes_lst)
+        args = (model, valid_x0s, backdoor_indexes_lst, target, threshold)
         # jac = grad(obj_func)
         jac = None
         bounds = Bounds(lw, up)
