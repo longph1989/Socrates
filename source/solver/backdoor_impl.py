@@ -64,10 +64,11 @@ class BackDoorImpl():
                 self.__filter_x0s_with_bd(model, valid_x0s_with_bd, backdoor_indexes, target, threshold)
 
                 if len(valid_x0s_with_bd) / len(valid_x0s) >= 0.8:
+                    print('Begin attack with target =', target)
                     stamp = self.__attack_fix_pos(model, valid_x0s_with_bd, backdoor_indexes, target, threshold)
 
                     if stamp is not None:
-                        print('position =', position)
+                        print('Stamp position =', position)
                         return target, stamp
 
             return None, None

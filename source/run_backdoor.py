@@ -110,7 +110,13 @@ def run(indexes):
 def main():
     np.set_printoptions(threshold=20)
 
-    # res = run((0, 10))
+    bd_target_lst, fa_target_lst = [], []
+
+    # for i in range(10):
+    #     bd_target, fa_target = run((i, i+1))
+
+    #     bd_target_lst += bd_target
+    #     fa_target_lst += fa_target
 
     output_size = 10
     num_cores = os.cpu_count()
@@ -133,7 +139,6 @@ def main():
     indexes = zip(start, end)
 
     pool = multiprocessing.Pool(pool_size)
-    bd_target_lst, fa_target_lst = [], []
 
     for bd_target, fa_target in pool.map(run, indexes):
         bd_target_lst += bd_target
