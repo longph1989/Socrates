@@ -91,9 +91,11 @@ echo Running mnist_tanh_5_40.tf
 echo Running mnist_tanh_5_50.tf
 (time python -u source/run_backdoor.py --spec benchmark/cegar/nnet/mnist_tanh_5_50/spec.json --algorithm backdoor --dataset mnist_fc --threshold -1) &> results_backdoor_fix_pos/log_mnist_tanh_5_50.tf.txt
 
+echo Running mnist_conv_small_relu.tf
+(time python -u source/run_backdoor.py --spec benchmark/backdoor/eran/nnet/mnist_conv_small_relu/spec.json --algorithm backdoor --dataset mnist_conv --threshold -1) &> results_backdoor_fix_pos/log_mnist_conv_small_relu.tf.txt
+echo Running mnist_conv_small_relu_diffai.tf
+(time python -u source/run_backdoor.py --spec benchmark/backdoor/eran/nnet/mnist_conv_small_relu_diffai/spec.json --algorithm backdoor --dataset mnist_conv --threshold -1) &> results_backdoor_fix_pos/log_mnist_conv_small_relu_diffai.tf.txt
 echo Running mnist_conv_small_relu_pgd.tf
-(time python -u source/run_backdoor.py --spec benchmark/eran/nnet/mnist_conv_small_relu_pgd/spec.json --algorithm backdoor --dataset mnist_conv --threshold -1) &> results_backdoor_fix_pos/log_mnist_conv_small_relu_pgd.tf.txt
-echo Running cifar_conv_small_relu_pgd.tf
-(time python -u source/run_backdoor.py --spec benchmark/eran/nnet/cifar_conv_small_relu_pgd/spec.json --algorithm backdoor --dataset cifar_conv --threshold -1) &> results_backdoor_fix_pos/log_cifar_conv_small_relu_pgd.tf.txt
+(time python -u source/run_backdoor.py --spec benchmark/backdoor/eran/nnet/mnist_conv_small_relu_pgd/spec.json --algorithm backdoor --dataset mnist_conv --threshold -1) &> results_backdoor_fix_pos/log_mnist_conv_small_relu_pgd.tf.txt
 
 echo Done!
