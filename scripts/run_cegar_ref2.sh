@@ -91,9 +91,9 @@ echo Running mnist_tanh_5_40.tf
 echo Running mnist_tanh_5_50.tf
 (time python -u source/run_cegar.py --spec benchmark/cegar/nnet/mnist_tanh_5_50/spec.json --algorithm deepcegar --has_ref --ref_typ 2 --max_ref 100 --dataset mnist_fc) &> results_deepcegar_ref2/log_mnist_tanh_5_50.tf.txt
 echo Running mnist_relu_4_1024.tf
-(time python -u source/run_cegar.py --spec benchmark/cegar/nnet/mnist_relu_4_1024/spec.json --algorithm deepcegar --has_ref --ref_typ 2 --max_ref 100 --dataset mnist_fc --num_tests 10) &> results_deepcegar_ref2/log_mnist_relu_4_1024.tf.txt
+(time python -u source/run_cegar.py --spec benchmark/eran/nnet/mnist_relu_4_1024/spec.json --algorithm deepcegar --has_ref --ref_typ 2 --max_ref 100 --dataset mnist_fc --num_tests 10) &> results_deepcegar_ref2/log_mnist_relu_4_1024.tf.txt
 echo Running mnist_relu_6_100.tf
-(time python -u source/run_cegar.py --spec benchmark/cegar/nnet/mnist_relu_6_100/spec.json --algorithm deepcegar --has_ref --ref_typ 2 --max_ref 100 --dataset mnist_fc) &> results_deepcegar_ref2/log_mnist_relu_6_100.tf.txt
+(time python -u source/run_cegar.py --spec benchmark/eran/nnet/mnist_relu_6_100/spec.json --algorithm deepcegar --has_ref --ref_typ 2 --max_ref 100 --dataset mnist_fc) &> results_deepcegar_ref2/log_mnist_relu_6_100.tf.txt
 echo Running mnist_relu_9_200.tf
-(time python -u source/run_cegar.py --spec benchmark/cegar/nnet/mnist_relu_9_200/spec.json --algorithm deepcegar --has_ref --ref_typ 2 --max_ref 100 --dataset mnist_fc) &> results_deepcegar_ref2/log_mnist_relu_9_200.tf.txt
+(time python -u source/run_cegar.py --spec benchmark/eran/nnet/mnist_relu_9_200/spec.json --algorithm deepcegar --has_ref --ref_typ 2 --max_ref 100 --dataset mnist_fc) &> results_deepcegar_ref2/log_mnist_relu_9_200.tf.txt
 echo Done!

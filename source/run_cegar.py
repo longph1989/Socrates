@@ -84,17 +84,17 @@ def main():
     upper = model.upper
 
     if args.dataset == 'cifar_conv':
-        pathX = 'benchmark/cegar/data/cifar_conv/'
-        pathY = 'benchmark/cegar/data/labels/y_cifar.txt'
+        pathX = 'benchmark/eran/data/cifar_conv/'
+        pathY = 'benchmark/eran/data/labels/y_cifar.txt'
     elif args.dataset == 'cifar_fc':
-        pathX = 'benchmark/cegar/data/cifar_fc/'
-        pathY = 'benchmark/cegar/data/labels/y_cifar.txt'
+        pathX = 'benchmark/eran/data/cifar_fc/'
+        pathY = 'benchmark/eran/data/labels/y_cifar.txt'
     elif args.dataset == 'mnist_conv':
-        pathX = 'benchmark/cegar/data/mnist_conv/'
-        pathY = 'benchmark/cegar/data/labels/y_mnist.txt'
+        pathX = 'benchmark/eran/data/mnist_conv/'
+        pathY = 'benchmark/eran/data/labels/y_mnist.txt'
     elif args.dataset == 'mnist_fc':
-        pathX = 'benchmark/cegar/data/mnist_fc/'
-        pathY = 'benchmark/cegar/data/labels/y_mnist.txt'
+        pathX = 'benchmark/eran/data/mnist_fc/'
+        pathY = 'benchmark/eran/data/labels/y_mnist.txt'
 
     y0s = np.array(ast.literal_eval(read(pathY)))
 
@@ -163,9 +163,6 @@ def main():
             res = -1
 
         print('\n============================\n')
-
-
-
 
 
 if __name__ == '__main__':

@@ -66,17 +66,17 @@ def run(indexes):
         spec = json.load(f)
 
     if args.dataset == 'cifar_conv':
-        args.pathX = 'benchmark/cegar/data/cifar_conv/'
-        args.pathY = 'benchmark/cegar/data/labels/y_cifar.txt'
+        args.pathX = 'benchmark/eran/data/cifar_conv/'
+        args.pathY = 'benchmark/eran/data/labels/y_cifar.txt'
     elif args.dataset == 'cifar_fc':
-        args.pathX = 'benchmark/cegar/data/cifar_fc/'
-        args.pathY = 'benchmark/cegar/data/labels/y_cifar.txt'
+        args.pathX = 'benchmark/eran/data/cifar_fc/'
+        args.pathY = 'benchmark/eran/data/labels/y_cifar.txt'
     elif args.dataset == 'mnist_conv':
-        args.pathX = 'benchmark/cegar/data/mnist_conv/'
-        args.pathY = 'benchmark/cegar/data/labels/y_mnist.txt'
+        args.pathX = 'benchmark/eran/data/mnist_conv/'
+        args.pathY = 'benchmark/eran/data/labels/y_mnist.txt'
     elif args.dataset == 'mnist_fc':
-        args.pathX = 'benchmark/cegar/data/mnist_fc/'
-        args.pathY = 'benchmark/cegar/data/labels/y_mnist.txt'
+        args.pathX = 'benchmark/eran/data/mnist_fc/'
+        args.pathY = 'benchmark/eran/data/labels/y_mnist.txt'
 
     bd_target, fa_target = [], []
 

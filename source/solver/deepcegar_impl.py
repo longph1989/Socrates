@@ -99,6 +99,9 @@ class DeepCegarImpl():
         if adv is None:
             x0_poly = Poly()
 
+            # print('lw = {}'.format(lw))
+            # print('up = {}'.format(up))
+
             x0_poly.lw, x0_poly.up = lw, up
             # just let x0_poly.le and x0_poly.ge is None
             x0_poly.shape = model.shape

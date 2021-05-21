@@ -92,8 +92,8 @@ echo Running mnist_tanh_5_50.tf
 (time python -u source/run_backdoor.py --spec benchmark/cegar/nnet/mnist_tanh_5_50/spec.json --algorithm backdoor --dataset mnist_fc --threshold -1 --fix_pos False) &> results_backdoor_not_fix_pos/log_mnist_tanh_5_50.tf.txt
 
 echo Running mnist_conv_small_relu_pgd.tf
-(time python -u source/run_backdoor.py --spec benchmark/cegar/nnet1/mnist_conv_small_relu_pgd/spec.json --algorithm backdoor --dataset mnist_conv --threshold -1 --fix_pos False) &> results_backdoor_not_fix_pos/log_mnist_conv_small_relu_pgd.tf.txt
+(time python -u source/run_backdoor.py --spec benchmark/eran/nnet/mnist_conv_small_relu_pgd/spec.json --algorithm backdoor --dataset mnist_conv --threshold -1 --fix_pos False) &> results_backdoor_not_fix_pos/log_mnist_conv_small_relu_pgd.tf.txt
 echo Running cifar_conv_small_relu_pgd.tf
-(time python -u source/run_backdoor.py --spec benchmark/cegar/nnet1/cifar_conv_small_relu_pgd/spec.json --algorithm backdoor --dataset cifar_conv --threshold -1 --fix_pos False) &> results_backdoor_not_fix_pos/log_cifar_conv_small_relu_pgd.tf.txt
+(time python -u source/run_backdoor.py --spec benchmark/eran/nnet/cifar_conv_small_relu_pgd/spec.json --algorithm backdoor --dataset cifar_conv --threshold -1 --fix_pos False) &> results_backdoor_not_fix_pos/log_cifar_conv_small_relu_pgd.tf.txt
 
 echo Done!
