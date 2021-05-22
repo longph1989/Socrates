@@ -223,7 +223,7 @@ class BackDoorImpl():
         return None
 
 
-    def __attacks_not_fix_pos(self, model, valid_x0s, backdoor_indexes_lst, target, threshold):
+    def __attack_not_fix_pos(self, model, valid_x0s, backdoor_indexes_lst, target, threshold):
         def obj_func(x, model, valid_x0s, backdoor_indexes_lst, target, threshold):
             res = 0
 
