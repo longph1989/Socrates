@@ -53,9 +53,9 @@ class BackDoorImpl():
 
         if attack_only:
             if dataset == 'mnist':
-                positions = [0, 28 - size[0], 784 - 28 * size[1], 812 - size[0] - 28 * size[1]]
+                positions = [0, 28 - size[1], 784 - 28 * size[0], 812 - size[1] - 28 * size[0]]
             elif dataset == 'cifar':
-                positions = [0, 32 - size[0], 1024 - 32 * size[1], 1056 - size[0] - 32 * size[1]]
+                positions = [0, 32 - size[1], 1024 - 32 * size[0], 1056 - size[1] - 32 * size[0]]
 
             for position in positions:
                 backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
@@ -276,6 +276,9 @@ class BackDoorImpl():
 
 
     def __get_backdoor_indexes(self, size, position, dataset):
+        if position < 0:
+            return None
+
         if dataset == 'mnist':
             num_chans, num_rows, num_cols = 1, 28, 28
         elif dataset == 'cifar':
