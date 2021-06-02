@@ -15,10 +15,16 @@ def add_assertion(args, spec):
     assertion = dict()
 
     assertion['target'] = args.target
-    assertion['size'] = args.size
+    assertion['size'] = np.array(ast.literal_eval(args.size))
     assertion['threshold'] = args.threshold
+
     assertion['fix_pos'] = args.fix_pos
-    assertion['attack_only'] = args.attack_only
+    assertion['atk_only'] = args.atk_only
+
+    if args.atk_only:
+        assertion['atk_pos'] = args.atk_pos
+
+    assertion['num_imgs'] = args.num_imgs
 
     if 'mnist' in args.dataset:
         assertion['dataset'] = 'mnist'
@@ -40,60 +46,59 @@ def add_solver(args, spec):
     spec['solver'] = solver
 
 
-def run(indexes):
-    start, end = indexes[0], indexes[1]
+def get_dataset(dataset):
+    if dataset == 'cifar_conv':
+        pathX = 'benchmark/eran/data/cifar_conv/'
+        pathY = 'benchmark/eran/data/labels/y_cifar.txt'
+    elif dataset == 'cifar_fc':
+        pathX = 'benchmark/eran/data/cifar_fc/'
+        pathY = 'benchmark/eran/data/labels/y_cifar.txt'
+    elif dataset == 'mnist_conv':
+        pathX = 'benchmark/eran/data/mnist_conv/'
+        pathY = 'benchmark/eran/data/labels/y_mnist.txt'
+    elif dataset == 'mnist_fc':
+        pathX = 'benchmark/eran/data/mnist_fc/'
+        pathY = 'benchmark/eran/data/labels/y_mnist.txt'
 
-    parser = argparse.ArgumentParser(description='nSolver')
+    return pathX, pathY
 
-    parser.add_argument('--spec', type=str, default='spec.json',
-                        help='the specification file')
-    parser.add_argument('--size', type=str, default='(3,3)',
-                        help='the size of the backdoor')
-    parser.add_argument('--threshold', type=str, default='0.1',
-                        help='the threshold')
-    parser.add_argument('--fix_pos', type=str, default='True',
-                        help='turn on/off fixed position')
-    parser.add_argument('--attack_only', type=str, default='False',
-                        help='turn on/off fixed position')
-    parser.add_argument('--algorithm', type=str, default='backdoor',
-                        help='the chosen algorithm')
-    parser.add_argument('--dataset', type=str,
-                        help='the data set for BACKDOOR experiments')
 
-    args = parser.parse_args()
+def run_attack(args):
+    print('Backdoor target = {} with threshold = {} and attack only = {} at position = {}'.
+        format(args.target, args.threshold, args.atk_only, args.atk_pos))
 
     with open(args.spec, 'r') as f:
         spec = json.load(f)
 
-    if args.dataset == 'cifar_conv':
-        args.pathX = 'benchmark/eran/data/cifar_conv/'
-        args.pathY = 'benchmark/eran/data/labels/y_cifar.txt'
-    elif args.dataset == 'cifar_fc':
-        args.pathX = 'benchmark/eran/data/cifar_fc/'
-        args.pathY = 'benchmark/eran/data/labels/y_cifar.txt'
-    elif args.dataset == 'mnist_conv':
-        args.pathX = 'benchmark/eran/data/mnist_conv/'
-        args.pathY = 'benchmark/eran/data/labels/y_mnist.txt'
-    elif args.dataset == 'mnist_fc':
-        args.pathX = 'benchmark/eran/data/mnist_fc/'
-        args.pathY = 'benchmark/eran/data/labels/y_mnist.txt'
+    args.pathX, args.pathY = get_dataset(args.dataset)
+
+    add_assertion(args, spec)
+    add_solver(args, spec)
+
+    model, assertion, solver, display = parse(spec)
+
+    res, stamp = solver.solve(model, assertion)
+
+
+def run_verify(zipped_args):
+    start, end, args = zipped_args[0], zipped_args[1], zipped_args[2]
+
+    with open(args.spec, 'r') as f:
+        spec = json.load(f)
+
+    args.pathX, args.pathY = get_dataset(args.dataset)
 
     bd_target, fa_target = [], []
 
     for target in range(start, end):
-        args.target = str(target)
+        args.target = target
 
-        # print('\n============================\n')
+        print('Backdoor target = {} with threshold = {} and fix_pos = {}'.format(args.target, args.threshold, args.fix_pos))
 
         add_assertion(args, spec)
         add_solver(args, spec)
 
         model, assertion, solver, display = parse(spec)
-
-        if args.attack_only == 'True':
-            print('Backdoor target = {} with threshold = {} and attack_only = {}'.format(args.target, args.threshold, args.attack_only))
-        else:
-            print('Backdoor target = {} with threshold = {} and fix_pos = {}'.format(args.target, args.threshold, args.fix_pos))
 
         res, stamp = solver.solve(model, assertion)
 
@@ -102,62 +107,98 @@ def run(indexes):
             if stamp is None:
                 fa_target.append(res)
 
-        # print('\n============================\n')
-
     return bd_target, fa_target
+
+
+def run_verify_parallel(args):
+    bd_target_lst, fa_target_lst = [], []
+
+    output_size = 10
+    num_cores = os.cpu_count()
+
+    if args.num_procs > 0:
+        pool_size = args.num_procs
+    else:
+        pool_size = num_cores if num_cores <= output_size else output_size
+
+    quo = int(output_size / pool_size)
+    rem = int(output_size % pool_size)
+
+    idx, srt_lst, end_lst, args_lst = 0, [], [], []
+
+    for i in range(pool_size):
+        srt_lst.append(idx)
+        idx += quo
+        if rem > 0:
+            idx += 1
+            rem -= 1
+        end_lst.append(idx)
+        args_lst.append(args)
+
+    zipped_args = zip(srt_lst, end_lst, args_lst)
+
+    pool = multiprocessing.Pool(pool_size)
+
+    for bd_target, fa_target in pool.map(run_verify, zipped_args):
+        bd_target_lst += bd_target
+        fa_target_lst += fa_target
+    pool.close()
+
+    print('\n==============\n')
+    if len(bd_target_lst) == 0:
+        print('No backdoor')
+    else:
+        bd_target_lst.sort()
+        for target in bd_target_lst:
+            print('Detect backdoor with target = {}'.format(target))
+
+    if len(fa_target_lst) == 0:
+        print('No false alarm')
+    else:
+        fa_target_lst.sort()
+        for target in fa_target_lst:
+            print('False alarm with target = {}'.format(target))
 
 
 def main():
     np.set_printoptions(threshold=20)
 
-    bd_target_lst, fa_target_lst = [], []
+    parser = argparse.ArgumentParser(description='nSolver')
 
-    # for i in range(10):
-    #     bd_target, fa_target = run((i, i+1))
+    parser.add_argument('--spec', type=str, default='spec.json',
+                        help='the specification file')
+    parser.add_argument('--size', type=str, default='(3,3)',
+                        help='the size of the backdoor')
+    parser.add_argument('--threshold', type=float, default=1.0,
+                        help='the threshold')
+    parser.add_argument('--target', type=int,
+                        help='the target used in verify and attack')
 
-    #     bd_target_lst += bd_target
-    #     fa_target_lst += fa_target
+    # for verification
+    parser.add_argument('--fix_pos', action='store_true',
+                        help='turn on/off fixed position')
+    
+    # for attacking
+    parser.add_argument('--atk_only', action='store_true',
+                        help='turn on/off attack')
+    parser.add_argument('--atk_pos', type=int,
+                        help='the attack position')
+    
+    parser.add_argument('--algorithm', type=str, default='backdoor',
+                        help='the chosen algorithm')
+    parser.add_argument('--num_procs', type=int, default=0,
+                        help='the number of processes')
+    parser.add_argument('--num_imgs', type=int, default=100,
+                        help='the number of images')
+    parser.add_argument('--dataset', type=str,
+                        help='the data set for BACKDOOR experiments')
 
-    output_size = 10
-    num_cores = os.cpu_count()
+    args = parser.parse_args()
 
-    pool_size = num_cores if num_cores <= output_size else output_size
-
-    quo = int(output_size / pool_size)
-    rem = int(output_size % pool_size)
-
-    idx, start, end = 0, [], []
-
-    for i in range(pool_size):
-        start.append(idx)
-        idx += quo
-        if rem > 0:
-            idx += 1
-            rem -= 1
-        end.append(idx)
-
-    indexes = zip(start, end)
-
-    pool = multiprocessing.Pool(pool_size)
-
-    for bd_target, fa_target in pool.map(run, indexes):
-        bd_target_lst += bd_target
-        fa_target_lst += fa_target
-    pool.close()
-
-    if len(bd_target_lst) == 0:
-        print('No backdoor!')
+    if args.atk_only:
+        run_attack(args)
     else:
-        bd_target_lst.sort()
-        for target in bd_target_lst:
-            print('Detect backdoor with target = {}!'.format(target))
-
-    if len(fa_target_lst) == 0:
-        print('No false alarm!')
-    else:
-        fa_target_lst.sort()
-        for target in fa_target_lst:
-            print('False alarm with target = {}!'.format(target))
+        run_verify_parallel(args)
 
 
 if __name__ == '__main__':

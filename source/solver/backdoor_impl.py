@@ -20,56 +20,57 @@ import matplotlib.pyplot as plt
 
 class BackDoorImpl():
     def __solve_backdoor(self, model, spec, display):
-        target = ast.literal_eval(read(spec['target']))
-        size = np.array(ast.literal_eval(read(spec['size'])))
-        threshold = ast.literal_eval(read(spec['threshold']))
-        fix_pos = ast.literal_eval(read(spec['fix_pos']))
-        attack_only = ast.literal_eval(read(spec['attack_only']))
+        target = spec['target']
+        size = spec['size']
+        threshold = spec['threshold']
+        
+        fix_pos = spec['fix_pos']
+        atk_only = spec['atk_only']
 
+        num_imgs = spec['num_imgs']
         dataset = spec['dataset']
 
         valid_x0s = []
         y0s = np.array(ast.literal_eval(read(spec['pathY'])))
 
-        for i in range(100):
-            # print('\n==============\n')
-
+        for i in range(num_imgs):
             pathX = spec['pathX'] + 'data' + str(i) + '.txt'
             x0 = np.array(ast.literal_eval(read(pathX)))
 
             output_x0 = model.apply(x0).reshape(-1)
             y0 = np.argmax(output_x0)
 
-            # print('Data {}\n'.format(i))
-            # print('x0 = {}'.format(x0))
-            # print('output_x0 = {}'.format(output_x0))
-            # print('y0 = {}'.format(y0))
-            # print('y0[i] = {}\n'.format(y0s[i]))
+            if atk_only or target == 0:
+                print('\n==============\n')
+                print('Data {}\n'.format(i))
+                print('x0 = {}'.format(x0))
+                print('output_x0 = {}'.format(output_x0))
+                print('y0 = {}'.format(y0))
+                print('y0[i] = {}\n'.format(y0s[i]))
 
             if y0 == y0s[i] and y0 != target:
                 valid_x0s.append((x0, output_x0))
 
         if len(valid_x0s) == 0: return None, None
 
-        if attack_only:
-            if dataset == 'mnist':
-                positions = [0, 28 - size[1], 784 - 28 * size[0], 812 - size[1] - 28 * size[0]]
-            elif dataset == 'cifar':
-                positions = [0, 32 - size[1], 1024 - 32 * size[0], 1056 - size[1] - 32 * size[0]]
+        if atk_only:
+            position = spec['atk_pos']
+            backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
 
-            for position in positions:
-                backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
+            valid_x0s_with_bd = valid_x0s.copy()
+            self.__filter_x0s_with_bd(model, valid_x0s_with_bd, backdoor_indexes, target, threshold)
 
-                valid_x0s_with_bd = valid_x0s.copy()
-                self.__filter_x0s_with_bd(model, valid_x0s_with_bd, backdoor_indexes, target, threshold)
+            if len(valid_x0s_with_bd) / len(valid_x0s) >= 0.8:
+                print('Begin attack with target =', target)
+                stamp = self.__attack_fix_pos(model, valid_x0s_with_bd, backdoor_indexes, target, threshold)
 
-                if len(valid_x0s_with_bd) / len(valid_x0s) >= 0.8:
-                    print('Begin attack with target =', target)
-                    stamp = self.__attack_fix_pos(model, valid_x0s_with_bd, backdoor_indexes, target, threshold)
-
-                    if stamp is not None:
-                        print('Stamp position =', position)
-                        return target, stamp
+                if stamp is not None:
+                    print('Stamp position =', position)
+                    return target, stamp
+                else:
+                    print('No stamp')
+            else:
+                print('Not enough data for the attack with target =', target)
 
             return None, None
 
@@ -101,8 +102,7 @@ class BackDoorImpl():
             output_x_bd = model.apply(x_bd).reshape(-1)
             target_x_bd = np.argmax(output_x_bd)
 
-            if (target_x_bd != target) and \
-                (threshold == -1 or softmax(output_lw)[target] - softmax(output_x0)[target] < threshold):
+            if (target_x_bd != target) and (softmax(output_x_bd)[target] - softmax(output_x0)[target] < threshold):
                 removed_x0s.insert(0, i)
 
         for i in removed_x0s:
@@ -130,15 +130,20 @@ class BackDoorImpl():
                 output_lw, output_up = lst_poly[-1].lw.copy(), lst_poly[-1].up.copy()
                 output_lw[target] = output_up[target]
 
-                if (np.argmax(output_lw) == target) or \
-                    (threshold > 0 and softmax(output_lw)[target] - softmax(output_x0)[target] >= threshold):
+                if (np.argmax(output_lw) == target) or (softmax(output_lw)[target] - softmax(output_x0)[target] >= threshold):
                     cnt += 1
                 else: break
 
             if cnt == len(valid_x0s):
+                print('Detect fix_pos backdoor with target = {} and position = {}'.format(target, backdoor_indexes))
                 stamp = self.__attack_fix_pos(model, valid_x0s, backdoor_indexes, target, threshold)
+                
+                if stamp is None:
+                    print('No fix_pos stamp with target = {}'.format(target))
+                
                 return target, stamp
         
+        print('No fix_pos backdoor with target = {}'.format(target))
         return None, None
 
 
@@ -165,16 +170,21 @@ class BackDoorImpl():
                 output_lw, output_up = lst_poly[-1].lw.copy(), lst_poly[-1].up.copy()
                 output_lw[target] = output_up[target]
 
-                if (np.argmax(output_lw) == target) or \
-                    (threshold > 0 and softmax(output_lw)[target] - softmax(output_x0)[target] >= threshold):
+                if (np.argmax(output_lw) == target) or (softmax(output_lw)[target] - softmax(output_x0)[target] >= threshold):
                     has_backdoor = True
                     backdoor_indexes_lst.append(backdoor_indexes)
                     break
 
-            if not has_backdoor: return None, None
+            if not has_backdoor:
+                print('No not_fix_pos backdoor with target = {}'.format(target))
+                return None, None
 
         stamp = self.__attack_not_fix_pos(model, valid_x0s, backdoor_indexes_lst, target, threshold)
         
+        print('Detect not_fix_pos backdoor with target = {}'.format(target))
+        if stamp is None:
+            print('No not_fix_pos stamp with target = {}'.format(target))
+
         return target, stamp
 
 
@@ -194,14 +204,12 @@ class BackDoorImpl():
 
                 if target_score > max_score:
                     res += 0
-                elif threshold == -1:
-                    res += max_score - target_score
                 else:
                     diff = softmax(output)[target] - softmax(output_x0)[target]
                     if diff >= threshold:
                         res += 0
                     else:
-                        res += threshold - diff
+                        res += (max_score - target_score + 1e-9) * (threshold - diff)
 
             return res
 
@@ -217,7 +225,7 @@ class BackDoorImpl():
         res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
 
         if res.fun <= 0: # an adversarial sample is generated
-            print('res.x = {}'.format(res.x))
+            print('Target = {} with fix_pos stamp = {} and position = {}'.format(target, res.x, backdoor_indexes))
             return res.x
 
         return None
@@ -242,14 +250,12 @@ class BackDoorImpl():
 
                 if target_score > max_score:
                     res += 0
-                elif threshold == -1:
-                    res += max_score - target_score
                 else:
                     diff = softmax(output)[target] - softmax(output_x0)[target]
                     if diff >= threshold:
                         res += 0
                     else:
-                        res += threshold - diff
+                        res += (max_score - target_score + 1e-9) * (threshold - diff)
 
             return res
 
@@ -269,7 +275,7 @@ class BackDoorImpl():
         res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
 
         if res.fun <= 0: # an adversarial sample is generated
-            print('res.x = {}'.format(res.x))
+            print('Target = {} with not_fix_pos stamp = {}'.format(target, res.x))
             return res.x
 
         return None
