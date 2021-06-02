@@ -51,7 +51,9 @@ class BackDoorImpl():
             if y0 == y0s[i] and y0 != target:
                 valid_x0s.append((x0, output_x0))
 
-        if len(valid_x0s) == 0: return None, None
+        if len(valid_x0s) == 0:
+            print('No data to run target =', target)
+            return None, None
 
         if atk_only:
             position = spec['atk_pos']
