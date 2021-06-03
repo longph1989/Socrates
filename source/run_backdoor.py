@@ -15,7 +15,7 @@ def add_assertion(args, spec):
     assertion = dict()
 
     assertion['target'] = args.target
-    assertion['size'] = np.array(ast.literal_eval(args.size))
+    assertion['size'] = args.size
     assertion['threshold'] = args.threshold
 
     assertion['fix_pos'] = args.fix_pos
@@ -64,8 +64,8 @@ def get_dataset(dataset):
 
 
 def run_attack(args):
-    print('Backdoor target = {} with threshold = {} and attack only = {} at position = {}'.
-        format(args.target, args.threshold, args.atk_only, args.atk_pos))
+    print('Backdoor target = {} with size = {}, threshold = {} and attack only = {} at position = {}'.
+        format(args.target, args.size, args.threshold, args.atk_only, args.atk_pos))
 
     with open(args.spec, 'r') as f:
         spec = json.load(f)
@@ -93,7 +93,8 @@ def run_verify(zipped_args):
     for target in range(start, end):
         args.target = target
 
-        print('Backdoor target = {} with threshold = {} and fix_pos = {}'.format(args.target, args.threshold, args.fix_pos))
+        print('Backdoor target = {} with size = {}, threshold = {} and fix_pos = {}'.
+            format(args.target, args.size, args.threshold, args.fix_pos))
 
         add_assertion(args, spec)
         add_solver(args, spec)
@@ -167,7 +168,7 @@ def main():
 
     parser.add_argument('--spec', type=str, default='spec.json',
                         help='the specification file')
-    parser.add_argument('--size', type=str, default='(3,3)',
+    parser.add_argument('--size', type=int, default=3,
                         help='the size of the backdoor')
     parser.add_argument('--threshold', type=float, default=1.0,
                         help='the threshold')

@@ -55,6 +55,9 @@ class BackDoorImpl():
             print('No data to run target =', target)
             return None, None
 
+        if atk_only or target == 0:
+            print('Lower bound = {} and Upper bound = {}'.format(model.lower[0], model.upper[0]))
+
         if atk_only:
             position = spec['atk_pos']
             backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
@@ -86,6 +89,9 @@ class BackDoorImpl():
 
             if not(backdoor_indexes is None):
                 valid_bdi.append(backdoor_indexes)
+
+        if target == 0:
+            print('Number of valid positions = {}'.format(len(valid_bdi)))
 
         if fix_pos:
             return self.__verify_fix_pos(model, valid_x0s, valid_bdi, target, threshold)
@@ -295,15 +301,15 @@ class BackDoorImpl():
         row_idx = int(position / num_cols)
         col_idx = position - row_idx * num_cols
 
-        if row_idx + size[0] > num_rows or col_idx + size[1] > num_cols:
+        if row_idx + size > num_rows or col_idx + size > num_cols:
             return None
 
         indexes = []
 
         for i in range(num_chans):
             tmp = position + i * num_rows * num_cols
-            for j in range(size[0]):
-                for k in range(size[1]):
+            for j in range(size):
+                for k in range(size):
                     indexes.append(tmp + k)
                 tmp += num_cols
 
