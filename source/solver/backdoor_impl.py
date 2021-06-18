@@ -7,6 +7,9 @@ import time
 import random
 import math
 
+import gurobipy as gp
+from gurobipy import GRB
+
 from scipy.optimize import minimize
 from scipy.optimize import Bounds
 from autograd import grad
@@ -22,9 +25,10 @@ class BackDoorImpl():
     def __solve_backdoor(self, model, spec, display):
         target = spec['target']
         size = spec['size']
+
+        rate = spec['rate']
         threshold = spec['threshold']
         
-        fix_pos = spec['fix_pos']
         atk_only = spec['atk_only']
 
         num_imgs = spec['num_imgs']
@@ -33,7 +37,7 @@ class BackDoorImpl():
         valid_x0s = []
         y0s = np.array(ast.literal_eval(read(spec['pathY'])))
 
-        for i in range(num_imgs):
+        for i in range(100):
             pathX = spec['pathX'] + 'data' + str(i) + '.txt'
             x0 = np.array(ast.literal_eval(read(pathX)))
 
@@ -63,11 +67,11 @@ class BackDoorImpl():
             backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
 
             valid_x0s_with_bd = valid_x0s.copy()
-            self.__filter_x0s_with_bd(model, valid_x0s_with_bd, backdoor_indexes, target, threshold)
+            self.__filter_x0s_with_bd(model, valid_x0s_with_bd, backdoor_indexes, target)
 
             if len(valid_x0s_with_bd) / len(valid_x0s) >= 0.8:
                 print('Begin attack with target =', target)
-                stamp = self.__attack_fix_pos(model, valid_x0s_with_bd, backdoor_indexes, target, threshold)
+                stamp = self.__attack(model, valid_x0s_with_bd, backdoor_indexes, target)
 
                 if stamp is not None:
                     print('Stamp position =', position)
@@ -93,13 +97,10 @@ class BackDoorImpl():
         if target == 0:
             print('Number of valid positions = {}'.format(len(valid_bdi)))
 
-        if fix_pos:
-            return self.__verify_fix_pos(model, valid_x0s, valid_bdi, target, threshold)
-        else:
-            return self.__verify_not_fix_pos(model, valid_x0s, valid_bdi, target, threshold)
+        return self.__verify(model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold)
+        
 
-
-    def __filter_x0s_with_bd(self, model, valid_x0s, backdoor_indexes, target, threshold):
+    def __filter_x0s_with_bd(self, model, valid_x0s, backdoor_indexes, target):
         removed_x0s = []
         for i in range(len(valid_x0s)):
             x0, output_x0 = valid_x0s[i]
@@ -110,16 +111,132 @@ class BackDoorImpl():
             output_x_bd = model.apply(x_bd).reshape(-1)
             target_x_bd = np.argmax(output_x_bd)
 
-            if (target_x_bd != target) and (softmax(output_x_bd)[target] - softmax(output_x0)[target] < threshold):
+            if target_x_bd != target:
                 removed_x0s.insert(0, i)
 
         for i in removed_x0s:
             valid_x0s.pop(i)
 
 
-    def __verify_fix_pos(self, model, valid_x0s, valid_bdi, target, threshold):
+    def __write_problem(self, lst_poly_coll, backdoor_indexes, target):
+        filename = 'prob' + str(target) + '.lp'
+        prob = open(filename, 'w')
+
+        prob.write('Minimize\n')
+        prob.write('  0\n')
+
+        prob.write('Subject To\n')
+
+        prev_var_idx = 0
+        curr_var_idx = 0
+        cnt_cons = 0
+
+        fst_round = True
+
+        for lst_poly in lst_poly_coll:
+            fst_layer = True
+
+            for poly in lst_poly:
+                if fst_layer:
+                    if not fst_round:
+                        for i in range(len(poly.lw)):
+                            if i in backdoor_indexes:
+                                prob.write('  c{}: x{} - x{} = 0\n'.format(cnt_cons, i, curr_var_idx + i))
+                                cnt_cons += 1
+
+                    prev_var_idx = curr_var_idx
+                    curr_var_idx += 784
+                    fst_layer = False
+                else:
+                    for i in range(len(poly.lw)):
+                        ge, le = poly.ge[i], poly.le[i]
+
+                        if np.all(ge == le):
+                            prob.write('  c{}: '.format(cnt_cons))
+                            prob.write(str(ge[-1]))
+                        
+                            for j in range(len(ge[:-1])):
+                                coef = ge[j]
+                                var_idx = prev_var_idx + j
+
+                                if coef > 0:
+                                    prob.write(' + {} x{}'.format(coef, var_idx))
+                                elif coef < 0:
+                                    prob.write(' - {} x{}'.format(abs(coef), var_idx))
+                        
+                            prob.write(' - x{} = 0\n'.format(curr_var_idx))
+                            cnt_cons += 1
+                        else:
+                            prob.write('  c{}: '.format(cnt_cons))
+                            prob.write(str(ge[-1]))
+                        
+                            for j in range(len(ge[:-1])):
+                                coef = ge[j]
+                                var_idx = prev_var_idx + j
+
+                                if coef > 0:
+                                    prob.write(' + {} x{}'.format(coef, var_idx))
+                                elif coef < 0:
+                                    prob.write(' - {} x{}'.format(abs(coef), var_idx))
+                            
+                            prob.write(' - x{} <= 0\n'.format(curr_var_idx))
+                            cnt_cons += 1
+
+                            prob.write('  c{}: '.format(cnt_cons))
+                            prob.write(str(le[-1]))
+                        
+                            for j in range(len(le[:-1])):
+                                coef = le[j]
+                                var_idx = prev_var_idx + j
+
+                                if coef > 0:
+                                    prob.write(' + {} x{}'.format(coef, var_idx))
+                                elif coef < 0:
+                                    prob.write(' - {} x{}'.format(abs(coef), var_idx))
+                        
+                            prob.write(' - x{} >= 0\n'.format(curr_var_idx))
+                            cnt_cons += 1
+
+                        curr_var_idx += 1
+
+                prev_var_idx = curr_var_idx - len(poly.lw)
+
+            for i in range(10):
+                if i != target:
+                    prob.write('  c{}: x{} - x{} > 0\n'.format(cnt_cons, prev_var_idx + target, prev_var_idx + i))
+                    cnt_cons += 1
+
+            fst_round = False
+
+        prob.write('Bounds\n')
+
+        var_idx = 0
+
+        for lst_poly in lst_poly_coll:
+            for poly in lst_poly:
+                for i in range(len(poly.lw)):
+                    lw_i = poly.lw[i]
+                    up_i = poly.up[i]
+
+                    if not fst_layer or fst_init or not(i in backdoor_indexes):
+                        if lw_i == up_i:
+                            prob.write('  x{} = {}\n'.format(var_idx, lw_i))
+                        else:
+                            prob.write('  {} <= x{} <= {}\n'.format(lw_i, var_idx, up_i))
+
+                        var_idx += 1
+
+        prob.write('End\n')
+
+        prob.flush()
+        prob.close()
+
+
+    def __verifyI(self, model, valid_x0s, valid_bdi, target):
+        is_unknown = False
+
         for backdoor_indexes in valid_bdi:
-            cnt = 0
+            cnt, lst_poly_coll = 0, []
 
             for x0, output_x0 in valid_x0s:
                 lw, up = x0.copy(), x0.copy()
@@ -138,66 +255,139 @@ class BackDoorImpl():
                 output_lw, output_up = lst_poly[-1].lw.copy(), lst_poly[-1].up.copy()
                 output_lw[target] = output_up[target]
 
-                if (np.argmax(output_lw) == target) or (softmax(output_lw)[target] - softmax(output_x0)[target] >= threshold):
+                if np.argmax(output_lw) == target:
                     cnt += 1
-                else: break
-
-            if cnt == len(valid_x0s):
-                print('Detect fix_pos backdoor with target = {} and position = {}'.format(target, backdoor_indexes))
-                stamp = self.__attack_fix_pos(model, valid_x0s, backdoor_indexes, target, threshold)
-                
-                if stamp is None:
-                    print('No fix_pos stamp with target = {}'.format(target))
-                
-                return target, stamp
-        
-        print('No fix_pos backdoor with target = {}'.format(target))
-        return None, None
-
-
-    def __verify_not_fix_pos(self, model, valid_x0s, valid_bdi, target, threshold):
-        backdoor_indexes_lst = []
-
-        for x0, output_x0 in valid_x0s:
-            has_backdoor = False
-
-            for backdoor_indexes in valid_bdi:
-                lw, up = x0.copy(), x0.copy()
-
-                lw[backdoor_indexes] = model.lower[backdoor_indexes]
-                up[backdoor_indexes] = model.upper[backdoor_indexes]
-
-                x0_poly = Poly()
-                x0_poly.lw, x0_poly.up = lw, up
-                # just let x0_poly.le and x0_poly.ge is None
-                x0_poly.shape = model.shape
-
-                lst_poly = [x0_poly]
-                self.__run(model, 0, lst_poly)
-
-                output_lw, output_up = lst_poly[-1].lw.copy(), lst_poly[-1].up.copy()
-                output_lw[target] = output_up[target]
-
-                if (np.argmax(output_lw) == target) or (softmax(output_lw)[target] - softmax(output_x0)[target] >= threshold):
-                    has_backdoor = True
-                    backdoor_indexes_lst.append(backdoor_indexes)
+                else:
                     break
 
-            if not has_backdoor:
-                print('No not_fix_pos backdoor with target = {}'.format(target))
-                return None, None
+                lst_poly_coll.append(lst_poly)
 
-        stamp = self.__attack_not_fix_pos(model, valid_x0s, backdoor_indexes_lst, target, threshold)
+            if cnt == len(valid_x0s): # unsafe, try solver
+                self.__write_problem(lst_poly_coll, backdoor_indexes, target)
+
+                filename = 'prob' + str(target) + '.lp'
+                opt = gp.read(filename)
+                opt.setParam(GRB.Param.DualReductions, 0)
+
+                opt.optimize()
+
+                if opt.status == GRB.INFEASIBLE:
+                    pass
+                elif opt.status == GRB.OPTIMAL:
+                    stamp = self.__get_stamp(opt, backdoor_indexes)
+
+                    print('Solve target = {} with stamp = {} and position = {}'.format(target, stamp, backdoor_indexes))
+
+                    if not self.__validate(model, valid_x0s, backdoor_indexes, target, stamp, 1.0):
+                        print('The stamp for target = {} is not validate with chosen images I'.format(target))
+                        stamp = self.__attack(model, valid_x0s, backdoor_indexes, target)
+
+                    if stamp is not None:
+                        return False, (stamp, backdoor_indexes)
+                    else:
+                        is_unknown = True
+                else:
+                    stamp = self.__attack(model, valid_x0s, backdoor_indexes, target)
+
+                    if stamp is not None:
+                        return False, (stamp, backdoor_indexes)
+                    else:
+                        is_unknown = True
+
+        if is_unknown:
+            return False, None
+        else:
+            return True, None
+
+
+    def __hypothesis_test(self, model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold):
+        rate_k = pow(rate, num_imgs)
+
+        p0 = (1 - rate_k) + threshold
+        p1 = (1 - rate_k) - threshold
+
+        print('p0 = {}, p1 = {}'.format(p0, p1))
+
+        alpha, beta = 0.01, 0.01
+
+        h0 = beta / (1 - alpha) # 0.01
+        h1 = (1 - beta) / alpha # 99.0
+
+        pr, no = 1, 0
         
-        print('Detect not_fix_pos backdoor with target = {}'.format(target))
-        if stamp is None:
-            print('No not_fix_pos stamp with target = {}'.format(target))
+        while True:
+            no = no + 1
 
-        return target, stamp
+            if num_imgs >= len(valid_x0s):
+                assert False
+            else:
+                chosen_idx = np.random.choice(len(valid_x0s), num_imgs, replace=False)
+                chosen_x0s = []
+                for i in chosen_idx:
+                    chosen_x0s.append(valid_x0s[i])
+
+            res, sbi = self.__verifyI(model, chosen_x0s, valid_bdi, target)
+
+            if res: # no backdoor
+                pr = pr * p1 / p0 # decrease, favorite H0
+            elif sbi is not None: # backdoor with stamp
+                stamp, backdoor_indexes = sbi[0], sbi[1]
+                if self.__validate(model, valid_x0s, backdoor_indexes, target, stamp, rate):
+                    return False, sbi
+                else:
+                    pr = pr * (1 - p1) / (1 - p0) # increase, favorite H1
+            else: # unknown
+                pr = pr * (1 - p1) / (1 - p0) # increase, favorite H1
+
+            if pr <= h0:
+                print('Accept H0. The probability of not having an attack with target = {} >= {} for K = {}.'.format(target, p0, num_imgs))
+                return True, None
+            elif pr >= h1:
+                print('Accept H1. The probability of not having an attack with target = {} <= {} for K = {}.'.format(target, p1, num_imgs))
+                return False, None
 
 
-    def __attack_fix_pos(self, model, valid_x0s, backdoor_indexes, target, threshold):
-        def obj_func(x, model, valid_x0s, backdoor_indexes, target, threshold):
+    def __verify(self, model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold):
+        for K in range(1, num_imgs + 1):
+            res, sbi = self.__hypothesis_test(model, valid_x0s, valid_bdi, target, K, rate, threshold)
+
+            if res:
+                return None, None
+            elif sbi is not None:
+                stamp, backdoor_indexes = sbi[0], sbi[1]
+                print('Real stamp = {} for target = {} at position = {}'.format(stamp, target, backdoor_indexes))
+                return target, stamp
+
+        return target, None
+
+
+    def __get_stamp(self, opt, backdoor_indexes):
+        stamp = []
+
+        for idx in backdoor_indexes:
+            var = opt.getVarByName('x' + str(idx))
+            stamp.append(var.x)
+
+        return np.array(stamp)
+
+
+    def __validate(self, model, valid_x0s, backdoor_indexes, target, stamp, rate):
+        cnt = 0
+
+        for x0, output_x0 in valid_x0s:
+            xi = x0.copy()
+            xi[backdoor_indexes] = stamp
+
+            output = model.apply(xi).reshape(-1)
+
+            if np.argmax(output) == target: # attack successfully
+                cnt += 1
+
+        return (cnt / len(valid_x0s)) >= rate
+
+
+    def __attack(self, model, valid_x0s, backdoor_indexes, target):
+        def obj_func(x, model, valid_x0s, backdoor_indexes, target):
             res = 0
 
             for x0, output_x0 in valid_x0s:
@@ -213,11 +403,7 @@ class BackDoorImpl():
                 if target_score > max_score:
                     res += 0
                 else:
-                    diff = softmax(output)[target] - softmax(output_x0)[target]
-                    if diff >= threshold:
-                        res += 0
-                    else:
-                        res += (max_score - target_score + 1e-9) * (threshold - diff)
+                    res += max_score - target_score + 1e-9
 
             return res
 
@@ -225,7 +411,7 @@ class BackDoorImpl():
         lw = model.lower[backdoor_indexes]
         up = model.upper[backdoor_indexes]
 
-        args = (model, valid_x0s, backdoor_indexes, target, threshold)
+        args = (model, valid_x0s, backdoor_indexes, target)
         # jac = grad(obj_func)
         jac = None
         bounds = Bounds(lw, up)
@@ -233,57 +419,7 @@ class BackDoorImpl():
         res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
 
         if res.fun <= 0: # an adversarial sample is generated
-            print('Target = {} with fix_pos stamp = {} and position = {}'.format(target, res.x, backdoor_indexes))
-            return res.x
-
-        return None
-
-
-    def __attack_not_fix_pos(self, model, valid_x0s, backdoor_indexes_lst, target, threshold):
-        def obj_func(x, model, valid_x0s, backdoor_indexes_lst, target, threshold):
-            res = 0
-
-            for i in range(len(valid_x0s)):
-                x0, output_x0 = valid_x0s[i]
-                backdoor_indexes = backdoor_indexes_lst[i]
-
-                xi = x0.copy()
-                xi[backdoor_indexes] = x
-
-                output = model.apply(xi).reshape(-1)
-                target_score = output[target]
-
-                output_no_target = output - np.eye(len(output))[target] * 1e9
-                max_score = np.max(output_no_target)
-
-                if target_score > max_score:
-                    res += 0
-                else:
-                    diff = softmax(output)[target] - softmax(output_x0)[target]
-                    if diff >= threshold:
-                        res += 0
-                    else:
-                        res += (max_score - target_score + 1e-9) * (threshold - diff)
-
-            return res
-
-        x = np.zeros(len(backdoor_indexes_lst[0]))
-        lw = model.lower[backdoor_indexes_lst[0]]
-        up = model.upper[backdoor_indexes_lst[0]]
-
-        for backdoor_indexes in backdoor_indexes_lst:
-            lw = np.maximum(lw, model.lower[backdoor_indexes])
-            up = np.minimum(up, model.upper[backdoor_indexes])
-
-        args = (model, valid_x0s, backdoor_indexes_lst, target, threshold)
-        # jac = grad(obj_func)
-        jac = None
-        bounds = Bounds(lw, up)
-
-        res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
-
-        if res.fun <= 0: # an adversarial sample is generated
-            print('Target = {} with not_fix_pos stamp = {}'.format(target, res.x))
+            print('Attack target = {} with stamp = {} and position = {}'.format(target, res.x, backdoor_indexes))
             return res.x
 
         return None

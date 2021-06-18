@@ -16,9 +16,10 @@ def add_assertion(args, spec):
 
     assertion['target'] = args.target
     assertion['size'] = args.size
+
+    assertion['rate'] = args.rate
     assertion['threshold'] = args.threshold
 
-    assertion['fix_pos'] = args.fix_pos
     assertion['atk_only'] = args.atk_only
 
     if args.atk_only:
@@ -64,8 +65,8 @@ def get_dataset(dataset):
 
 
 def run_attack(args):
-    print('Backdoor target = {} with size = {}, threshold = {} and attack only = {} at position = {}'.
-        format(args.target, args.size, args.threshold, args.atk_only, args.atk_pos))
+    print('Backdoor target = {} with size = {}, num imgs = {}, and attack only = {} at position = {}'.
+        format(args.target, args.size, args.num_imgs, args.atk_only, args.atk_pos))
 
     with open(args.spec, 'r') as f:
         spec = json.load(f)
@@ -93,8 +94,8 @@ def run_verify(zipped_args):
     for target in range(start, end):
         args.target = target
 
-        print('Backdoor target = {} with size = {}, threshold = {} and fix_pos = {}'.
-            format(args.target, args.size, args.threshold, args.fix_pos))
+        print('Backdoor target = {} with size = {}, num imgs = {}, rate = {}, and threshold = {}'.
+            format(args.target, args.size, args.num_imgs, args.rate, args.threshold))
 
         add_assertion(args, spec)
         add_solver(args, spec)
@@ -114,7 +115,7 @@ def run_verify(zipped_args):
 def run_verify_parallel(args):
     bd_target_lst, fa_target_lst = [], []
 
-    output_size = 10
+    output_size = 1
     num_cores = os.cpu_count()
 
     if args.num_procs > 0:
@@ -170,15 +171,13 @@ def main():
                         help='the specification file')
     parser.add_argument('--size', type=int, default=3,
                         help='the size of the backdoor')
-    parser.add_argument('--threshold', type=float, default=1.0,
+    parser.add_argument('--rate', type=float, default=0.90,
+                        help='the success rate')
+    parser.add_argument('--threshold', type=float, default=0.005,
                         help='the threshold')
     parser.add_argument('--target', type=int,
                         help='the target used in verify and attack')
 
-    # for verification
-    parser.add_argument('--fix_pos', action='store_true',
-                        help='turn on/off fixed position')
-    
     # for attacking
     parser.add_argument('--atk_only', action='store_true',
                         help='turn on/off attack')
@@ -189,7 +188,7 @@ def main():
                         help='the chosen algorithm')
     parser.add_argument('--num_procs', type=int, default=0,
                         help='the number of processes')
-    parser.add_argument('--num_imgs', type=int, default=100,
+    parser.add_argument('--num_imgs', type=int, default=10,
                         help='the number of images')
     parser.add_argument('--dataset', type=str,
                         help='the data set for BACKDOOR experiments')
