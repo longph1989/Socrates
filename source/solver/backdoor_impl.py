@@ -276,10 +276,10 @@ class BackDoorImpl():
                 elif opt.status == GRB.OPTIMAL:
                     stamp = self.__get_stamp(opt, backdoor_indexes)
 
-                    print('Solve target = {} with stamp = {} and position = {}'.format(target, stamp, backdoor_indexes))
+                    # print('Solve target = {} with stamp = {} and position = {}'.format(target, stamp, backdoor_indexes))
 
                     if not self.__validate(model, valid_x0s, backdoor_indexes, target, stamp, 1.0):
-                        print('The stamp for target = {} is not validate with chosen images I'.format(target))
+                        # print('The stamp for target = {} is not validate with chosen images I'.format(target))
                         stamp = self.__attack(model, valid_x0s, backdoor_indexes, target)
 
                     if stamp is not None:
@@ -306,7 +306,7 @@ class BackDoorImpl():
         p0 = (1 - rate_k) + threshold
         p1 = (1 - rate_k) - threshold
 
-        print('p0 = {}, p1 = {}'.format(p0, p1))
+        # print('p0 = {}, p1 = {}'.format(p0, p1))
 
         alpha, beta = 0.01, 0.01
 
@@ -329,17 +329,17 @@ class BackDoorImpl():
             res, sbi = self.__verifyI(model, chosen_x0s, valid_bdi, target)
 
             if res: # no backdoor
-                print('VerifyI with target = {}'.format(target, rate))
+                # print('VerifyI with target = {}'.format(target, rate))
                 pr = pr * p1 / p0 # decrease, favorite H0
             elif sbi is not None: # backdoor with stamp
                 stamp, backdoor_indexes = sbi[0], sbi[1]
                 if self.__validate(model, valid_x0s, backdoor_indexes, target, stamp, rate):
                     return False, sbi
                 else:
-                    print('The stamp for target = {} is not validate with all images with rate = {}'.format(target, rate))
+                    # print('The stamp for target = {} is not validate with all images with rate = {}'.format(target, rate))
                     pr = pr * (1 - p1) / (1 - p0) # increase, favorite H1
             else: # unknown
-                print('Unknown with target = {}'.format(target, rate))
+                # print('Unknown with target = {}'.format(target, rate))
                 pr = pr * (1 - p1) / (1 - p0) # increase, favorite H1
 
             if pr <= h0:
@@ -422,7 +422,7 @@ class BackDoorImpl():
         res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
 
         if res.fun <= 0: # an adversarial sample is generated
-            print('Attack target = {} with stamp = {} and position = {}'.format(target, res.x, backdoor_indexes))
+            # print('Attack target = {} with stamp = {} and position = {}'.format(target, res.x, backdoor_indexes))
             return res.x
 
         return None

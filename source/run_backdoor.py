@@ -115,7 +115,7 @@ def run_verify(zipped_args):
 def run_verify_parallel(args):
     bd_target_lst, fa_target_lst = [], []
 
-    output_size = 1
+    output_size = 10
     num_cores = os.cpu_count()
 
     if args.num_procs > 0:
