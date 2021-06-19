@@ -329,21 +329,24 @@ class BackDoorImpl():
             res, sbi = self.__verifyI(model, chosen_x0s, valid_bdi, target)
 
             if res: # no backdoor
+                print('VerifyI with target = {}'.format(target, rate))
                 pr = pr * p1 / p0 # decrease, favorite H0
             elif sbi is not None: # backdoor with stamp
                 stamp, backdoor_indexes = sbi[0], sbi[1]
                 if self.__validate(model, valid_x0s, backdoor_indexes, target, stamp, rate):
                     return False, sbi
                 else:
+                    print('The stamp for target = {} is not validate with all images with rate = {}'.format(target, rate))
                     pr = pr * (1 - p1) / (1 - p0) # increase, favorite H1
             else: # unknown
+                print('Unknown with target = {}'.format(target, rate))
                 pr = pr * (1 - p1) / (1 - p0) # increase, favorite H1
 
             if pr <= h0:
-                print('Accept H0. The probability of not having an attack with target = {} >= {} for K = {}.'.format(target, p0, num_imgs))
+                print('Accept H0 after {} rounds. The probability of not having an attack with target = {} >= {} for K = {}.'.format(no, target, p0, num_imgs))
                 return True, None
             elif pr >= h1:
-                print('Accept H1. The probability of not having an attack with target = {} <= {} for K = {}.'.format(target, p1, num_imgs))
+                print('Accept H1 after {} rounds. The probability of not having an attack with target = {} <= {} for K = {}.'.format(no, target, p1, num_imgs))
                 return False, None
 
 
