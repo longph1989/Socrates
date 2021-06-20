@@ -37,14 +37,14 @@ class BackDoorImpl():
         valid_x0s = []
         y0s = np.array(ast.literal_eval(read(spec['pathY'])))
 
-        for i in range(100):
+        for i in range(10000):
             pathX = spec['pathX'] + 'data' + str(i) + '.txt'
             x0 = np.array(ast.literal_eval(read(pathX)))
 
             output_x0 = model.apply(x0).reshape(-1)
             y0 = np.argmax(output_x0)
 
-            if atk_only or target == 0:
+            if (atk_only or target == 0) and i < 10:
                 print('\n==============\n')
                 print('Data {}\n'.format(i))
                 print('x0 = {}'.format(x0))
@@ -58,6 +58,8 @@ class BackDoorImpl():
         if len(valid_x0s) == 0:
             print('No data to run target =', target)
             return None, None
+
+        print('Number of valid_x0s = {} for target = {}'.format(len(valid_x0s), target))
 
         if atk_only or target == 0:
             print('Lower bound = {} and Upper bound = {}'.format(model.lower[0], model.upper[0]))
@@ -218,13 +220,12 @@ class BackDoorImpl():
                     lw_i = poly.lw[i]
                     up_i = poly.up[i]
 
-                    if not fst_layer or fst_init or not(i in backdoor_indexes):
-                        if lw_i == up_i:
-                            prob.write('  x{} = {}\n'.format(var_idx, lw_i))
-                        else:
-                            prob.write('  {} <= x{} <= {}\n'.format(lw_i, var_idx, up_i))
+                    if lw_i == up_i:
+                        prob.write('  x{} = {}\n'.format(var_idx, lw_i))
+                    else:
+                        prob.write('  {} <= x{} <= {}\n'.format(lw_i, var_idx, up_i))
 
-                        var_idx += 1
+                    var_idx += 1
 
         prob.write('End\n')
 
@@ -272,6 +273,7 @@ class BackDoorImpl():
                 opt.optimize()
 
                 if opt.status == GRB.INFEASIBLE:
+                    # print('Infeasible')
                     pass
                 elif opt.status == GRB.OPTIMAL:
                     stamp = self.__get_stamp(opt, backdoor_indexes)

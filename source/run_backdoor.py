@@ -55,11 +55,11 @@ def get_dataset(dataset):
         pathX = 'benchmark/eran/data/cifar_fc/'
         pathY = 'benchmark/eran/data/labels/y_cifar.txt'
     elif dataset == 'mnist_conv':
-        pathX = 'benchmark/eran/data/mnist_conv/'
-        pathY = 'benchmark/eran/data/labels/y_mnist.txt'
+        pathX = 'benchmark/eran/data/mnist_conv_full/'
+        pathY = 'benchmark/eran/data/labels/y_mnist_full.txt'
     elif dataset == 'mnist_fc':
-        pathX = 'benchmark/eran/data/mnist_fc/'
-        pathY = 'benchmark/eran/data/labels/y_mnist.txt'
+        pathX = 'benchmark/eran/data/mnist_fc_full/'
+        pathY = 'benchmark/eran/data/labels/y_mnist_full.txt'
 
     return pathX, pathY
 
