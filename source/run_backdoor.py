@@ -25,6 +25,7 @@ def add_assertion(args, spec):
     if args.atk_only:
         assertion['atk_pos'] = args.atk_pos
 
+    assertion['total_imgs'] = args.total_imgs
     assertion['num_imgs'] = args.num_imgs
 
     if 'mnist' in args.dataset:
@@ -65,8 +66,8 @@ def get_dataset(dataset):
 
 
 def run_attack(args):
-    print('Backdoor target = {} with size = {}, num imgs = {}, and attack only = {} at position = {}'.
-        format(args.target, args.size, args.num_imgs, args.atk_only, args.atk_pos))
+    print('Backdoor target = {} with size = {}, total imgs = {}, num imgs = {}, and attack only = {} at position = {}'.
+        format(args.target, args.size, args.total_imgs, args.num_imgs, args.atk_only, args.atk_pos))
 
     with open(args.spec, 'r') as f:
         spec = json.load(f)
@@ -89,31 +90,34 @@ def run_verify(zipped_args):
 
     args.pathX, args.pathY = get_dataset(args.dataset)
 
-    bd_target, fa_target = [], []
+    bd_target, fa_target, sb_target = [], [], []
 
     for target in range(start, end):
         args.target = target
 
-        print('Backdoor target = {} with size = {}, num imgs = {}, rate = {}, and threshold = {}'.
-            format(args.target, args.size, args.num_imgs, args.rate, args.threshold))
+        print('Backdoor target = {} with size = {}, total imgs = {}, num imgs = {}, rate = {}, and threshold = {}'.
+            format(args.target, args.size, args.total_imgs, args.num_imgs, args.rate, args.threshold))
 
         add_assertion(args, spec)
         add_solver(args, spec)
 
         model, assertion, solver, display = parse(spec)
 
-        res, stamp = solver.solve(model, assertion)
+        res, sbi = solver.solve(model, assertion)
 
         if res is not None:
             bd_target.append(res)
-            if stamp is None:
+        
+            if sbi is None:
                 fa_target.append(res)
+            else:
+                sb_target.append(res)
 
-    return bd_target, fa_target
+    return bd_target, fa_target, sb_target
 
 
 def run_verify_parallel(args):
-    bd_target_lst, fa_target_lst = [], []
+    bd_target_lst, fa_target_lst, sb_target_lst = [], [], []
 
     output_size = 10
     num_cores = os.cpu_count()
@@ -141,12 +145,14 @@ def run_verify_parallel(args):
 
     pool = multiprocessing.Pool(pool_size)
 
-    for bd_target, fa_target in pool.map(run_verify, zipped_args):
+    for bd_target, fa_target, sb_target in pool.map(run_verify, zipped_args):
         bd_target_lst += bd_target
         fa_target_lst += fa_target
+        sb_target_lst += sb_target
     pool.close()
 
     print('\n==============\n')
+
     if len(bd_target_lst) == 0:
         print('No backdoor')
     else:
@@ -161,8 +167,17 @@ def run_verify_parallel(args):
         for target in fa_target_lst:
             print('False alarm with target = {}'.format(target))
 
+    if len(sb_target_lst) == 0:
+        print('No stamp')
+    else:
+        sb_target_lst.sort()
+        for target in sb_target_lst:
+            print('Stamp with target = {}'.format(target))
+
 
 def main():
+    start = time.time()
+
     np.set_printoptions(threshold=20)
 
     parser = argparse.ArgumentParser(description='nSolver')
@@ -173,7 +188,7 @@ def main():
                         help='the size of the backdoor')
     parser.add_argument('--rate', type=float, default=0.90,
                         help='the success rate')
-    parser.add_argument('--threshold', type=float, default=0.005,
+    parser.add_argument('--threshold', type=float, default=0.01,
                         help='the threshold')
     parser.add_argument('--target', type=int,
                         help='the target used in verify and attack')
@@ -188,7 +203,9 @@ def main():
                         help='the chosen algorithm')
     parser.add_argument('--num_procs', type=int, default=0,
                         help='the number of processes')
-    parser.add_argument('--num_imgs', type=int, default=10,
+    parser.add_argument('--total_imgs', type=int, default=10000,
+                        help='the number of images')
+    parser.add_argument('--num_imgs', type=int, default=100,
                         help='the number of images')
     parser.add_argument('--dataset', type=str,
                         help='the data set for BACKDOOR experiments')
@@ -199,6 +216,14 @@ def main():
         run_attack(args)
     else:
         run_verify_parallel(args)
+
+    end = time.time()
+
+    t = round(end - start)
+    m = int(t / 60)
+    s = t - 60 * m
+
+    print('Running time = {}m {}s'.format(m, s))
 
 
 if __name__ == '__main__':

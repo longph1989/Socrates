@@ -31,13 +31,14 @@ class BackDoorImpl():
         
         atk_only = spec['atk_only']
 
+        total_imgs = spec['total_imgs']
         num_imgs = spec['num_imgs']
         dataset = spec['dataset']
 
         valid_x0s = []
         y0s = np.array(ast.literal_eval(read(spec['pathY'])))
 
-        for i in range(10000):
+        for i in range(total_imgs):
             pathX = spec['pathX'] + 'data' + str(i) + '.txt'
             x0 = np.array(ast.literal_eval(read(pathX)))
 
@@ -56,7 +57,7 @@ class BackDoorImpl():
                 valid_x0s.append((x0, output_x0))
 
         if len(valid_x0s) == 0:
-            print('No data to run target =', target)
+            print('No data to analyze target = {}'.format(target))
             return None, None
 
         print('Number of valid_x0s = {} for target = {}'.format(len(valid_x0s), target))
@@ -65,6 +66,8 @@ class BackDoorImpl():
             print('Lower bound = {} and Upper bound = {}'.format(model.lower[0], model.upper[0]))
 
         if atk_only:
+            print('Run attack with target = {}'.format(target))
+
             position = spec['atk_pos']
             backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
 
@@ -72,18 +75,17 @@ class BackDoorImpl():
             self.__filter_x0s_with_bd(model, valid_x0s_with_bd, backdoor_indexes, target)
 
             if len(valid_x0s_with_bd) / len(valid_x0s) >= 0.8:
-                print('Begin attack with target =', target)
                 stamp = self.__attack(model, valid_x0s_with_bd, backdoor_indexes, target)
 
                 if stamp is not None:
-                    print('Stamp position =', position)
-                    return target, stamp
+                    print('Real stamp = {} for target = {} at position = {}'.format(stamp, target, backdoor_indexes))
+                    return target, (stamp, backdoor_indexes)
                 else:
-                    print('No stamp')
+                    print('No stamp for target = {}'.format(target))
+                    return target, None
             else:
-                print('Not enough data for the attack with target =', target)
-
-            return None, None
+                print('Only {} remaining data, not enough for the attack with target = {}'.format(len(valid_x0s_with_bd), target))
+                return None, None
 
         valid_bdi = []
 
@@ -303,9 +305,9 @@ class BackDoorImpl():
 
 
     def __hypothesis_test(self, model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold):
-        rate_k = pow(rate, num_imgs)
+        rate_k = pow(rate, num_imgs) # attack num_imgs successfully at the same time
 
-        p0 = (1 - rate_k) + threshold
+        p0 = (1 - rate_k) + threshold # not having the attack
         p1 = (1 - rate_k) - threshold
 
         # print('p0 = {}, p1 = {}'.format(p0, p1))
@@ -335,7 +337,7 @@ class BackDoorImpl():
                 pr = pr * p1 / p0 # decrease, favorite H0
             elif sbi is not None: # backdoor with stamp
                 stamp, backdoor_indexes = sbi[0], sbi[1]
-                if self.__validate(model, valid_x0s, backdoor_indexes, target, stamp, rate):
+                if self.__validate(model, valid_x0s, backdoor_indexes, target, stamp, rate): # real stamp
                     return False, sbi
                 else:
                     # print('The stamp for target = {} is not validate with all images with rate = {}'.format(target, rate))
@@ -353,17 +355,21 @@ class BackDoorImpl():
 
 
     def __verify(self, model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold):
-        for K in range(1, num_imgs + 1):
-            res, sbi = self.__hypothesis_test(model, valid_x0s, valid_bdi, target, K, rate, threshold)
+        if rate == 1.0: # no hypothesis test when rate = 1.0, instead try to verify all images
+            print('Run verifyI with target = {}'.format(target))
+            res, sbi = self.__verifyI(model, valid_x0s, valid_bdi, target)
+        else:
+            print('Run hypothesis test with target = {}'.format(target))
+            res, sbi = self.__hypothesis_test(model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold)
 
-            if res:
-                return None, None
-            elif sbi is not None:
-                stamp, backdoor_indexes = sbi[0], sbi[1]
-                print('Real stamp = {} for target = {} at position = {}'.format(stamp, target, backdoor_indexes))
-                return target, stamp
-
-        return target, None
+        if res:
+            return None, None
+        elif sbi is not None:
+            stamp, backdoor_indexes = sbi[0], sbi[1]
+            print('Real stamp = {} for target = {} at position = {}'.format(stamp, target, backdoor_indexes))
+            return target, sbi
+        else:
+            return target, None
 
 
     def __get_stamp(self, opt, backdoor_indexes):

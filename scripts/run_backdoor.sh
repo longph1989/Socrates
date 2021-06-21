@@ -1,14 +1,12 @@
-# ./scripts/run_backdoor_attack_only.sh
+./scripts/run_backdoor_attack.sh
 
-./scripts/run_backdoor_fix_pos.sh
-./scripts/run_backdoor_not_fix_pos.sh
+./scripts/run_backdoor_verifyI1.sh
+./scripts/run_backdoor_verifyI2.sh
+./scripts/run_backdoor_verifyI3.sh
 
-./scripts/run_backdoor_fix_pos_i010.sh
-./scripts/run_backdoor_fix_pos_s055.sh
-./scripts/run_backdoor_fix_pos_t005.sh
+./scripts/run_backdoor_hyptest1.sh
+./scripts/run_backdoor_hyptest2.sh
+./scripts/run_backdoor_hyptest3.sh
+./scripts/run_backdoor_hyptest4.sh
 
-./scripts/run_backdoor_not_fix_pos_i010.sh
-./scripts/run_backdoor_not_fix_pos_s055.sh
-./scripts/run_backdoor_not_fix_pos_t005.sh
-
-echo DONE
+echo Done!
