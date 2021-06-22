@@ -322,7 +322,7 @@ class BackDoorImpl():
         while True:
             no = no + 1
 
-            if num_imgs >= len(valid_x0s):
+            if num_imgs > len(valid_x0s):
                 assert False
             else:
                 chosen_idx = np.random.choice(len(valid_x0s), num_imgs, replace=False)
