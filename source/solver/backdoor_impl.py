@@ -163,7 +163,7 @@ class BackDoorImpl():
     def __write_constr_output_layer(self, prob, cnt_imgs, target, prev_var_idx):
         for i in range(10):
             if i != target:
-                prob.write('  x{}_{} - x{}_{} > 0\n'.format(prev_var_idx + target, cnt_imgs, prev_var_idx + i, cnt_imgs))
+                prob.write('  x{}_{} - x{}_{} > 0.0\n'.format(prev_var_idx + target, cnt_imgs, prev_var_idx + i, cnt_imgs))
 
         prob.flush()
 
