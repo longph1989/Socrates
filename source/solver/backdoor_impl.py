@@ -51,7 +51,7 @@ class BackDoorImpl():
                 print('x0 = {}'.format(x0))
                 print('output_x0 = {}'.format(output_x0))
                 print('y0 = {}'.format(y0))
-                print('y0[i] = {}\n'.format(y0s[i]))
+                print('y0s[i] = {}\n'.format(y0s[i]))
 
             if y0 == y0s[i] and y0 != target:
                 valid_x0s.append((x0, output_x0))
@@ -122,6 +122,125 @@ class BackDoorImpl():
             valid_x0s.pop(i)
 
 
+    def __write_constr_input_layer(self, prob, cnt_imgs, coefs, const, op, backdoor_indexes, prev_var_idx, curr_var_idx):
+        prob.write('  x{}_{}'.format(curr_var_idx, cnt_imgs))
+
+        for i in range(len(coefs)):
+            coef = coefs[i]
+            var_idx = prev_var_idx + i
+
+            if coef > 0:
+                if var_idx in backdoor_indexes:
+                    prob.write(' + {} x{}'.format(coef, var_idx))
+                else:
+                    prob.write(' + {} x{}_{}'.format(coef, var_idx, cnt_imgs))
+            elif coef < 0:
+                if var_idx in backdoor_indexes:
+                    prob.write(' - {} x{}'.format(abs(coef), var_idx))
+                else:
+                    prob.write(' - {} x{}_{}'.format(abs(coef), var_idx, cnt_imgs))
+
+        prob.write(' {} {}\n'.format(op, const))
+        prob.flush()
+
+
+    def __write_constr_hidden_layers(self, prob, cnt_imgs, coefs, const, op, prev_var_idx, curr_var_idx):
+        prob.write('  x{}_{}'.format(curr_var_idx, cnt_imgs))
+
+        for i in range(len(coefs)):
+            coef = coefs[i]
+            var_idx = prev_var_idx + i
+
+            if coef > 0:
+                prob.write(' + {} x{}_{}'.format(coef, var_idx, cnt_imgs))
+            elif coef < 0:
+                prob.write(' - {} x{}_{}'.format(abs(coef), var_idx, cnt_imgs))
+
+        prob.write(' {} {}\n'.format(op, const))
+        prob.flush()
+
+
+    def __write_constr_output_layer(self, prob, cnt_imgs, target, prev_var_idx):
+        for i in range(10):
+            if i != target:
+                prob.write('  x{}_{} - x{}_{} > 0\n'.format(prev_var_idx + target, cnt_imgs, prev_var_idx + i, cnt_imgs))
+
+        prob.flush()
+
+
+    def __write_constr(self, prob, lst_poly_coll, backdoor_indexes, target):
+        size = len(lst_poly_coll[0][0].lw)
+        cnt_imgs = 0
+
+        for lst_poly in lst_poly_coll:
+            first_layer = True
+            prev_var_idx = 0
+            curr_var_idx = size
+
+            for poly in lst_poly[1:]:
+                if first_layer:
+                    for i in range(len(poly.lw)):
+                        coefs = -poly.ge[i][:-1]
+                        const = poly.ge[i][-1]
+
+                        self.__write_constr_input_layer(prob, cnt_imgs, coefs, const, '=', backdoor_indexes, prev_var_idx, curr_var_idx + i)
+                    first_layer = False
+                else:
+                    for i in range(len(poly.lw)):
+                        ge, le = poly.ge[i], poly.le[i]
+
+                        if np.all(ge == le):
+                            coefs = -poly.ge[i][:-1]
+                            const = poly.ge[i][-1]
+
+                            self.__write_constr_hidden_layers(prob, cnt_imgs, coefs, const, '=', prev_var_idx, curr_var_idx + i)
+                        else:
+                            coefs_ge = -poly.ge[i][:-1]
+                            const_ge = poly.ge[i][-1]
+
+                            self.__write_constr_hidden_layers(prob, cnt_imgs, coefs_ge, const_ge, '>=', prev_var_idx, curr_var_idx + i)
+
+                            coefs_le = -poly.le[i][:-1]
+                            const_le = poly.le[i][-1]
+
+                            self.__write_constr_hidden_layers(prob, cnt_imgs, coefs_le, const_le, '<=', prev_var_idx, curr_var_idx + i)
+
+                prev_var_idx = curr_var_idx
+                curr_var_idx += len(poly.lw)
+
+            self.__write_constr_output_layer(prob, cnt_imgs, target, prev_var_idx)
+
+            cnt_imgs += 1
+
+
+    def __write_bounds(self, prob, lst_poly_coll, backdoor_indexes):
+        lw0, up0 = lst_poly_coll[0][0].lw, lst_poly_coll[0][0].up
+
+        for var_idx in range(len(lw0)):
+            if var_idx in backdoor_indexes:
+                prob.write('  {} <= x{} <= {}\n'.format(lw0[var_idx], var_idx, up0[var_idx]))
+
+        cnt_imgs = 0
+
+        for lst_poly in lst_poly_coll:
+            var_idx = 0
+            for poly in lst_poly:
+                for i in range(len(poly.lw)):
+                    lw_i = poly.lw[i]
+                    up_i = poly.up[i]
+
+                    if var_idx not in backdoor_indexes:
+                        if lw_i == up_i:
+                            prob.write('  x{}_{} = {}\n'.format(var_idx, cnt_imgs, lw_i))
+                        else:
+                            prob.write('  {} <= x{}_{} <= {}\n'.format(lw_i, var_idx, cnt_imgs, up_i))
+
+                    var_idx += 1
+            cnt_imgs += 1
+
+        prob.flush()
+
+
     def __write_problem(self, lst_poly_coll, backdoor_indexes, target):
         filename = 'prob' + str(target) + '.lp'
         prob = open(filename, 'w')
@@ -131,103 +250,11 @@ class BackDoorImpl():
 
         prob.write('Subject To\n')
 
-        prev_var_idx = 0
-        curr_var_idx = 0
-        cnt_cons = 0
-
-        fst_round = True
-
-        for lst_poly in lst_poly_coll:
-            fst_layer = True
-
-            for poly in lst_poly:
-                if fst_layer:
-                    if not fst_round:
-                        for i in range(len(poly.lw)):
-                            if i in backdoor_indexes:
-                                prob.write('  c{}: x{} - x{} = 0\n'.format(cnt_cons, i, curr_var_idx + i))
-                                cnt_cons += 1
-
-                    prev_var_idx = curr_var_idx
-                    curr_var_idx += 784
-                    fst_layer = False
-                else:
-                    for i in range(len(poly.lw)):
-                        ge, le = poly.ge[i], poly.le[i]
-
-                        if np.all(ge == le):
-                            prob.write('  c{}: '.format(cnt_cons))
-                            prob.write(str(ge[-1]))
-                        
-                            for j in range(len(ge[:-1])):
-                                coef = ge[j]
-                                var_idx = prev_var_idx + j
-
-                                if coef > 0:
-                                    prob.write(' + {} x{}'.format(coef, var_idx))
-                                elif coef < 0:
-                                    prob.write(' - {} x{}'.format(abs(coef), var_idx))
-                        
-                            prob.write(' - x{} = 0\n'.format(curr_var_idx))
-                            cnt_cons += 1
-                        else:
-                            prob.write('  c{}: '.format(cnt_cons))
-                            prob.write(str(ge[-1]))
-                        
-                            for j in range(len(ge[:-1])):
-                                coef = ge[j]
-                                var_idx = prev_var_idx + j
-
-                                if coef > 0:
-                                    prob.write(' + {} x{}'.format(coef, var_idx))
-                                elif coef < 0:
-                                    prob.write(' - {} x{}'.format(abs(coef), var_idx))
-                            
-                            prob.write(' - x{} <= 0\n'.format(curr_var_idx))
-                            cnt_cons += 1
-
-                            prob.write('  c{}: '.format(cnt_cons))
-                            prob.write(str(le[-1]))
-                        
-                            for j in range(len(le[:-1])):
-                                coef = le[j]
-                                var_idx = prev_var_idx + j
-
-                                if coef > 0:
-                                    prob.write(' + {} x{}'.format(coef, var_idx))
-                                elif coef < 0:
-                                    prob.write(' - {} x{}'.format(abs(coef), var_idx))
-                        
-                            prob.write(' - x{} >= 0\n'.format(curr_var_idx))
-                            cnt_cons += 1
-
-                        curr_var_idx += 1
-
-                prev_var_idx = curr_var_idx - len(poly.lw)
-
-            for i in range(10):
-                if i != target:
-                    prob.write('  c{}: x{} - x{} > 0\n'.format(cnt_cons, prev_var_idx + target, prev_var_idx + i))
-                    cnt_cons += 1
-
-            fst_round = False
+        self.__write_constr(prob, lst_poly_coll, backdoor_indexes, target)
 
         prob.write('Bounds\n')
 
-        var_idx = 0
-
-        for lst_poly in lst_poly_coll:
-            for poly in lst_poly:
-                for i in range(len(poly.lw)):
-                    lw_i = poly.lw[i]
-                    up_i = poly.up[i]
-
-                    if lw_i == up_i:
-                        prob.write('  x{} = {}\n'.format(var_idx, lw_i))
-                    else:
-                        prob.write('  {} <= x{} <= {}\n'.format(lw_i, var_idx, up_i))
-
-                    var_idx += 1
+        self.__write_bounds(prob, lst_poly_coll, backdoor_indexes)
 
         prob.write('End\n')
 
@@ -236,10 +263,10 @@ class BackDoorImpl():
 
 
     def __verifyI(self, model, valid_x0s, valid_bdi, target):
-        is_unknown = False
+        has_unknown = False
 
         for backdoor_indexes in valid_bdi:
-            cnt, lst_poly_coll = 0, []
+            has_safe, lst_poly_coll = False, []
 
             for x0, output_x0 in valid_x0s:
                 lw, up = x0.copy(), x0.copy()
@@ -258,14 +285,27 @@ class BackDoorImpl():
                 output_lw, output_up = lst_poly[-1].lw.copy(), lst_poly[-1].up.copy()
                 output_lw[target] = output_up[target]
 
-                if np.argmax(output_lw) == target:
-                    cnt += 1
-                else:
+                if np.argmax(output_lw) != target:
+                    has_safe = True
                     break
+                else:
+                    self.__write_problem([lst_poly], backdoor_indexes, target)
+
+                    filename = 'prob' + str(target) + '.lp'
+                    opt = gp.read(filename)
+                    opt.setParam(GRB.Param.DualReductions, 0)
+
+                    opt.optimize()
+                    os.remove(filename)
+
+                    if opt.status == GRB.INFEASIBLE:
+                        # print('Infeasible 1 image with target = {}'.format(target))
+                        has_safe = True
+                        break
 
                 lst_poly_coll.append(lst_poly)
 
-            if cnt == len(valid_x0s): # unsafe, try solver
+            if not has_safe: # unsafe, try solver
                 self.__write_problem(lst_poly_coll, backdoor_indexes, target)
 
                 filename = 'prob' + str(target) + '.lp'
@@ -273,9 +313,10 @@ class BackDoorImpl():
                 opt.setParam(GRB.Param.DualReductions, 0)
 
                 opt.optimize()
+                os.remove(filename)
 
                 if opt.status == GRB.INFEASIBLE:
-                    # print('Infeasible')
+                    # print('Infeasible all images with target = {}'.format(target))
                     pass
                 elif opt.status == GRB.OPTIMAL:
                     stamp = self.__get_stamp(opt, backdoor_indexes)
@@ -289,16 +330,16 @@ class BackDoorImpl():
                     if stamp is not None:
                         return False, (stamp, backdoor_indexes)
                     else:
-                        is_unknown = True
+                        has_unknown = True
                 else:
                     stamp = self.__attack(model, valid_x0s, backdoor_indexes, target)
 
                     if stamp is not None:
                         return False, (stamp, backdoor_indexes)
                     else:
-                        is_unknown = True
+                        has_unknown = True
 
-        if is_unknown:
+        if has_unknown:
             return False, None
         else:
             return True, None
@@ -375,6 +416,7 @@ class BackDoorImpl():
     def __get_stamp(self, opt, backdoor_indexes):
         stamp = []
 
+        # opt.write('model.sol')
         for idx in backdoor_indexes:
             var = opt.getVarByName('x' + str(idx))
             stamp.append(var.x)
