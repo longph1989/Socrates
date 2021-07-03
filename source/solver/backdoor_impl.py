@@ -216,9 +216,8 @@ class BackDoorImpl():
     def __write_bounds(self, prob, lst_poly_coll, backdoor_indexes):
         lw0, up0 = lst_poly_coll[0][0].lw, lst_poly_coll[0][0].up
 
-        for var_idx in range(len(lw0)):
-            if var_idx in backdoor_indexes:
-                prob.write('  {} <= x{} <= {}\n'.format(lw0[var_idx], var_idx, up0[var_idx]))
+        for var_idx in backdoor_indexes:
+            prob.write('  {} <= x{} <= {}\n'.format(lw0[var_idx], var_idx, up0[var_idx]))
 
         cnt_imgs = 0
 
