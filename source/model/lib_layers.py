@@ -1,6 +1,6 @@
 import autograd.numpy as np
 
-from solver.deepcegar_impl import Poly
+from solver.refinement_impl import Poly
 from utils import *
 from poly_utils import *
 

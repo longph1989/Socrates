@@ -55,7 +55,7 @@ class Task():
         self.lst_poly = lst_poly
 
 
-class DeepCegarImpl():
+class RefinementImpl():
     def __init__(self, has_ref, max_ref, ref_typ, max_sus):
         self.has_ref = has_ref
         self.max_ref = max_ref

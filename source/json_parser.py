@@ -220,13 +220,13 @@ def parse_solver(spec):
         delta = ast.literal_eval(read(spec['delta']))
 
         solver = SPRT(threshold, alpha, beta, delta)
-    elif algorithm == 'deepcegar':
+    elif algorithm == 'refinement':
         has_ref = ast.literal_eval(read(spec['has_ref']))
         max_ref = ast.literal_eval(read(spec['max_ref']))
         ref_typ = ast.literal_eval(read(spec['ref_typ']))
         max_sus = ast.literal_eval(read(spec['max_sus']))
 
-        solver = DeepCegar(has_ref, max_ref, ref_typ, max_sus)
+        solver = Refinement(has_ref, max_ref, ref_typ, max_sus)
     elif algorithm == 'backdoor':
         solver = BackDoor()
 

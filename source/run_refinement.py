@@ -6,7 +6,7 @@ import ast
 from json_parser import parse
 from utils import *
 
-from solver.lib_solvers import DeepCegar
+from solver.lib_solvers import Refinement
 
 import time
 
@@ -23,7 +23,7 @@ def add_assertion(args, spec):
 def add_solver(args, spec):
     solver = dict()
 
-    assert args.algorithm == 'deepcegar'
+    assert args.algorithm == 'refinement'
     solver['algorithm'] = args.algorithm
 
     solver['has_ref'] = str(args.has_ref)
@@ -67,7 +67,7 @@ def main():
     parser.add_argument('--max_sus', type=int, default=1,
                         help='maximum times of finding adversarial sample')
     parser.add_argument('--dataset', type=str,
-                        help='the data set for CEGAR experiments')
+                        help='the data set for refinement experiments')
     parser.add_argument('--num_tests', type=int, default=100,
                         help='maximum number of tests')
 

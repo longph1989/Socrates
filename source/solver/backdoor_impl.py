@@ -16,7 +16,7 @@ from autograd import grad
 from assertion.lib_functions import di
 from utils import *
 from poly_utils import *
-from solver.deepcegar_impl import Poly
+from solver.refinement_impl import Poly
 
 import matplotlib.pyplot as plt
 
