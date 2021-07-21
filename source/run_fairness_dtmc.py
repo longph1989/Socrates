@@ -3,12 +3,8 @@ import argparse
 import json
 import ast
 
-from parser import parse
+from json_parser import parse
 from utils import *
-
-
-import sys
-sys.path.append("/Users/bing.sun/workspace/Fairness/Socrates/Socrates_git")
 
 
 def add_assertion(args, spec):

@@ -3,7 +3,7 @@ import argparse
 import json
 import ast
 
-from parser import parse
+from json_parser import parse
 from utils import *
 
 def add_assertion(args, spec):

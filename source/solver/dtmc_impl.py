@@ -139,10 +139,8 @@ class DTMCImpl():
         analyze_time = time.time() - preparation_time - overall_starttime
 
         print('Analyze time is:{}s'.format(analyze_time))
-        return
 
         if is_fair:
-            print('Analyze time is:{}s'.format(analyze_time))
             return
 
         self.sens_analysis = True
