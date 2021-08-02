@@ -42,7 +42,7 @@ def add_assertion(args, spec):
 def add_solver(args, spec):
     solver = dict()
 
-    assert args.algorithm == 'backdoor'
+    assert args.algorithm == 'backdoor_repair'
     solver['algorithm'] = args.algorithm
 
     spec['solver'] = solver

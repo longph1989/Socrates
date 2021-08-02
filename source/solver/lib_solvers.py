@@ -2,6 +2,7 @@ from solver.optimize_impl import OptimizeImpl
 from solver.sprt_impl import SPRTImpl
 from solver.refinement_impl import RefinementImpl
 from solver.backdoor_impl import BackDoorImpl
+from solver.backdoor_repair_impl import BackDoorRepairImpl
 from solver.dtmc_impl import DTMCImpl
 from solver.dtmc_rnn import DTMCImpl_rnn
 from solver.verifair_impl import VeriFairimpl
@@ -40,6 +41,12 @@ class Refinement():
 class BackDoor():
     def solve(self, model, assertion, display=None):
         impl = BackDoorImpl()
+        return impl.solve(model, assertion, display)
+
+
+class BackDoorRepair():
+    def solve(self, model, assertion, display=None):
+        impl = BackDoorRepairImpl()
         return impl.solve(model, assertion, display)
 
 
