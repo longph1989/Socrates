@@ -13,7 +13,7 @@ virtualenv -p python3 socrates_venv
 source socrates_venv/bin/activate
 sudo apt-get install coinor-cbc coinor-libcbc-dev coinor-libosi-dev coinor-libcoinutils-dev coinor-libcgl-dev
 export COIN_INSTALL_DIR=/usr/
-pip install numpy scipy matplotlib torch autograd antlr4-python3-runtime cvxpy cylp
+pip install numpy scipy matplotlib torch autograd antlr4-python3-runtime cvxpy cylp sklearn pyswarms gensim python-Levenshtein
 ```
 
 ## Publications:
