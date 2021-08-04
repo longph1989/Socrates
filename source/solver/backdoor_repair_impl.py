@@ -428,6 +428,7 @@ class BackDoorRepairImpl():
                     t = x[:(3 * 32 * 32)] # trigger
                     m = x[(3 * 32 * 32):] # mask
 
+                m = np.round(m) # to 0 or 1
                 xi = (1 - m) * x0 + m * t
 
                 output = model.apply(xi).reshape(-1)
