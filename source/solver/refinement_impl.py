@@ -41,7 +41,12 @@ class Poly():
 
         for i in range(no_neurons):
             args = (i, self.le[i], self.ge[i], lst_poly)
-            _, lw_i, up_i, lst_le_i, lst_ge_i = back_substitute(args)
+            _, lw_i, up_i, lst_le_i, lst_ge_i = back_substitute0(args)
+            _, lw_i1, up_i1, lst_le_i1, lst_ge_i1 = back_substitute1(args)
+
+            assert lw_i - lw_i1 < 1e-6
+            assert up_i - up_i1 < 1e-6
+
             self.lw[i], self.up[i] = lw_i, up_i
 
             # get_ineq only happens at the last step
@@ -218,12 +223,12 @@ class RefinementImpl():
 
 
     def __run(self, model, x0, y0, idx, lst_poly):
-        # print('\n############################\n')
-        # print('idx = {}'.format(idx))
-        # print('poly.lw = {}'.format(lst_poly[idx].lw))
-        # print('poly.up = {}'.format(lst_poly[idx].up))
-        # print('poly.ge = {}'.format(lst_poly[idx].ge))
-        # print('poly.le = {}'.format(lst_poly[idx].le))
+        print('\n############################\n')
+        print('idx = {}'.format(idx))
+        print('poly.lw = {}'.format(lst_poly[idx].lw))
+        print('poly.up = {}'.format(lst_poly[idx].up))
+        print('poly.ge = {}'.format(lst_poly[idx].ge))
+        print('poly.le = {}'.format(lst_poly[idx].le))
 
         if idx == len(model.layers):
             assert len(lst_poly) == len(model.layers) + 1
@@ -231,8 +236,8 @@ class RefinementImpl():
             poly_out = lst_poly[idx]
             no_neurons = len(poly_out.lw)
 
-            # print('poly_out.lw = {}'.format(poly_out.lw))
-            # print('poly_out.up = {}'.format(poly_out.up))
+            print('poly_out.lw = {}'.format(poly_out.lw))
+            print('poly_out.up = {}'.format(poly_out.up))
 
             for y in range(no_neurons):
                 if y != y0 and poly_out.lw[y0] <= poly_out.up[y]:
