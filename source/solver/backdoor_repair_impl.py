@@ -64,10 +64,7 @@ class BackDoorRepairImpl():
 
         print('Generate reversed trigger with target = {}'.format(target))
 
-        position = spec['atk_pos']
-        backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
-
-        stamp = self.__attack(model, valid_x0s, backdoor_indexes, target)
+        stamp = self.__attack(model, valid_x0s, target, dataset)
 
         if stamp is not None:
             print('Stamp = {} for target = {} at position = {}'.format(stamp, target, backdoor_indexes))
@@ -419,13 +416,19 @@ class BackDoorRepairImpl():
     #     return (cnt / len(valid_x0s)) >= rate
 
 
-    def __attack(self, model, valid_x0s, backdoor_indexes, target):
-        def obj_func(x, model, valid_x0s, backdoor_indexes, target):
-            res = 0
+    def __attack(self, model, valid_x0s, target, dataset):
+        def obj_func(x, model, valid_x0s, target, dataset):
+            res, lamb = 0, 1
 
             for x0, output_x0 in valid_x0s:
-                xi = x0.copy()
-                xi[backdoor_indexes] = x
+                if dataset == 'mnist':
+                    t = x[:(1 * 28 * 28)] # trigger
+                    m = x[(1 * 28 * 28):] # mask
+                elif dataset == 'cifar':
+                    t = x[:(3 * 32 * 32)] # trigger
+                    m = x[(3 * 32 * 32):] # mask
+
+                xi = (1 - m) * x0 + m * t
 
                 output = model.apply(xi).reshape(-1)
                 target_score = output[target]
@@ -438,13 +441,26 @@ class BackDoorRepairImpl():
                 else:
                     res += max_score - target_score + 1e-9
 
-            return res
+            return res + lamd * np.sum(m) / len(m)
 
-        x = np.zeros(len(backdoor_indexes))
-        lw = model.lower[backdoor_indexes]
-        up = model.upper[backdoor_indexes]
+        if dataset == 'mnist':
+            x = np.zeros(2 * 28 * 28)
 
-        args = (model, valid_x0s, backdoor_indexes, target)
+            lw = np.zeros(2 * 28 * 28) # mask and trigger
+            up = np.full(2 * 28 * 28, 1) # mask and trigger
+
+            lw[:(1 * 28 * 28)] = model.lower # lower for trigger
+            up[:(1 * 28 * 28)] = model.upper # upper for trigger
+        elif dataset == 'cifar':
+            x = np.zeros(6 * 32 * 32)
+            
+            lw = np.zeros(6 * 32 * 32)
+            up = np.full(6 * 32 * 32, 1)
+
+            lw[:(3 * 32 * 32)] = model.lower
+            up[:(3 * 32 * 32)] = model.upper
+
+        args = (model, valid_x0s, target, dataset)
         # jac = grad(obj_func)
         jac = None
         bounds = Bounds(lw, up)
@@ -454,31 +470,31 @@ class BackDoorRepairImpl():
         return res.x
 
 
-    def __get_backdoor_indexes(self, size, position, dataset):
-        if position < 0:
-            return None
+    # def __get_backdoor_indexes(self, size, position, dataset):
+    #     if position < 0:
+    #         return None
 
-        if dataset == 'mnist':
-            num_chans, num_rows, num_cols = 1, 28, 28
-        elif dataset == 'cifar':
-            num_chans, num_rows, num_cols = 3, 32, 32
+    #     if dataset == 'mnist':
+    #         num_chans, num_rows, num_cols = 1, 28, 28
+    #     elif dataset == 'cifar':
+    #         num_chans, num_rows, num_cols = 3, 32, 32
 
-        row_idx = int(position / num_cols)
-        col_idx = position - row_idx * num_cols
+    #     row_idx = int(position / num_cols)
+    #     col_idx = position - row_idx * num_cols
 
-        if row_idx + size > num_rows or col_idx + size > num_cols:
-            return None
+    #     if row_idx + size > num_rows or col_idx + size > num_cols:
+    #         return None
 
-        indexes = []
+    #     indexes = []
 
-        for i in range(num_chans):
-            tmp = position + i * num_rows * num_cols
-            for j in range(size):
-                for k in range(size):
-                    indexes.append(tmp + k)
-                tmp += num_cols
+    #     for i in range(num_chans):
+    #         tmp = position + i * num_rows * num_cols
+    #         for j in range(size):
+    #             for k in range(size):
+    #                 indexes.append(tmp + k)
+    #             tmp += num_cols
 
-        return indexes
+    #     return indexes
 
 
     def __run(self, model, idx, lst_poly):
