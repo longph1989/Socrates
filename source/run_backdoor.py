@@ -20,6 +20,9 @@ def add_assertion(args, spec):
     assertion['rate'] = args.rate
     assertion['threshold'] = args.threshold
 
+    assertion['alpha'] = args.alpha
+    assertion['beta'] = args.beta
+
     assertion['atk_only'] = args.atk_only
 
     if args.atk_only:
@@ -95,8 +98,8 @@ def run_verify(zipped_args):
     for target in range(start, end):
         args.target = target
 
-        print('Backdoor target = {} with size = {}, total imgs = {}, num imgs = {}, rate = {}, and threshold = {}'.
-            format(args.target, args.size, args.total_imgs, args.num_imgs, args.rate, args.threshold))
+        print('Backdoor target = {} with size = {}, total imgs = {}, num imgs = {}, rate = {}, alpha = {}, beta = {}, and threshold = {}'.
+            format(args.target, args.size, args.total_imgs, args.num_imgs, args.rate, args.alpha, args.beta, args.threshold))
 
         add_assertion(args, spec)
         add_solver(args, spec)
@@ -190,6 +193,10 @@ def main():
                         help='the success rate')
     parser.add_argument('--threshold', type=float, default=0.01,
                         help='the threshold')
+    parser.add_argument('--alpha', type=float, default=0.01,
+                        help='the alpha')
+    parser.add_argument('--beta', type=float, default=0.01,
+                        help='the beta')
     parser.add_argument('--target', type=int,
                         help='the target used in verify and attack')
 

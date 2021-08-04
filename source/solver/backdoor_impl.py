@@ -29,6 +29,9 @@ class BackDoorImpl():
         rate = spec['rate']
         threshold = spec['threshold']
         
+        alpha = spec['alpha']
+        beta = spec['beta']
+
         atk_only = spec['atk_only']
 
         total_imgs = spec['total_imgs']
@@ -101,7 +104,7 @@ class BackDoorImpl():
         if target == 0:
             print('Number of valid positions = {}'.format(len(valid_bdi)))
 
-        return self.__verify(model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold)
+        return self.__verify(model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold, alpha, beta)
         
 
     def __filter_x0s_with_bd(self, model, valid_x0s, backdoor_indexes, target):
@@ -344,15 +347,13 @@ class BackDoorImpl():
             return True, None
 
 
-    def __hypothesis_test(self, model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold):
+    def __hypothesis_test(self, model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold, alpha, beta):
         rate_k = pow(rate, num_imgs) # attack num_imgs successfully at the same time
 
         p0 = (1 - rate_k) + threshold # not having the attack
         p1 = (1 - rate_k) - threshold
 
         # print('p0 = {}, p1 = {}'.format(p0, p1))
-
-        alpha, beta = 0.01, 0.01
 
         h0 = beta / (1 - alpha) # 0.01
         h1 = (1 - beta) / alpha # 99.0
@@ -394,13 +395,13 @@ class BackDoorImpl():
                 return False, None
 
 
-    def __verify(self, model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold):
+    def __verify(self, model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold, alpha, beta):
         if rate == 1.0: # no hypothesis test when rate = 1.0, instead try to verify all images
             print('Run verifyI with target = {}'.format(target))
             res, sbi = self.__verifyI(model, valid_x0s, valid_bdi, target)
         else:
             print('Run hypothesis test with target = {}'.format(target))
-            res, sbi = self.__hypothesis_test(model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold)
+            res, sbi = self.__hypothesis_test(model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold, alpha, beta)
 
         if res:
             return None, None
