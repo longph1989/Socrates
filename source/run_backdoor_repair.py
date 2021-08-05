@@ -15,12 +15,9 @@ def add_assertion(args, spec):
     assertion = dict()
 
     assertion['target'] = args.target
-    assertion['size'] = args.size
 
     assertion['rate'] = args.rate
     assertion['threshold'] = args.threshold
-
-    assertion['atk_pos'] = args.atk_pos
 
     assertion['total_imgs'] = args.total_imgs
     assertion['num_imgs'] = args.num_imgs
@@ -63,8 +60,8 @@ def get_dataset(dataset):
 
 
 def run_cleansing(args):
-    print('Backdoor target = {} with size = {}, total imgs = {}, num imgs = {}, and at position = {}'.
-        format(args.target, args.size, args.total_imgs, args.num_imgs, args.atk_pos))
+    print('Backdoor target = {} with total imgs = {}, and num imgs = {}'.
+        format(args.target, args.total_imgs, args.num_imgs))
 
     with open(args.spec, 'r') as f:
         spec = json.load(f)
@@ -88,18 +85,12 @@ def main():
 
     parser.add_argument('--spec', type=str, default='spec.json',
                         help='the specification file')
-    parser.add_argument('--size', type=int, default=3,
-                        help='the size of the backdoor')
     parser.add_argument('--rate', type=float, default=0.90,
                         help='the success rate')
     parser.add_argument('--threshold', type=float, default=0.01,
                         help='the threshold')
     parser.add_argument('--target', type=int,
                         help='the target used in verify and attack')
-
-    # for attacking
-    parser.add_argument('--atk_pos', type=int,
-                        help='the attack position')
     
     parser.add_argument('--algorithm', type=str, default='backdoor',
                         help='the chosen algorithm')

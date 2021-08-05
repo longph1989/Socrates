@@ -24,12 +24,12 @@ import matplotlib.pyplot as plt
 class BackDoorRepairImpl():
     def __solve_backdoor_repair(self, model, spec, display):
         target = spec['target']
-        size = spec['size']
 
         rate = spec['rate']
         threshold = spec['threshold']
         
         total_imgs = spec['total_imgs']
+        total_imgs = 100
         num_imgs = spec['num_imgs']
         dataset = spec['dataset']
 
@@ -67,28 +67,38 @@ class BackDoorRepairImpl():
         stamp = self.__attack(model, valid_x0s, target, dataset)
 
         if stamp is not None:
-            print('Stamp = {} for target = {} at position = {}'.format(stamp, target, backdoor_indexes))
+            print('Stamp = {} for target = {}'.format(stamp, target))
         else:
             print('No stamp for target = {}'.format(target))
             assert False
 
+        if dataset == 'mnist':
+            trigger = stamp[:(1 * 28 * 28)]
+            mask = np.round(stamp[(1 * 28 * 28):])
+        elif dataset == 'cifar':
+            trigger = stamp[:(3 * 32 * 32)]
+            mask = np.round(stamp[(3 * 32 * 32):])
+
+        print('trigger = {}'.format(list(trigger)))
+        print('mask = {}'.format(list(mask)))
+
         valid_x0s_with_bd = valid_x0s.copy()
-        self.__filter_x0s_with_bd(model, valid_x0s_with_bd, backdoor_indexes, stamp, target)
+        self.__filter_x0s_with_bd(model, valid_x0s_with_bd, trigger, mask, target)
 
         if len(valid_x0s_with_bd) / len(valid_x0s) < rate:
+            print('rate = {}'.format(len(valid_x0s_with_bd) / len(valid_x0s)))
             print('The stamp does not satisfy the success rate = {} with target = {}'.format(rate, target))
             assert False
 
         return None, None
 
 
-    def __filter_x0s_with_bd(self, model, valid_x0s, backdoor_indexes, stamp, target):
+    def __filter_x0s_with_bd(self, model, valid_x0s, trigger, mask, target):
         removed_x0s = []
         for i in range(len(valid_x0s)):
             x0, output_x0 = valid_x0s[i]
 
-            x_bd = x0.copy()
-            x_bd[backdoor_indexes] = stamp
+            x_bd = (1 - mask) * x0 + mask * trigger
 
             output_x_bd = model.apply(x_bd).reshape(-1)
             target_x_bd = np.argmax(output_x_bd)
@@ -418,18 +428,18 @@ class BackDoorRepairImpl():
 
     def __attack(self, model, valid_x0s, target, dataset):
         def obj_func(x, model, valid_x0s, target, dataset):
-            res, lamb = 0, 1
+            res, lam = 0, 1
 
             for x0, output_x0 in valid_x0s:
                 if dataset == 'mnist':
-                    t = x[:(1 * 28 * 28)] # trigger
-                    m = x[(1 * 28 * 28):] # mask
+                    trigger = x[:(1 * 28 * 28)]
+                    mask = x[(1 * 28 * 28):] # mask
                 elif dataset == 'cifar':
-                    t = x[:(3 * 32 * 32)] # trigger
-                    m = x[(3 * 32 * 32):] # mask
+                    trigger = x[:(3 * 32 * 32)] # trigger
+                    mask = x[(3 * 32 * 32):] # mask
 
-                m = np.round(m) # to 0 or 1
-                xi = (1 - m) * x0 + m * t
+                mask = np.round(mask) # to 0 or 1
+                xi = (1 - mask) * x0 + mask * trigger
 
                 output = model.apply(xi).reshape(-1)
                 target_score = output[target]
@@ -442,7 +452,8 @@ class BackDoorRepairImpl():
                 else:
                     res += max_score - target_score + 1e-9
 
-            return res + lamd * np.sum(m) / len(m)
+            print('res = {}'.format(res))
+            return res + lam * np.sum(mask) / len(mask)
 
         if dataset == 'mnist':
             x = np.zeros(2 * 28 * 28)
