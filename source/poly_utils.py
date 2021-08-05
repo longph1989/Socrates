@@ -15,11 +15,11 @@ def back_substitute0(args):
     best_lw, best_up = -1e9, 1e9
 
     for k, e in reversed(list(enumerate(lst_poly))):
-        if len(lst_poly) > 2:
-            print(0)
-            print(le_curr[:20])
+        # if len(lst_poly) > 2:
+        #     print(0)
+        #     print(le_curr[:20])
 
-            print('---------------------')
+        #     print('---------------------')
 
         no_e_ns = len(e.lw)
 
@@ -59,14 +59,14 @@ def back_substitute0(args):
             le_curr_ptr = le_curr.ctypes.data_as(POINTER(c_double))
             ge_curr_ptr = ge_curr.ctypes.data_as(POINTER(c_double))
 
-            e_le = np.array(e.le, dtype=np.float64)
-            e_ge = np.array(e.ge, dtype=np.float64)
+            e_le = np.ascontiguousarray(e.le, dtype=np.float64)
+            e_ge = np.ascontiguousarray(e.ge, dtype=np.float64)
 
-            print(type(e_le))
-            print(e_le.dtype)
-            print(type(e_ge))
-            print(e_ge.dtype)
-            print(e_le.shape)
+            # print(type(e_le))
+            # print(e_le.dtype)
+            # print(type(e_ge))
+            # print(e_ge.dtype)
+            # print(e_le.shape)
 
             le_ptr = e_le.ctypes.data_as(POINTER(POINTER(c_double)))
             ge_ptr = e_ge.ctypes.data_as(POINTER(POINTER(c_double)))
@@ -82,36 +82,36 @@ def back_substitute0(args):
 
             clib.free_array.argtype = POINTER(c_double * no_coefs)
 
-            print('===========================')
+            # print('===========================')
 
-            print('k =', k)
-            print(list(le_curr[max_le_n0id]))
-            for value in e_le[max_le_n0id[0]]: ##########333
-                if value != 0:
-                    print(value)
+            # print('k =', k)
+            # print(list(le_curr[max_le_n0id]))
+            # for value in e_le[max_le_n0id[0]]: ##########333
+            #     if value != 0:
+            #         print(value)
 
             result_ptr = clib.array_mul_c(le_ptr, le_curr_ptr, max_le_n0id_ptr, len(max_le_n0id), no_coefs)
             le += np.frombuffer(result_ptr.contents)
             clib.free_array(result_ptr)
 
-            print('===========================')
+            # print('===========================')
 
-            print(list(le_curr[min_le_n0id]))
-            for value in e_ge[min_le_n0id[0]]: ###########33
-                if value != 0:
-                    print(value)
+            # print(list(le_curr[min_le_n0id]))
+            # for value in e_ge[min_le_n0id[0]]: ###########33
+            #     if value != 0:
+            #         print(value)
 
             result_ptr = clib.array_mul_c(ge_ptr, le_curr_ptr, min_le_n0id_ptr, len(min_le_n0id), no_coefs)
             le += np.frombuffer(result_ptr.contents)
             clib.free_array(result_ptr)
 
-            # result_ptr = clib.array_mul_c(ge_ptr, ge_curr_ptr, max_ge_n0id_ptr, len(max_ge_n0id), no_coefs)
-            # ge += np.frombuffer(result_ptr.contents)
-            # clib.free_array(result_ptr)
+            result_ptr = clib.array_mul_c(ge_ptr, ge_curr_ptr, max_ge_n0id_ptr, len(max_ge_n0id), no_coefs)
+            ge += np.frombuffer(result_ptr.contents)
+            clib.free_array(result_ptr)
 
-            # result_ptr = clib.array_mul_c(le_ptr, ge_curr_ptr, min_ge_n0id_ptr, len(min_ge_n0id), no_coefs)
-            # ge += np.frombuffer(result_ptr.contents)
-            # clib.free_array(result_ptr)
+            result_ptr = clib.array_mul_c(le_ptr, ge_curr_ptr, min_ge_n0id_ptr, len(min_ge_n0id), no_coefs)
+            ge += np.frombuffer(result_ptr.contents)
+            clib.free_array(result_ptr)
 
             le[-1] = le[-1] + le_curr[-1]
             ge[-1] = ge[-1] + ge_curr[-1]
@@ -130,11 +130,11 @@ def back_substitute1(args):
     best_lw, best_up = -1e9, 1e9
 
     for k, e in reversed(list(enumerate(lst_poly))):
-        if len(lst_poly) > 2:
-            print(1)
-            print(le_curr[:20])
+        # if len(lst_poly) > 2:
+        #     print(1)
+        #     print(le_curr[:20])
 
-            print('---------------------')
+        #     print('---------------------')
 
         no_e_ns = len(e.lw)
 
@@ -189,21 +189,21 @@ def back_substitute1(args):
                 else:
                     le += np.sum(min_le_curr[min_le_n0id].reshape(len(min_le_n0id), 1) * e.ge[min_le_n0id], axis=0)
 
-            # if len(max_ge_n0id) > 0:
-            #     if e.is_activation and no_coefs > threshold:
-            #         for i in max_ge_n0id:
-            #             ge[i] += max_ge_curr[i] * e.ge[i,i]
-            #             ge[-1] += max_ge_curr[i] * e.ge[i,-1] 
-            #     else:
-            #         ge += np.sum(max_ge_curr[max_ge_n0id].reshape(len(max_ge_n0id), 1) * e.ge[max_ge_n0id], axis=0)
+            if len(max_ge_n0id) > 0:
+                if e.is_activation and no_coefs > threshold:
+                    for i in max_ge_n0id:
+                        ge[i] += max_ge_curr[i] * e.ge[i,i]
+                        ge[-1] += max_ge_curr[i] * e.ge[i,-1] 
+                else:
+                    ge += np.sum(max_ge_curr[max_ge_n0id].reshape(len(max_ge_n0id), 1) * e.ge[max_ge_n0id], axis=0)
 
-            # if len(min_ge_n0id) > 0:
-            #     if e.is_activation and no_coefs > threshold:
-            #         for i in min_ge_n0id:
-            #             ge[i] += min_ge_curr[i] * e.le[i,i]
-            #             ge[-1] += min_ge_curr[i] * e.le[i,-1] 
-            #     else:
-            #         ge += np.sum(min_ge_curr[min_ge_n0id].reshape(len(min_ge_n0id), 1) * e.le[min_ge_n0id], axis=0)
+            if len(min_ge_n0id) > 0:
+                if e.is_activation and no_coefs > threshold:
+                    for i in min_ge_n0id:
+                        ge[i] += min_ge_curr[i] * e.le[i,i]
+                        ge[-1] += min_ge_curr[i] * e.le[i,-1] 
+                else:
+                    ge += np.sum(min_ge_curr[min_ge_n0id].reshape(len(min_ge_n0id), 1) * e.le[min_ge_n0id], axis=0)
             
             le[-1] = le[-1] + le_curr[-1]
             ge[-1] = ge[-1] + ge_curr[-1]

@@ -223,12 +223,12 @@ class RefinementImpl():
 
 
     def __run(self, model, x0, y0, idx, lst_poly):
-        print('\n############################\n')
-        print('idx = {}'.format(idx))
-        print('poly.lw = {}'.format(lst_poly[idx].lw))
-        print('poly.up = {}'.format(lst_poly[idx].up))
-        print('poly.ge = {}'.format(lst_poly[idx].ge))
-        print('poly.le = {}'.format(lst_poly[idx].le))
+        # print('\n############################\n')
+        # print('idx = {}'.format(idx))
+        # print('poly.lw = {}'.format(lst_poly[idx].lw))
+        # print('poly.up = {}'.format(lst_poly[idx].up))
+        # print('poly.ge = {}'.format(lst_poly[idx].ge))
+        # print('poly.le = {}'.format(lst_poly[idx].le))
 
         if idx == len(model.layers):
             assert len(lst_poly) == len(model.layers) + 1

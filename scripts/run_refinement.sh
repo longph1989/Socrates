@@ -3,7 +3,7 @@ mkdir results_refinement
 (time python -u source/run_refinement.py --spec benchmark/backdoor/eran/nnet/mnist_conv_small_relu/spec.json --algorithm refinement --dataset mnist_fc --num_tests 1) &> results_refinement/log_mnist_conv_small_relu.tf.txt
 
 # echo Running mnist_relu_3_10.tf
-# (time python -u source/run_refinement.py --spec benchmark/cegar/nnet/mnist_relu_3_10/spec.json --algorithm refinement --has_ref --max_ref 100 --dataset mnist_fc --num_tests 1) &> results_refinement/log_mnist_relu_3_10.tf.txt
+(time python -u source/run_refinement.py --spec benchmark/cegar/nnet/mnist_relu_3_10/spec.json --algorithm refinement --has_ref --max_ref 100 --dataset mnist_fc --num_tests 1) &> results_refinement/log_mnist_relu_3_10.tf.txt
 # echo Running mnist_relu_3_20.tf
 # (time python -u source/run_refinement.py --spec benchmark/cegar/nnet/mnist_relu_3_20/spec.json --algorithm refinement --has_ref --max_ref 100 --dataset mnist_fc) &> results_refinement/log_mnist_relu_3_20.tf.txt
 # echo Running mnist_relu_3_30.tf
