@@ -29,7 +29,7 @@ class BackDoorRepairImpl():
         threshold = spec['threshold']
         
         total_imgs = spec['total_imgs']
-        total_imgs = 100
+        total_imgs = 1000
         num_imgs = spec['num_imgs']
         dataset = spec['dataset']
 
@@ -74,19 +74,30 @@ class BackDoorRepairImpl():
 
         if dataset == 'mnist':
             trigger = stamp[:(1 * 28 * 28)]
-            mask = np.round(stamp[(1 * 28 * 28):])
+            mask = stamp[(1 * 28 * 28):]
         elif dataset == 'cifar':
             trigger = stamp[:(3 * 32 * 32)]
-            mask = np.round(stamp[(3 * 32 * 32):])
+            mask = stamp[(3 * 32 * 32):]
 
         print('trigger = {}'.format(list(trigger)))
-        print('mask = {}'.format(list(mask)))
+        print('mask1 = {}'.format(list(mask)))
 
-        valid_x0s_with_bd = valid_x0s.copy()
-        self.__filter_x0s_with_bd(model, valid_x0s_with_bd, trigger, mask, target)
+        valid_x0s_with_bd1 = valid_x0s.copy()
+        self.__filter_x0s_with_bd(model, valid_x0s_with_bd1, trigger, mask, target)
+
+        if dataset == 'mnist':
+            mask = np.round(stamp[(1 * 28 * 28):])
+        elif dataset == 'cifar':
+            mask = np.round(stamp[(3 * 32 * 32):])
+
+        print('mask2 = {}'.format(list(mask)))
+
+        valid_x0s_with_bd2 = valid_x0s.copy()
+        self.__filter_x0s_with_bd(model, valid_x0s_with_bd2, trigger, mask, target)
 
         print('len(valid_x0s) =', len(valid_x0s))
-        print('len(valid_x0s_with_bd) =', len(valid_x0s_with_bd))
+        print('len(valid_x0s_with_bd1) =', len(valid_x0s_with_bd1))
+        print('len(valid_x0s_with_bd2) =', len(valid_x0s_with_bd2))
 
         if len(valid_x0s_with_bd) / len(valid_x0s) < rate:
             print('rate = {}'.format(len(valid_x0s_with_bd) / len(valid_x0s)))
