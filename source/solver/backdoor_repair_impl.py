@@ -85,6 +85,9 @@ class BackDoorRepairImpl():
         valid_x0s_with_bd = valid_x0s.copy()
         self.__filter_x0s_with_bd(model, valid_x0s_with_bd, trigger, mask, target)
 
+        print('len(valid_x0s) =', len(valid_x0s))
+        print('len(valid_x0s_with_bd) =', len(valid_x0s_with_bd))
+
         if len(valid_x0s_with_bd) / len(valid_x0s) < rate:
             print('rate = {}'.format(len(valid_x0s_with_bd) / len(valid_x0s)))
             print('The stamp does not satisfy the success rate = {} with target = {}'.format(rate, target))
@@ -427,18 +430,14 @@ class BackDoorRepairImpl():
 
 
     def __attack(self, model, valid_x0s, target, dataset):
-        def obj_func(x, model, valid_x0s, target, dataset):
+        def obj_func(x, model, valid_x0s, target, length, half_len):
             res, lam = 0, 1
 
             for x0, output_x0 in valid_x0s:
-                if dataset == 'mnist':
-                    trigger = x[:(1 * 28 * 28)]
-                    mask = x[(1 * 28 * 28):] # mask
-                elif dataset == 'cifar':
-                    trigger = x[:(3 * 32 * 32)] # trigger
-                    mask = x[(3 * 32 * 32):] # mask
-
-                mask = np.round(mask) # to 0 or 1
+                trigger = x[:half_len] # trigger
+                mask = x[half_len:] # mask
+                
+                # mask = np.round(mask) # to 0 or 1
                 xi = (1 - mask) * x0 + mask * trigger
 
                 output = model.apply(xi).reshape(-1)
@@ -452,27 +451,31 @@ class BackDoorRepairImpl():
                 else:
                     res += max_score - target_score + 1e-9
 
-            print('res = {}'.format(res))
-            return res + lam * np.sum(mask) / len(mask)
+            # print('res1 = {}'.format(res))
+            res += lam * np.sum(mask)
+            # print('res2 = {}'.format(res))
+
+            return res
 
         if dataset == 'mnist':
-            x = np.zeros(2 * 28 * 28)
-
-            lw = np.zeros(2 * 28 * 28) # mask and trigger
-            up = np.full(2 * 28 * 28, 1) # mask and trigger
-
-            lw[:(1 * 28 * 28)] = model.lower # lower for trigger
-            up[:(1 * 28 * 28)] = model.upper # upper for trigger
+            length = 2 * 28 * 28
         elif dataset == 'cifar':
-            x = np.zeros(6 * 32 * 32)
-            
-            lw = np.zeros(6 * 32 * 32)
-            up = np.full(6 * 32 * 32, 1)
+            length = 6 * 32 * 32
+        
+        half_len = length // 2
 
-            lw[:(3 * 32 * 32)] = model.lower
-            up[:(3 * 32 * 32)] = model.upper
+        lw = np.zeros(length) # mask and trigger
+        up = np.full(length, 1.0) # mask and trigger
 
-        args = (model, valid_x0s, target, dataset)
+        lw[:half_len] = model.lower # lower for trigger
+        up[:half_len] = model.upper # upper for trigger
+
+        x = np.zeros(length)
+        # x[:half_len] = (lw[:half_len] + up[:half_len]) / 2.0
+        # x[:half_len] = up[:half_len]
+        # x[half_len:] = 1
+
+        args = (model, valid_x0s, target, length, half_len)
         # jac = grad(obj_func)
         jac = None
         bounds = Bounds(lw, up)
