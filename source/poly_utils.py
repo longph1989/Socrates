@@ -15,12 +15,6 @@ def back_substitute0(args):
     best_lw, best_up = -1e9, 1e9
 
     for k, e in reversed(list(enumerate(lst_poly))):
-        # if len(lst_poly) > 2:
-        #     print(0)
-        #     print(le_curr[:20])
-
-        #     print('---------------------')
-
         no_e_ns = len(e.lw)
 
         max_le_curr = np.maximum(le_curr[:-1], 0)
@@ -59,14 +53,7 @@ def back_substitute0(args):
             le_curr_ptr = le_curr.ctypes.data_as(POINTER(c_double))
             ge_curr_ptr = ge_curr.ctypes.data_as(POINTER(c_double))
 
-            e_le = np.ascontiguousarray(e.le, dtype=np.float64)
-            e_ge = np.ascontiguousarray(e.ge, dtype=np.float64)
-
-            # print(type(e_le))
-            # print(e_le.dtype)
-            # print(type(e_ge))
-            # print(e_ge.dtype)
-            # print(e_le.shape)
+            e_le, e_ge = e.le, e.ge
 
             le_ptr = e_le.ctypes.data_as(POINTER(POINTER(c_double)))
             ge_ptr = e_ge.ctypes.data_as(POINTER(POINTER(c_double)))
@@ -82,24 +69,9 @@ def back_substitute0(args):
 
             clib.free_array.argtype = POINTER(c_double * no_coefs)
 
-            # print('===========================')
-
-            # print('k =', k)
-            # print(list(le_curr[max_le_n0id]))
-            # for value in e_le[max_le_n0id[0]]: ##########333
-            #     if value != 0:
-            #         print(value)
-
             result_ptr = clib.array_mul_c(le_ptr, le_curr_ptr, max_le_n0id_ptr, len(max_le_n0id), no_coefs)
             le += np.frombuffer(result_ptr.contents)
             clib.free_array(result_ptr)
-
-            # print('===========================')
-
-            # print(list(le_curr[min_le_n0id]))
-            # for value in e_ge[min_le_n0id[0]]: ###########33
-            #     if value != 0:
-            #         print(value)
 
             result_ptr = clib.array_mul_c(ge_ptr, le_curr_ptr, min_le_n0id_ptr, len(min_le_n0id), no_coefs)
             le += np.frombuffer(result_ptr.contents)
@@ -130,12 +102,6 @@ def back_substitute1(args):
     best_lw, best_up = -1e9, 1e9
 
     for k, e in reversed(list(enumerate(lst_poly))):
-        # if len(lst_poly) > 2:
-        #     print(1)
-        #     print(le_curr[:20])
-
-        #     print('---------------------')
-
         no_e_ns = len(e.lw)
 
         max_le_curr = np.maximum(le_curr[:-1], 0)

@@ -30,8 +30,8 @@ class Function(Layer):
         res.lw = np.zeros(no_neurons)
         res.up = np.zeros(no_neurons)
 
-        res.le = np.zeros([no_neurons, no_neurons + 1], dtype=np.float64)
-        res.ge = np.zeros([no_neurons, no_neurons + 1], dtype=np.float64)
+        res.le = np.zeros([no_neurons, no_neurons + 1])
+        res.ge = np.zeros([no_neurons, no_neurons + 1])
 
         res.shape = x_poly.shape
         res.is_activation = True
@@ -129,9 +129,6 @@ class Function(Layer):
             res.ge = np.eye(no_neurons + 1)[:-1]
 
             res.shape = self.params[0]
-
-        res.le = np.array(res.le, dtype=np.float64)
-        res.ge = np.array(res.ge, dtype=np.float64)
 
         return res
 
@@ -350,13 +347,13 @@ class Conv2d(Layer):
         res.lw = np.zeros(len_res)
         res.up = np.zeros(len_res)
 
-        res.le = np.zeros([len_res, len_pad + 1], dtype=np.float64)
-        res.ge = np.zeros([len_res, len_pad + 1], dtype=np.float64)
+        res.le = np.zeros([len_res, len_pad + 1])
+        res.ge = np.zeros([len_res, len_pad + 1])
 
         res.shape = (1, f_n, res_h, res_w)
 
         for i in range(f_n):
-            base = np.zeros([x_c, x_h, x_w], dtype=np.float64)
+            base = np.zeros([x_c, x_h, x_w])
             base[:f_c, :f_h, :f_w] = self.filters[i]
             base = np.reshape(base, -1)
             w_idx = f_w
@@ -390,8 +387,8 @@ class Conv2d(Layer):
         res.le = np.delete(res.le, del_idx, 1)
         res.ge = np.delete(res.ge, del_idx, 1)
 
-        res.le = np.array(res.le, dtype=np.float64)
-        res.ge = np.array(res.ge, dtype=np.float64)
+        res.le = np.ascontiguousarray(res.le)
+        res.ge = np.ascontiguousarray(res.ge)
 
         res.back_substitute(lst_poly)
 

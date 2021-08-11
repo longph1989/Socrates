@@ -42,11 +42,6 @@ class Poly():
         for i in range(no_neurons):
             args = (i, self.le[i], self.ge[i], lst_poly)
             _, lw_i, up_i, lst_le_i, lst_ge_i = back_substitute0(args)
-            _, lw_i1, up_i1, lst_le_i1, lst_ge_i1 = back_substitute1(args)
-
-            assert lw_i - lw_i1 < 1e-6
-            assert up_i - up_i1 < 1e-6
-
             self.lw[i], self.up[i] = lw_i, up_i
 
             # get_ineq only happens at the last step
