@@ -91,6 +91,7 @@ class BackDoorRepairImpl():
             mask = np.round(stamp[(3 * 32 * 32):])
 
         print('mask2 = {}'.format(list(mask)))
+        print('sum mask = {}'.format(np.sum(mask)))
 
         valid_x0s_with_bd2 = valid_x0s.copy()
         self.__filter_x0s_with_bd(model, valid_x0s_with_bd2, trigger, mask, target)
@@ -487,11 +488,12 @@ class BackDoorRepairImpl():
         # x[half_len:] = 1
 
         args = (model, valid_x0s, target, length, half_len)
-        # jac = grad(obj_func)
-        jac = None
+        jac = grad(obj_func)
+        # jac = None
         bounds = Bounds(lw, up)
 
         res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
+        print('res.fun = {}'.format(res.fun))
 
         return res.x
 
