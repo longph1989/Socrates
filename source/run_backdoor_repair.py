@@ -113,7 +113,7 @@ def main():
     m = int(t / 60)
     s = t - 60 * m
 
-    print('Running time = {}m {}s'.format(m, s))
+    print('\nRunning time = {}m {}s'.format(m, s))
 
 
 if __name__ == '__main__':

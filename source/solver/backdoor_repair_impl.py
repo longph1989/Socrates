@@ -62,51 +62,179 @@ class BackDoorRepairImpl():
 
         print('Lower bound = {} and Upper bound = {}'.format(model.lower[0], model.upper[0]))
 
-        print('Generate reversed trigger with target = {}'.format(target))
+        print('\nGenerate reversed trigger with target = {}'.format(target))
 
         stamp = self.__attack(model, valid_x0s, target, dataset)
 
-        if stamp is not None:
-            print('Stamp = {} for target = {}'.format(stamp, target))
-        else:
-            print('No stamp for target = {}'.format(target))
-            assert False
-
         if dataset == 'mnist':
             trigger = stamp[:(1 * 28 * 28)]
-            mask = stamp[(1 * 28 * 28):]
+            mask1 = stamp[(1 * 28 * 28):]
         elif dataset == 'cifar':
             trigger = stamp[:(3 * 32 * 32)]
-            mask = stamp[(3 * 32 * 32):]
+            mask1 = stamp[(3 * 32 * 32):]
+        mask2 = np.round(mask1)
 
-        print('trigger = {}'.format(list(trigger)))
-        print('mask1 = {}'.format(list(mask)))
+        # print('trigger = {}'.format(list(trigger)))
+
+        # print('mask1 = {}'.format(list(mask1)))
+        # print('sum mask1 = {}'.format(np.sum(mask1)))
+
+        # print('mask2 = {}'.format(list(mask2)))
+        # print('sum mask2 = {}'.format(np.sum(mask2)))
 
         valid_x0s_with_bd1 = valid_x0s.copy()
-        self.__filter_x0s_with_bd(model, valid_x0s_with_bd1, trigger, mask, target)
-
-        if dataset == 'mnist':
-            mask = np.round(stamp[(1 * 28 * 28):])
-        elif dataset == 'cifar':
-            mask = np.round(stamp[(3 * 32 * 32):])
-
-        print('mask2 = {}'.format(list(mask)))
-        print('sum mask = {}'.format(np.sum(mask)))
+        self.__filter_x0s_with_bd(model, valid_x0s_with_bd1, trigger, mask1, target)
 
         valid_x0s_with_bd2 = valid_x0s.copy()
-        self.__filter_x0s_with_bd(model, valid_x0s_with_bd2, trigger, mask, target)
+        self.__filter_x0s_with_bd(model, valid_x0s_with_bd2, trigger, mask2, target)
 
-        print('len(valid_x0s) =', len(valid_x0s))
-        print('len(valid_x0s_with_bd1) =', len(valid_x0s_with_bd1))
-        print('len(valid_x0s_with_bd2) =', len(valid_x0s_with_bd2))
+        # print('len(valid_x0s) =', len(valid_x0s))
+        # print('len(valid_x0s_with_bd1) =', len(valid_x0s_with_bd1))
+        # print('len(valid_x0s_with_bd2) =', len(valid_x0s_with_bd2))
+
+        mask = mask1
+        mask = mask2
+
+        valid_x0s_with_bd = valid_x0s_with_bd1
+        valid_x0s_with_bd = valid_x0s_with_bd2
 
         if len(valid_x0s_with_bd) / len(valid_x0s) < rate:
-            print('rate = {}'.format(len(valid_x0s_with_bd) / len(valid_x0s)))
+            # print('\nrate = {}'.format(len(valid_x0s_with_bd) / len(valid_x0s)))
             print('The stamp does not satisfy the success rate = {} with target = {}'.format(rate, target))
             assert False
+        else:
+            print('The stamp satisfies the success rate = {} with target = {}'.format(rate, target))
+            cleansed_model = self.clean_backdoor(model, valid_x0s_with_bd, trigger, mask, target)
 
         return None, None
 
+
+    def clean_backdoor(self, model, valid_x0s_with_bd, trigger, mask, target):
+        print('\nBegin cleansing')
+        assert self.__validate(model, valid_x0s_with_bd, trigger, mask, target, 1.0)
+
+#####################################################################################################################################
+        for do_layer in self.do_layer:
+            print('Analyzing layer {}'.format(col))
+            ie_ave_l = []
+            neuron_idx = 0
+            for do_neuron in self.do_neuron[col]:
+                ie, min, max = self.get_ie_do_h_dy(do_layer, do_neuron, self.sens_idx, self.sens_value, self.stepsize, 0)
+
+                ie_ave_l.append(np.mean(np.array(ie)))
+                new_entry = []
+                new_entry.append(np.mean(np.array(ie)))
+                new_entry.append(do_layer)
+                new_entry.append(do_neuron)
+                ie_ave_matrix.append(new_entry)
+
+                neuron_idx = neuron_idx + 1
+
+            ie_ave.append(ie_ave_l)
+            col = col + 1
+
+                for item in ie_ave_matrix:
+            self.debug_print(item)
+        ie_ave_matrix.sort()
+        ie_ave_matrix = ie_ave_matrix[::-1]
+
+        self.r_neuron = []
+        self.r_layer = []
+        for i in range (0, self.repair_num):
+            self.r_layer.append(int(ie_ave_matrix[i][1]))
+            self.r_neuron.append(int(ie_ave_matrix[i][2]))
+        
+        fault_loc_time = time.time() - overall_starttime
+
+        print('\nRepair layer: {}'.format(self.r_layer))
+        print('Repair neuron: {}'.format(self.r_neuron))
+
+
+    def get_ie_do_h_dy(self, do_layer, do_neuron, sens_idx, sens_range, num_step=16, class_n=0):
+        # get value range of given hidden neuron
+        pathX = self.datapath + '/'
+        pathY = self.datapath + '/labels.txt'
+
+        #y0s = np.array(ast.literal_eval(read(pathY)))
+
+        hidden_max = 0.0
+        hidden_min = 0.0
+
+        for i in range(self.datalen):
+            # random index
+            #i = int(np.random.rand() * self.datalen_tot)
+
+            x0_file = pathX + 'data' + str(i) + '.txt'
+            x0 = np.array(ast.literal_eval(read(x0_file)))
+
+            y, hidden = self.model.apply_get_h(x0, do_layer, do_neuron)
+
+            if i == 0:
+                hidden_max = hidden
+                hidden_min = hidden
+            else:
+                if hidden > hidden_max:
+                    hidden_max = hidden
+                if hidden < hidden_min:
+                    hidden_min = hidden
+
+        # now we have hidden_min and hidden_max
+
+        # compute interventional expectation for each step
+        ie = []
+        if hidden_max == hidden_min:
+            ie = [hidden_min] * num_step
+        else:
+            for h_val in np.linspace(hidden_min, hidden_max, num_step):
+                dy = self.get_dy_do_h(do_layer, do_neuron, h_val, class_n, sens_idx, sens_range)
+                ie.append(dy)
+
+        return ie, hidden_min, hidden_max
+
+
+    #
+    # get expected value of y with hidden neuron intervention
+    #
+    def get_dy_do_h(self, do_layer, do_neuron, do_value, class_n, sens_idx, sens_range):
+        pathX = self.datapath + '/'
+        pathY = self.datapath + '/labels.txt'
+
+        #y0s = np.array(ast.literal_eval(read(pathY)))
+
+        #l_pass = 0
+        #l_fail = 0
+
+        dy_sum = 0.0
+
+        for i in range(self.datalen):
+            # random index
+            #i = int(np.random.rand() * self.datalen_tot)
+            x0_file = pathX + 'data' + str(i) + '.txt'
+            x0 = np.array(ast.literal_eval(read(x0_file)))
+
+            y = self.model.apply_intervention(x0, do_layer, do_neuron, do_value)
+            #lbl_x0 = np.argmax(y, axis=1)[0]
+
+            y = y[0][class_n]
+
+            max_dy = 0.0
+            x_n = x0
+            for sens_val in self.sens_value:
+                if sens_val == x0[sens_idx]:
+                    continue
+                x_n[sens_idx] = sens_val
+                y_n = self.model.apply_intervention(x_n, do_layer, do_neuron, do_value)
+                y_n = y_n[0][class_n]
+                diff_n = np.abs(y_n - y)
+                if max_dy < diff_n:
+                    max_dy = diff_n
+
+            dy_sum = dy_sum + max_dy
+
+        avg = dy_sum / self.datalen
+
+        return avg
+#####################################################################################################################################
 
     def __filter_x0s_with_bd(self, model, valid_x0s, trigger, mask, target):
         removed_x0s = []
@@ -426,19 +554,18 @@ class BackDoorRepairImpl():
     #     return np.array(stamp)
 
 
-    # def __validate(self, model, valid_x0s, backdoor_indexes, target, stamp, rate):
-    #     cnt = 0
+    def __validate(self, model, valid_x0s, trigger, mask, target, rate):
+        cnt = 0
 
-    #     for x0, output_x0 in valid_x0s:
-    #         xi = x0.copy()
-    #         xi[backdoor_indexes] = stamp
+        for x0, output_x0 in valid_x0s:
+            xi = (1 - mask) * x0 + mask * trigger
 
-    #         output = model.apply(xi).reshape(-1)
+            output = model.apply(xi).reshape(-1)
 
-    #         if np.argmax(output) == target: # attack successfully
-    #             cnt += 1
+            if np.argmax(output) == target: # attack successfully
+                cnt += 1
 
-    #     return (cnt / len(valid_x0s)) >= rate
+        return (cnt / len(valid_x0s)) >= rate
 
 
     def __attack(self, model, valid_x0s, target, dataset):
@@ -449,7 +576,6 @@ class BackDoorRepairImpl():
                 trigger = x[:half_len] # trigger
                 mask = x[half_len:] # mask
                 
-                # mask = np.round(mask) # to 0 or 1
                 xi = (1 - mask) * x0 + mask * trigger
 
                 output = model.apply(xi).reshape(-1)
@@ -463,9 +589,7 @@ class BackDoorRepairImpl():
                 else:
                     res += max_score - target_score + 1e-9
 
-            # print('res1 = {}'.format(res))
             res += lam * np.sum(mask)
-            # print('res2 = {}'.format(res))
 
             return res
 
@@ -483,17 +607,13 @@ class BackDoorRepairImpl():
         up[:half_len] = model.upper # upper for trigger
 
         x = np.zeros(length)
-        # x[:half_len] = (lw[:half_len] + up[:half_len]) / 2.0
-        # x[:half_len] = up[:half_len]
-        # x[half_len:] = 1
 
         args = (model, valid_x0s, target, length, half_len)
         jac = grad(obj_func)
-        # jac = None
         bounds = Bounds(lw, up)
 
         res = minimize(obj_func, x, args=args, jac=jac, bounds=bounds)
-        print('res.fun = {}'.format(res.fun))
+        # print('res.fun = {}'.format(res.fun))
 
         return res.x
 
