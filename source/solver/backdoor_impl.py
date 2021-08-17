@@ -74,8 +74,7 @@ class BackDoorImpl():
             position = spec['atk_pos']
             backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
 
-            valid_atk_x0s = valid_x0s.copy()
-            self.__filter_valid_atk_x0s(model, valid_atk_x0s, backdoor_indexes, target)
+            valid_atk_x0s = self.__filter_valid_atk_x0s(model, valid_x0s, backdoor_indexes, target)
 
             if len(valid_atk_x0s) / len(valid_x0s) >= 0.8:
                 stamp = self.__attack(model, valid_atk_x0s, backdoor_indexes, target)
@@ -108,7 +107,8 @@ class BackDoorImpl():
         
 
     def __filter_valid_atk_x0s(self, model, valid_x0s, backdoor_indexes, target):
-        removed_x0s = []
+        valid_atk_x0s = []
+
         for i in range(len(valid_x0s)):
             x0, output_x0 = valid_x0s[i]
 
@@ -118,11 +118,10 @@ class BackDoorImpl():
             output_x_bd = model.apply(x_bd).reshape(-1)
             target_x_bd = np.argmax(output_x_bd)
 
-            if target_x_bd != target:
-                removed_x0s.insert(0, i)
+            if target_x_bd == target:
+                valid_atk_x0s.append((x0, output_x0))
 
-        for i in removed_x0s:
-            valid_x0s.pop(i)
+        return valid_atk_x0s
 
 
     def __write_constr_input_layer(self, prob, cnt_imgs, coefs, const, op, backdoor_indexes, prev_var_idx, curr_var_idx):
