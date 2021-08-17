@@ -138,6 +138,15 @@ class Function(Layer):
         else:
             return True
 
+    def is_activation_layer(self):
+        return True
+
+    def is_linear_layer(self):
+        return False
+
+    def get_number_neurons(self):
+        return None
+
 
 class Linear(Layer):
     def __init__(self, weights, bias, name):
@@ -180,6 +189,15 @@ class Linear(Layer):
 
     def is_poly_exact(self):
         return True
+
+    def is_activaiton_layer(self):
+        return False
+
+    def is_linear_layer(self):
+        return True
+
+    def get_number_neurons(self):
+        return len(self.bias)
 
 
 class BasicRNN(Layer):

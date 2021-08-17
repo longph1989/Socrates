@@ -33,6 +33,8 @@ class BackDoorRepairImpl():
         num_imgs = spec['num_imgs']
         dataset = spec['dataset']
 
+        repair_num = 10
+
         valid_x0s = []
         y0s = np.array(ast.literal_eval(read(spec['pathY'])))
 
@@ -82,11 +84,8 @@ class BackDoorRepairImpl():
         # print('mask2 = {}'.format(list(mask2)))
         # print('sum mask2 = {}'.format(np.sum(mask2)))
 
-        valid_x0s_with_bd1 = valid_x0s.copy()
-        self.__filter_x0s_with_bd(model, valid_x0s_with_bd1, trigger, mask1, target)
-
-        valid_x0s_with_bd2 = valid_x0s.copy()
-        self.__filter_x0s_with_bd(model, valid_x0s_with_bd2, trigger, mask2, target)
+        valid_x0s_with_bd1 = self.__get_x0s_with_bd(model, valid_x0s, trigger, mask1, target)
+        valid_x0s_with_bd2 = self.__get_x0s_with_bd(model, valid_x0s, trigger, mask2, target)
 
         # print('len(valid_x0s) =', len(valid_x0s))
         # print('len(valid_x0s_with_bd1) =', len(valid_x0s_with_bd1))
@@ -104,72 +103,55 @@ class BackDoorRepairImpl():
             assert False
         else:
             print('The stamp satisfies the success rate = {} with target = {}'.format(rate, target))
-            cleansed_model = self.clean_backdoor(model, valid_x0s_with_bd, trigger, mask, target)
+            cleansed_model = self.clean_backdoor(model, valid_x0s_with_bd, trigger, mask, target, repair_num)
 
         return None, None
 
 
-    def clean_backdoor(self, model, valid_x0s_with_bd, trigger, mask, target):
+    def clean_backdoor(self, model, valid_x0s, trigger, mask, target, repair_num):
         print('\nBegin cleansing')
-        assert self.__validate(model, valid_x0s_with_bd, trigger, mask, target, 1.0)
+        assert self.__validate(model, valid_x0s, trigger, mask, target, 1.0)
 
 #####################################################################################################################################
-        for do_layer in self.do_layer:
-            print('Analyzing layer {}'.format(col))
-            ie_ave_l = []
-            neuron_idx = 0
-            for do_neuron in self.do_neuron[col]:
-                ie, min, max = self.get_ie_do_h_dy(do_layer, do_neuron, self.sens_idx, self.sens_value, self.stepsize, 0)
+        number_of_layers = len(model.layers)
 
-                ie_ave_l.append(np.mean(np.array(ie)))
-                new_entry = []
-                new_entry.append(np.mean(np.array(ie)))
-                new_entry.append(do_layer)
-                new_entry.append(do_neuron)
-                ie_ave_matrix.append(new_entry)
+        ie_ave_matrix = []
 
-                neuron_idx = neuron_idx + 1
+        for do_layer in range(number_of_layers):
 
-            ie_ave.append(ie_ave_l)
-            col = col + 1
+            if model.layers[do_layer].is_linear_layer():
+                number_of_neurons = model.layers[do_layer].get_number_neurons()
 
-                for item in ie_ave_matrix:
-            self.debug_print(item)
-        ie_ave_matrix.sort()
-        ie_ave_matrix = ie_ave_matrix[::-1]
+                for do_neuron in range(number_of_neurons):
+                    ie, min_val, max_val = self.get_ie_do_h_dy(model, valid_x0s, trigger, mask, target, do_layer, do_neuron)
 
-        self.r_neuron = []
-        self.r_layer = []
-        for i in range (0, self.repair_num):
-            self.r_layer.append(int(ie_ave_matrix[i][1]))
-            self.r_neuron.append(int(ie_ave_matrix[i][2]))
+                    new_entry = []
+                    new_entry.append(np.mean(np.array(ie)))
+                    new_entry.append(do_layer)
+                    new_entry.append(do_neuron)
+                    
+                    ie_ave_matrix.append(new_entry)
+
+        ie_ave_matrix.sort(reverse=True)
+
+        repair_layers, repair_neurons = [], []
+        for i in range (0, repair_num):
+            repair_layers.append(int(ie_ave_matrix[i][1]))
+            repair_neurons.append(int(ie_ave_matrix[i][2]))
         
-        fault_loc_time = time.time() - overall_starttime
-
-        print('\nRepair layer: {}'.format(self.r_layer))
-        print('Repair neuron: {}'.format(self.r_neuron))
+        print('\nRepair layers: {}'.format(repair_layers))
+        print('Repair neurons: {}'.format(repair_neurons))
 
 
-    def get_ie_do_h_dy(self, do_layer, do_neuron, sens_idx, sens_range, num_step=16, class_n=0):
+    def get_ie_do_h_dy(self, model, valid_x0s, trigger, mask, target, do_layer, do_neuron):
         # get value range of given hidden neuron
-        pathX = self.datapath + '/'
-        pathY = self.datapath + '/labels.txt'
 
-        #y0s = np.array(ast.literal_eval(read(pathY)))
+        hidden_max, hidden_min = None, None
 
-        hidden_max = 0.0
-        hidden_min = 0.0
+        for x0, output_x0 in valid_x0s:
+            _, hidden = self.model.apply_get_h(x0, do_layer, do_neuron)
 
-        for i in range(self.datalen):
-            # random index
-            #i = int(np.random.rand() * self.datalen_tot)
-
-            x0_file = pathX + 'data' + str(i) + '.txt'
-            x0 = np.array(ast.literal_eval(read(x0_file)))
-
-            y, hidden = self.model.apply_get_h(x0, do_layer, do_neuron)
-
-            if i == 0:
+            if hidden_max is None:
                 hidden_max = hidden
                 hidden_min = hidden
             else:
@@ -181,57 +163,31 @@ class BackDoorRepairImpl():
         # now we have hidden_min and hidden_max
 
         # compute interventional expectation for each step
-        ie = []
+        ie, num_step = [], 16
         if hidden_max == hidden_min:
             ie = [hidden_min] * num_step
         else:
             for h_val in np.linspace(hidden_min, hidden_max, num_step):
-                dy = self.get_dy_do_h(do_layer, do_neuron, h_val, class_n, sens_idx, sens_range)
+                dy = self.get_dy_do_h(model, valid_x0s, trigger, mask, target, do_layer, do_neuron, h_val)
                 ie.append(dy)
 
         return ie, hidden_min, hidden_max
 
-
     #
     # get expected value of y with hidden neuron intervention
     #
-    def get_dy_do_h(self, do_layer, do_neuron, do_value, class_n, sens_idx, sens_range):
-        pathX = self.datapath + '/'
-        pathY = self.datapath + '/labels.txt'
-
-        #y0s = np.array(ast.literal_eval(read(pathY)))
-
-        #l_pass = 0
-        #l_fail = 0
-
+    def get_dy_do_h(self, model, valid_x0s, trigger, mask, target, do_layer_idx, do_neuron_idx, do_value):
         dy_sum = 0.0
 
-        for i in range(self.datalen):
-            # random index
-            #i = int(np.random.rand() * self.datalen_tot)
-            x0_file = pathX + 'data' + str(i) + '.txt'
-            x0 = np.array(ast.literal_eval(read(x0_file)))
-
+        for x0, output_x0 in valid_x0s:
             y = self.model.apply_intervention(x0, do_layer, do_neuron, do_value)
-            #lbl_x0 = np.argmax(y, axis=1)[0]
+            y = y[0, target]
 
-            y = y[0][class_n]
-
-            max_dy = 0.0
-            x_n = x0
-            for sens_val in self.sens_value:
-                if sens_val == x0[sens_idx]:
-                    continue
-                x_n[sens_idx] = sens_val
-                y_n = self.model.apply_intervention(x_n, do_layer, do_neuron, do_value)
-                y_n = y_n[0][class_n]
-                diff_n = np.abs(y_n - y)
-                if max_dy < diff_n:
-                    max_dy = diff_n
+            dy = abs(output_x0[target] - y)
 
             dy_sum = dy_sum + max_dy
 
-        avg = dy_sum / self.datalen
+        avg = dy_sum / len(valid_x0s)
 
         return avg
 #####################################################################################################################################
