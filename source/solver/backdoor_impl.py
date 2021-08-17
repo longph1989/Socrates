@@ -74,11 +74,11 @@ class BackDoorImpl():
             position = spec['atk_pos']
             backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
 
-            valid_x0s_with_bd = valid_x0s.copy()
-            self.__filter_x0s_with_bd(model, valid_x0s_with_bd, backdoor_indexes, target)
+            valid_atk_x0s = valid_x0s.copy()
+            self.__filter_valid_atk_x0s(model, valid_atk_x0s, backdoor_indexes, target)
 
-            if len(valid_x0s_with_bd) / len(valid_x0s) >= 0.8:
-                stamp = self.__attack(model, valid_x0s_with_bd, backdoor_indexes, target)
+            if len(valid_atk_x0s) / len(valid_x0s) >= 0.8:
+                stamp = self.__attack(model, valid_atk_x0s, backdoor_indexes, target)
 
                 if stamp is not None:
                     print('Real stamp = {} for target = {} at position = {}'.format(stamp, target, backdoor_indexes))
@@ -87,7 +87,7 @@ class BackDoorImpl():
                     print('No stamp for target = {}'.format(target))
                     return target, None
             else:
-                print('Only {} remaining data, not enough for the attack with target = {}'.format(len(valid_x0s_with_bd), target))
+                print('Only {} remaining data, not enough for the attack with target = {}'.format(len(valid_atk_x0s), target))
                 return None, None
 
         valid_bdi = []
@@ -107,7 +107,7 @@ class BackDoorImpl():
         return self.__verify(model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold, alpha, beta)
         
 
-    def __filter_x0s_with_bd(self, model, valid_x0s, backdoor_indexes, target):
+    def __filter_valid_atk_x0s(self, model, valid_x0s, backdoor_indexes, target):
         removed_x0s = []
         for i in range(len(valid_x0s)):
             x0, output_x0 = valid_x0s[i]
