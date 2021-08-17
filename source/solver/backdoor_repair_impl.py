@@ -180,11 +180,9 @@ class BackDoorRepairImpl():
         dy_sum = 0.0
 
         for x0, output_x0 in valid_x0s:
-            y = self.model.apply_intervention(x0, do_layer, do_neuron, do_value)
-            y = y[0, target]
+            output_do = self.model.apply_intervention(x0, do_layer, do_neuron, do_value).reshape(-1)
 
-            dy = abs(output_x0[target] - y)
-
+            dy = abs(output_x0[target] - output_do[target])
             dy_sum = dy_sum + max_dy
 
         avg = dy_sum / len(valid_x0s)
@@ -192,8 +190,9 @@ class BackDoorRepairImpl():
         return avg
 #####################################################################################################################################
 
-    def __filter_x0s_with_bd(self, model, valid_x0s, trigger, mask, target):
-        removed_x0s = []
+    def __get_x0s_with_bd(self, model, valid_x0s, trigger, mask, target):
+        valid_x0s_with_bd = []
+
         for i in range(len(valid_x0s)):
             x0, output_x0 = valid_x0s[i]
 
@@ -202,11 +201,10 @@ class BackDoorRepairImpl():
             output_x_bd = model.apply(x_bd).reshape(-1)
             target_x_bd = np.argmax(output_x_bd)
 
-            if target_x_bd != target:
-                removed_x0s.insert(0, i)
+            if target_x_bd == target:
+                valid_x0s_with_bd.append((x_bd, output_x_bd))
 
-        for i in removed_x0s:
-            valid_x0s.pop(i)
+        return valid_x0s_with_bd
 
 
     # def __write_constr_input_layer(self, prob, cnt_imgs, coefs, const, op, backdoor_indexes, prev_var_idx, curr_var_idx):
