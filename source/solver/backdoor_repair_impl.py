@@ -149,7 +149,7 @@ class BackDoorRepairImpl():
         hidden_max, hidden_min = None, None
 
         for x0, output_x0 in valid_x0s:
-            _, hidden = self.model.apply_get_h(x0, do_layer, do_neuron)
+            _, hidden = model.apply_get_h(x0, do_layer, do_neuron)
 
             if hidden_max is None:
                 hidden_max = hidden
@@ -176,14 +176,14 @@ class BackDoorRepairImpl():
     #
     # get expected value of y with hidden neuron intervention
     #
-    def get_dy_do_h(self, model, valid_x0s, trigger, mask, target, do_layer_idx, do_neuron_idx, do_value):
+    def get_dy_do_h(self, model, valid_x0s, trigger, mask, target, do_layer, do_neuron, do_value):
         dy_sum = 0.0
 
         for x0, output_x0 in valid_x0s:
-            output_do = self.model.apply_intervention(x0, do_layer, do_neuron, do_value).reshape(-1)
+            output_do = model.apply_intervention(x0, do_layer, do_neuron, do_value).reshape(-1)
 
             dy = abs(output_x0[target] - output_do[target])
-            dy_sum = dy_sum + max_dy
+            dy_sum = dy_sum + dy
 
         avg = dy_sum / len(valid_x0s)
 

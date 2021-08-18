@@ -197,7 +197,8 @@ class Linear(Layer):
         return True
 
     def get_number_neurons(self):
-        return len(self.bias)
+        bias = self.bias.transpose(1, 0)
+        return len(bias)
 
 
 class BasicRNN(Layer):
