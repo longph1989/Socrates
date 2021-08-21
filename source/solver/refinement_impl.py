@@ -204,7 +204,9 @@ class RefinementImpl():
                 task1 = Task(ref_layer, lst_poly1)
                 task2 = Task(ref_layer, lst_poly2)
 
-                for task in self.tasks:
+                tasks_copy = self.tasks.copy()
+
+                for task in tasks_copy:
                     if task.idx > ref_layer:
                         self.cnt_removed += 1
                         self.tasks.remove(task)
