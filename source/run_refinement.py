@@ -136,6 +136,8 @@ def main():
                 print('time = {}'.format(t1 - t0))
                 print('\n============================\n')
 
+                break
+
                 if best_verified == round(best_failed - 0.001, 3): break
 
                 if res == 1:

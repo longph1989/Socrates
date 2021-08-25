@@ -41,7 +41,7 @@ class Poly():
 
         for i in range(no_neurons):
             args = (i, self.le[i], self.ge[i], lst_poly)
-            _, lw_i, up_i, lst_le_i, lst_ge_i = back_substitute(args)
+            _, lw_i, up_i, lst_le_i, lst_ge_i = back_substitute0(args)
             self.lw[i], self.up[i] = lw_i, up_i
 
             # get_ineq only happens at the last step
@@ -233,8 +233,8 @@ class RefinementImpl():
             poly_out = lst_poly[idx]
             no_neurons = len(poly_out.lw)
 
-            # print('poly_out.lw = {}'.format(poly_out.lw))
-            # print('poly_out.up = {}'.format(poly_out.up))
+            print('poly_out.lw = {}'.format(poly_out.lw))
+            print('poly_out.up = {}'.format(poly_out.up))
 
             for y in range(no_neurons):
                 if y != y0 and poly_out.lw[y0] <= poly_out.up[y]:

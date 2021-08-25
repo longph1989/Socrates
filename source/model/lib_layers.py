@@ -387,6 +387,9 @@ class Conv2d(Layer):
         res.le = np.delete(res.le, del_idx, 1)
         res.ge = np.delete(res.ge, del_idx, 1)
 
+        res.le = np.ascontiguousarray(res.le)
+        res.ge = np.ascontiguousarray(res.ge)
+
         res.back_substitute(lst_poly)
 
         return res
