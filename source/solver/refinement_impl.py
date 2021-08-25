@@ -233,8 +233,8 @@ class RefinementImpl():
             poly_out = lst_poly[idx]
             no_neurons = len(poly_out.lw)
 
-            print('poly_out.lw = {}'.format(poly_out.lw))
-            print('poly_out.up = {}'.format(poly_out.up))
+            # print('poly_out.lw = {}'.format(poly_out.lw))
+            # print('poly_out.up = {}'.format(poly_out.up))
 
             for y in range(no_neurons):
                 if y != y0 and poly_out.lw[y0] <= poly_out.up[y]:
