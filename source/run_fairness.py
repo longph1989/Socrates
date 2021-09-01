@@ -26,7 +26,7 @@ def add_solver(args, spec):
         solver['alpha'] = '0.05'
         solver['beta'] = '0.05'
         solver['delta'] = '0.005'
-    elif args.algorithm == 'deepcegar':
+    elif args.algorithm == 'refinement':
         solver['has_ref'] = str(args.has_ref)
         solver['max_ref'] = str(args.max_ref)
         solver['ref_typ'] = str(args.ref_typ)
