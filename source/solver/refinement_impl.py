@@ -44,9 +44,11 @@ class Poly():
             _, lw_i, up_i, lst_le_i, lst_ge_i = back_substitute0(args)
             self.lw[i], self.up[i] = lw_i, up_i
 
-            # get_ineq only happens at the last step
-            # no_neurons in this case always be 1
-            if get_ineq: return lst_le_i, lst_ge_i
+            if up_i < lw_i: break # unreachable state
+
+        # get_ineq only happens at the last step
+        # no_neurons in this case always be 1
+        if get_ineq: return lst_le_i, lst_ge_i
 
 
 class Task():
@@ -266,6 +268,13 @@ class RefinementImpl():
             return True, None, None, None
         else:
             poly_next = model.forward(lst_poly[idx], idx, lst_poly)
+
+            lw_next = poly_next.lw
+            up_next = poly_next.up
+
+            if np.any(up_next < lw_next):
+                return True, None, None, None # unreachable state
+
             lst_poly.append(poly_next)
             return self.__run(model, x0, y0, idx + 1, lst_poly)
 
@@ -324,7 +333,7 @@ class RefinementImpl():
                     up = poly_i.up[ref_idx]
                     cf = ge_i[ref_idx]
 
-                    if ((i == 0 or func == sigmoid or func == tanh) and lw < up) \
+                    if ((i == 0 or func == sigmoid or func == tanh) and (lw < up - 0.1)) \
                             or (func == relu and lw < 0 and up > 0):
                         impact = max(abs(cf * lw), abs(cf * up))
                         sum_impact = sum_impact + impact
@@ -335,7 +344,7 @@ class RefinementImpl():
                         up = poly_i.up[ref_idx]
                         cf = ge_i[ref_idx]
 
-                        if ((i == 0 or func == sigmoid or func == tanh) and lw < up) \
+                        if ((i == 0 or func == sigmoid or func == tanh) and (lw < up - 0.1)) \
                                 or (func == relu and lw < 0 and up > 0):
                             impact = max(abs(cf * lw), abs(cf * up))
                             norm_impact = impact / sum_impact
@@ -393,7 +402,7 @@ class RefinementImpl():
                     lw = poly_i.lw[ref_idx]
                     up = poly_i.up[ref_idx]
 
-                    if ((i == 0 or func == sigmoid or func == tanh) and lw < up) \
+                    if ((i == 0 or func == sigmoid or func == tanh) and (lw < up - 0.1)) \
                             or (func == relu and lw < 0 and up > 0):
                         ref_value = 0 if func == relu else (lw + up) / 2
                         choice_lst.append((i, ref_idx, ref_value))
