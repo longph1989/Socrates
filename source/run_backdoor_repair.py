@@ -15,12 +15,10 @@ def add_assertion(args, spec):
     assertion = dict()
 
     assertion['target'] = args.target
-
     assertion['rate'] = args.rate
-    assertion['threshold'] = args.threshold
 
     assertion['total_imgs'] = args.total_imgs
-    assertion['num_imgs'] = args.num_imgs
+    assertion['num_repair'] = args.num_repair
 
     if 'mnist' in args.dataset:
         assertion['dataset'] = 'mnist'
@@ -60,8 +58,8 @@ def get_dataset(dataset):
 
 
 def run_cleansing(args):
-    print('Backdoor target = {} with total imgs = {}, and num imgs = {}'.
-        format(args.target, args.total_imgs, args.num_imgs))
+    print('Backdoor target = {} with total imgs = {}, and num repair = {}'.
+        format(args.target, args.total_imgs, args.num_repair))
 
     with open(args.spec, 'r') as f:
         spec = json.load(f)
@@ -87,19 +85,15 @@ def main():
                         help='the specification file')
     parser.add_argument('--rate', type=float, default=0.90,
                         help='the success rate')
-    parser.add_argument('--threshold', type=float, default=0.01,
-                        help='the threshold')
     parser.add_argument('--target', type=int,
                         help='the target used in verify and attack')
     
     parser.add_argument('--algorithm', type=str, default='backdoor',
                         help='the chosen algorithm')
-    parser.add_argument('--num_procs', type=int, default=0,
-                        help='the number of processes')
     parser.add_argument('--total_imgs', type=int, default=10000,
                         help='the number of images')
-    parser.add_argument('--num_imgs', type=int, default=100,
-                        help='the number of images')
+    parser.add_argument('--num_repair', type=int, default=10,
+                        help='the number of repair')
     parser.add_argument('--dataset', type=str,
                         help='the data set for BACKDOOR experiments')
 

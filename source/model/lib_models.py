@@ -47,6 +47,21 @@ class Model:
             return output[0, y]
 
 
+    def apply_to(self, x, idx):
+        if self.layers == None:
+            # only work when layers is not None
+            raise NameError('Not support yet!')
+
+        output = x # no need for recurrent yet
+
+        for i in range(len(self.layers)):
+            if i < idx:
+                layer = self.layers[i]
+                output = layer.apply(output)
+
+        return output
+
+
     def forward(self, x_poly, idx, lst_poly):
         if self.layers == None:
             # only work when layers is not None

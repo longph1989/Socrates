@@ -24,16 +24,12 @@ import matplotlib.pyplot as plt
 class BackDoorRepairImpl():
     def __solve_backdoor_repair(self, model, spec, display):
         target = spec['target']
-
         rate = spec['rate']
-        threshold = spec['threshold']
-        
-        total_imgs = spec['total_imgs']
-        total_imgs = 1000
-        num_imgs = spec['num_imgs']
-        dataset = spec['dataset']
 
-        repair_num = 10
+        total_imgs = spec['total_imgs']
+        total_imgs = 100
+        num_repair = spec['num_repair']
+        dataset = spec['dataset']
 
         valid_x0s = []
         y0s = np.array(ast.literal_eval(read(spec['pathY'])))
@@ -70,86 +66,319 @@ class BackDoorRepairImpl():
 
         if dataset == 'mnist':
             trigger = stamp[:(1 * 28 * 28)]
-            mask1 = stamp[(1 * 28 * 28):]
+            mask = stamp[(1 * 28 * 28):]
         elif dataset == 'cifar':
             trigger = stamp[:(3 * 32 * 32)]
-            mask1 = stamp[(3 * 32 * 32):]
-        mask2 = np.round(mask1)
+            mask = stamp[(3 * 32 * 32):]
 
-        # print('trigger = {}'.format(list(trigger)))
+        print('trigger = {}'.format(trigger))
+        print('mask = {}'.format(mask))
+        print('sum mask = {}\n'.format(np.sum(mask)))
 
-        # print('mask1 = {}'.format(list(mask1)))
-        # print('sum mask1 = {}'.format(np.sum(mask1)))
+        valid_x0s_with_bd = self.__get_x0s_with_bd(model, valid_x0s, trigger, mask, target)
 
-        # print('mask2 = {}'.format(list(mask2)))
-        # print('sum mask2 = {}'.format(np.sum(mask2)))
-
-        valid_x0s_with_bd1 = self.__get_x0s_with_bd(model, valid_x0s, trigger, mask1, target)
-        valid_x0s_with_bd2 = self.__get_x0s_with_bd(model, valid_x0s, trigger, mask2, target)
-
-        # print('len(valid_x0s) =', len(valid_x0s))
-        # print('len(valid_x0s_with_bd1) =', len(valid_x0s_with_bd1))
-        # print('len(valid_x0s_with_bd2) =', len(valid_x0s_with_bd2))
-
-        mask = mask1
-        mask = mask2
-
-        valid_x0s_with_bd = valid_x0s_with_bd1
-        valid_x0s_with_bd = valid_x0s_with_bd2
+        print('len(valid_x0s) =', len(valid_x0s))
+        print('len(valid_x0s_with_bd) =', len(valid_x0s_with_bd))
 
         if len(valid_x0s_with_bd) / len(valid_x0s) < rate:
-            # print('\nrate = {}'.format(len(valid_x0s_with_bd) / len(valid_x0s)))
+            print('\nrate = {}'.format(len(valid_x0s_with_bd) / len(valid_x0s)))
             print('The stamp does not satisfy the success rate = {} with target = {}'.format(rate, target))
             assert False
         else:
             print('The stamp satisfies the success rate = {} with target = {}'.format(rate, target))
-            cleansed_model = self.clean_backdoor(model, valid_x0s_with_bd, trigger, mask, target, repair_num)
+            cleansed_model = self.__clean_backdoor(model, valid_x0s_with_bd, trigger, mask, target, num_repair)
 
         return None, None
 
 
-    def clean_backdoor(self, model, valid_x0s, trigger, mask, target, repair_num):
+    def __clean_backdoor(self, model, valid_x0s_with_bd, trigger, mask, target, num_repair):
         print('\nBegin cleansing')
-        assert self.__validate(model, valid_x0s, trigger, mask, target, 1.0)
+        assert self.__validate(model, valid_x0s_with_bd, trigger, mask, target, 1.0)
 
 #####################################################################################################################################
         number_of_layers = len(model.layers)
 
         ie_ave_matrix = []
 
-        for do_layer in range(number_of_layers):
+        for do_layer in range(number_of_layers - 1): # not consider the last layer
 
             if model.layers[do_layer].is_linear_layer():
                 number_of_neurons = model.layers[do_layer].get_number_neurons()
 
                 for do_neuron in range(number_of_neurons):
-                    ie, min_val, max_val = self.get_ie_do_h_dy(model, valid_x0s, trigger, mask, target, do_layer, do_neuron)
+                    ie, min_val, max_val = self.get_ie_do_h_dy(model, valid_x0s_with_bd, trigger, mask, target, do_layer, do_neuron)
+                    mie = np.mean(np.array(ie))
 
-                    new_entry = []
-                    new_entry.append(np.mean(np.array(ie)))
-                    new_entry.append(do_layer)
-                    new_entry.append(do_neuron)
-                    
-                    ie_ave_matrix.append(new_entry)
+                    if mie > 0.0:
+                        new_entry = []
+                        new_entry.append(mie)
+                        new_entry.append(do_layer)
+                        new_entry.append(do_neuron)
+                        
+                        ie_ave_matrix.append(new_entry)
 
+        print(ie_ave_matrix)
         ie_ave_matrix.sort(reverse=True)
+        print()
+        print(ie_ave_matrix)
 
         repair_layers, repair_neurons = [], []
-        for i in range (0, repair_num):
+        for i in range (0, num_repair):
             repair_layers.append(int(ie_ave_matrix[i][1]))
             repair_neurons.append(int(ie_ave_matrix[i][2]))
         
         print('\nRepair layers: {}'.format(repair_layers))
         print('Repair neurons: {}'.format(repair_neurons))
 
+        min_weight, max_weight, min_bias, max_bias = self.__collect_min_max_value(model)
 
-    def get_ie_do_h_dy(self, model, valid_x0s, trigger, mask, target, do_layer, do_neuron):
+        print('\nmin_weight = {}, max_weight = {}'.format(min_weight, max_weight))
+        print('min_bias = {}, max_bias = {}'.format(min_bias, max_bias))
+
+        for repair_layer, repair_neuron in list(zip(repair_layers, repair_neurons)):
+            self.__write_problem(model, valid_x0s_with_bd, trigger, mask, target, repair_layer, repair_neuron,
+                min_weight, max_weight, min_bias, max_bias)
+
+
+    def __collect_min_max_value(self, model):
+        min_weight, max_weight = 1e9, -1e9
+        min_bias, max_bias = 1e9, -1e9
+
+        for layer in model.layers:
+            if layer.is_linear_layer():
+
+                min_weight = min(min_weight, np.min(layer.weights))
+                max_weight = max(max_weight, np.max(layer.weights))
+
+                min_bias = min(min_bias, np.min(layer.bias))
+                max_bias = max(max_bias, np.max(layer.bias))
+
+        return min_weight, max_weight, min_bias, max_bias
+
+
+    def __write_bounds(self, prob, lw_coll, up_coll, min_weight, max_weight, min_bias, max_bias, num_weis):
+        for idx in range(num_weis):
+            prob.write('  {} <= w{} <= {}\n'.format(min_weight, idx, max_weight))
+        prob.write('  {} <= b <= {}\n'.format(min_bias, max_bias))
+
+        for cnt_imgs in range(len(lw_coll)):
+            lw_list = lw_coll[cnt_imgs]
+            up_list = up_coll[cnt_imgs]
+
+            for var_idx in range(len(lw_list)):
+                lw, up = lw_list[var_idx], up_list[var_idx]
+                if lw == up:
+                    prob.write('  x{}_{} = {}\n'.format(var_idx, cnt_imgs, lw))
+                else:
+                    prob.write('  {} <= x{}_{} <= {}\n'.format(lw, var_idx, cnt_imgs, up))
+
+        prob.flush()
+
+
+    def __write_binary(self, prob, bins_coll):
+        prob.write(' ')
+        for cnt_imgs in range(len(bins_coll)):
+            for idx in range(bins_coll[cnt_imgs]):
+                prob.write(' a{}_{}'.format(idx, cnt_imgs))
+
+
+    def __write_problem(self, model, valid_x0s_with_bd, trigger, mask, target,
+            repair_layer, repair_neuron, min_weight, max_weight, min_bias, max_bias):
+        filename = 'prob.lp'
+        prob = open(filename, 'w')
+
+        prob.write('Minimize\n')
+        prob.write('  0\n')
+
+        lw_coll, up_coll, bins_coll = [], [], []
+
+        prob.write('Subject To\n')
+
+        cnt_imgs, has_bins = 0, False
+        for x_0, x_bd, output_x0, output_x_bd in valid_x0s_with_bd:
+            input_repair = model.apply_to(x_bd, repair_layer).reshape(-1)
+            y0 = np.argmax(output_x0)
+
+            lw_list, up_list, num_bins = self.__write_constr(prob, model, input_repair, repair_layer, repair_neuron,
+                min_weight, max_weight, min_bias, max_bias, cnt_imgs, y0)
+
+            if num_bins > 0: has_bins = True
+            
+            lw_coll.append(lw_list)
+            up_coll.append(up_list)
+            bins_coll.append(num_bins)
+            
+            cnt_imgs += 1
+
+        prob.write('Bounds\n')
+        self.__write_bounds(prob, lw_coll, up_coll, min_weight, max_weight, min_bias, max_bias, len(input_repair))
+
+        if has_bins:
+            prob.write('Binary\n')
+            self.__write_binary(prob, bins_coll)
+
+        prob.write('End\n')
+
+        prob.flush()
+        prob.close()
+
+
+    def __write_constr(self, prob, model, input_repair, repair_layer, repair_neuron,
+            min_weight, max_weight, min_bias, max_bias, cnt_imgs, y0):
+        lw_list, up_list = [], []
+        lw_input, up_input = [], []
+        num_bins = 0
+
+        for input_val in input_repair:
+            lw_input.append(input_val)
+            up_input.append(input_val)
+
+        lw_list.append(lw_input)
+        up_list.append(up_input)
+
+        curr_var_idx = len(input_repair)
+        prev_var_idx = 0
+
+        for layer_idx in range(repair_layer, len(model.layers)):
+            layer = model.layers[layer_idx]
+            lw_layer, up_layer = [], []
+
+            # fully connected layer
+            if layer.is_linear_layer():
+                weights = layer.weights.transpose(1, 0) # shape: num_neuron X input
+                bias = layer.bias.transpose(1, 0).reshape(-1) # shape: num_neuron
+
+                # repair layer
+                if layer_idx == repair_layer:
+                    for neuron_idx in range(len(bias)):
+                        # repair neuron
+                        if neuron_idx == repair_neuron:
+                            # compute bounds
+                            lw, up = 0.0, 0.0
+
+                            for input_val in input_repair:
+                                if input_val > 0:
+                                    lw += min_weight * input_val
+                                    up += max_weight * input_val
+                                elif input_val < 0:
+                                    lw += max_weight * input_val
+                                    up += min_weight * input_val
+
+                            lw, up = lw + min_bias, up + max_bias
+                            assert lw <= up
+
+                            lw_layer.append(lw)
+                            up_layer.append(up)
+
+                            # write constraints
+                            prob.write('  x{}_{}'.format(curr_var_idx + neuron_idx, cnt_imgs))
+                            # input vals are coefs, weights and bias are variables
+                            coefs = -input_repair
+                            for coef_idx in range(len(coefs)):
+                                coef = coefs[coef_idx]
+                                if coef > 0.0:
+                                    prob.write(' + {} w{}'.format(coef, coef_idx))
+                                elif coef < 0.0:
+                                    prob.write(' - {} w{}'.format(abs(coef), coef_idx))
+                            prob.write(' - b = 0.0\n')
+                        # other neurons
+                        else:
+                            # concrete values for other neurons
+                            val = (np.sum(weights[neuron_idx] * input_repair) + bias[neuron_idx])
+
+                            lw_layer.append(val)
+                            up_layer.append(val)
+                # other linear layers
+                else:
+                    lw_prev, up_prev = lw_list[-1], up_list[-1]
+
+                    for neuron_idx in range(len(bias)):
+                        # compute bounds
+                        lw, up = 0.0, 0.0
+
+                        for weight_idx in range(len(weights[neuron_idx])):
+                            weight_val = weights[neuron_idx][weight_idx]
+                            if weight_val > 0:
+                                lw += weight_val * lw_prev[weight_idx]
+                                up += weight_val * up_prev[weight_idx]
+                            elif weight_val < 0:
+                                lw += weight_val * up_prev[weight_idx]
+                                up += weight_val * lw_prev[weight_idx]
+
+                        lw, up = lw + bias[neuron_idx], up + bias[neuron_idx]
+                        assert lw <= up
+
+                        lw_layer.append(lw)
+                        up_layer.append(up)
+
+                        # write constraints
+                        prob.write('  x{}_{}'.format(curr_var_idx + neuron_idx, cnt_imgs))
+                        coefs = -weights[neuron_idx]
+                        for coef_idx in range(len(coefs)):
+                            coef = coefs[coef_idx]
+                            if coef > 0.0:
+                                prob.write(' + {} x{}_{}'.format(coef, prev_var_idx + coef_idx, cnt_imgs))
+                            elif coef < 0.0:
+                                prob.write(' - {} x{}_{}'.format(abs(coef), prev_var_idx + coef_idx, cnt_imgs))
+                        prob.write(' = {}\n'.format(bias[neuron_idx]))
+            # ReLU
+            else:
+                lw_prev, up_prev = lw_list[-1], up_list[-1]
+
+                for neuron_idx in range(len(lw_prev)):
+                    # compute bounds
+                    lw, up = 0.0, 0.0
+
+                    if lw_prev[neuron_idx] <= 0.0: lw = 0.0
+                    else: lw = lw_prev[neuron_idx]
+
+                    if up_prev[neuron_idx] <= 0.0: up = 0.0
+                    else: up = up_prev[neuron_idx]
+
+                    assert lw <= up
+
+                    lw_layer.append(lw)
+                    up_layer.append(up)
+
+                    # write constraints
+                    if lw < 0.0 and up > 0.0:
+                        cvar_idx = curr_var_idx + neuron_idx
+                        pvar_idx = prev_var_idx + neuron_idx
+
+                        prob.write('  x{}_{} - x{}_{} + {} a{}_{} <= {}\n'.format(cvar_idx, cnt_imgs, pvar_idx, cnt_imgs, -lw, num_bins, cnt_imgs, -lw))
+                        prob.write('  x{}_{} - x{}_{} >= 0.0\n'.format(cvar_idx, cnt_imgs, pvar_idx, cnt_imgs))
+                        prob.write('  x{}_{} - {} a{}_{} <= 0.0\n'.format(cvar_idx, cnt_imgs, up, num_bins, cnt_imgs))
+                        prob.write('  x{}_{} >= 0.0\n'.format(cvar_idx, cnt_imgs))
+                        num_bins += 1
+                    elif lw > 0.0:
+                        prob.write('  x{}_{} - x{}_{} = 0.0\n'.format(curr_var_idx + neuron_idx, cnt_imgs, prev_var_idx + neuron_idx, cnt_imgs))
+
+            lw_list.append(lw_layer)
+            up_list.append(up_layer)
+
+            prev_var_idx = curr_var_idx
+            curr_var_idx += len(lw_layer)
+
+        # output constraints
+        for output_idx in range(len(lw_list[-1])):
+            if output_idx != y0:
+                prob.write('  x{}_{} - x{}_{} > 0.0\n'.format(prev_var_idx + y0, cnt_imgs, prev_var_idx + output_idx, cnt_imgs))
+
+        flat_lw_list = [item for sublist in lw_list for item in sublist]
+        flat_up_list = [item for sublist in up_list for item in sublist]
+
+        prob.flush()
+
+        return flat_lw_list, flat_up_list, num_bins
+
+
+    def get_ie_do_h_dy(self, model, valid_x0s_with_bd, trigger, mask, target, do_layer, do_neuron):
         # get value range of given hidden neuron
 
         hidden_max, hidden_min = None, None
 
-        for x0, output_x0 in valid_x0s:
-            _, hidden = model.apply_get_h(x0, do_layer, do_neuron)
+        for x0, x_bd, output_x0, output_x_bd in valid_x0s_with_bd:
+            _, hidden = model.apply_get_h(x_bd, do_layer, do_neuron)
 
             if hidden_max is None:
                 hidden_max = hidden
@@ -168,7 +397,7 @@ class BackDoorRepairImpl():
             ie = [hidden_min] * num_step
         else:
             for h_val in np.linspace(hidden_min, hidden_max, num_step):
-                dy = self.get_dy_do_h(model, valid_x0s, trigger, mask, target, do_layer, do_neuron, h_val)
+                dy = self.get_dy_do_h(model, valid_x0s_with_bd, trigger, mask, target, do_layer, do_neuron, h_val)
                 ie.append(dy)
 
         return ie, hidden_min, hidden_max
@@ -176,16 +405,16 @@ class BackDoorRepairImpl():
     #
     # get expected value of y with hidden neuron intervention
     #
-    def get_dy_do_h(self, model, valid_x0s, trigger, mask, target, do_layer, do_neuron, do_value):
+    def get_dy_do_h(self, model, valid_x0s_with_bd, trigger, mask, target, do_layer, do_neuron, do_value):
         dy_sum = 0.0
 
-        for x0, output_x0 in valid_x0s:
-            output_do = model.apply_intervention(x0, do_layer, do_neuron, do_value).reshape(-1)
+        for x0, x_bd, output_x0, output_x_bd in valid_x0s_with_bd:
+            output_do = model.apply_intervention(x_bd, do_layer, do_neuron, do_value).reshape(-1)
 
-            dy = abs(output_x0[target] - output_do[target])
+            dy = abs(output_x_bd[target] - output_do[target])
             dy_sum = dy_sum + dy
 
-        avg = dy_sum / len(valid_x0s)
+        avg = dy_sum / len(valid_x0s_with_bd)
 
         return avg
 #####################################################################################################################################
@@ -202,324 +431,25 @@ class BackDoorRepairImpl():
             target_x_bd = np.argmax(output_x_bd)
 
             if target_x_bd == target:
-                valid_x0s_with_bd.append((x_bd, output_x_bd))
+                valid_x0s_with_bd.append((x0, x_bd, output_x0, output_x_bd))
 
         return valid_x0s_with_bd
 
 
-    # def __write_constr_input_layer(self, prob, cnt_imgs, coefs, const, op, backdoor_indexes, prev_var_idx, curr_var_idx):
-    #     prob.write('  x{}_{}'.format(curr_var_idx, cnt_imgs))
-
-    #     for i in range(len(coefs)):
-    #         coef = coefs[i]
-    #         var_idx = prev_var_idx + i
-
-    #         if coef > 0:
-    #             if var_idx in backdoor_indexes:
-    #                 prob.write(' + {} x{}'.format(coef, var_idx))
-    #             else:
-    #                 prob.write(' + {} x{}_{}'.format(coef, var_idx, cnt_imgs))
-    #         elif coef < 0:
-    #             if var_idx in backdoor_indexes:
-    #                 prob.write(' - {} x{}'.format(abs(coef), var_idx))
-    #             else:
-    #                 prob.write(' - {} x{}_{}'.format(abs(coef), var_idx, cnt_imgs))
-
-    #     prob.write(' {} {}\n'.format(op, const))
-    #     prob.flush()
-
-
-    # def __write_constr_hidden_layers(self, prob, cnt_imgs, coefs, const, op, prev_var_idx, curr_var_idx):
-    #     prob.write('  x{}_{}'.format(curr_var_idx, cnt_imgs))
-
-    #     for i in range(len(coefs)):
-    #         coef = coefs[i]
-    #         var_idx = prev_var_idx + i
-
-    #         if coef > 0:
-    #             prob.write(' + {} x{}_{}'.format(coef, var_idx, cnt_imgs))
-    #         elif coef < 0:
-    #             prob.write(' - {} x{}_{}'.format(abs(coef), var_idx, cnt_imgs))
-
-    #     prob.write(' {} {}\n'.format(op, const))
-    #     prob.flush()
-
-
-    # def __write_constr_output_layer(self, prob, cnt_imgs, target, prev_var_idx):
-    #     for i in range(10):
-    #         if i != target:
-    #             prob.write('  x{}_{} - x{}_{} > 0.0\n'.format(prev_var_idx + target, cnt_imgs, prev_var_idx + i, cnt_imgs))
-
-    #     prob.flush()
-
-
-    # def __write_constr(self, prob, lst_poly_coll, backdoor_indexes, target):
-    #     size = len(lst_poly_coll[0][0].lw)
-    #     cnt_imgs = 0
-
-    #     for lst_poly in lst_poly_coll:
-    #         first_layer = True
-    #         prev_var_idx = 0
-    #         curr_var_idx = size
-
-    #         for poly in lst_poly[1:]:
-    #             if first_layer:
-    #                 for i in range(len(poly.lw)):
-    #                     coefs = -poly.ge[i][:-1]
-    #                     const = poly.ge[i][-1]
-
-    #                     self.__write_constr_input_layer(prob, cnt_imgs, coefs, const, '=', backdoor_indexes, prev_var_idx, curr_var_idx + i)
-    #                 first_layer = False
-    #             else:
-    #                 for i in range(len(poly.lw)):
-    #                     ge, le = poly.ge[i], poly.le[i]
-
-    #                     if np.all(ge == le):
-    #                         coefs = -poly.ge[i][:-1]
-    #                         const = poly.ge[i][-1]
-
-    #                         self.__write_constr_hidden_layers(prob, cnt_imgs, coefs, const, '=', prev_var_idx, curr_var_idx + i)
-    #                     else:
-    #                         coefs_ge = -poly.ge[i][:-1]
-    #                         const_ge = poly.ge[i][-1]
-
-    #                         self.__write_constr_hidden_layers(prob, cnt_imgs, coefs_ge, const_ge, '>=', prev_var_idx, curr_var_idx + i)
-
-    #                         coefs_le = -poly.le[i][:-1]
-    #                         const_le = poly.le[i][-1]
-
-    #                         self.__write_constr_hidden_layers(prob, cnt_imgs, coefs_le, const_le, '<=', prev_var_idx, curr_var_idx + i)
-
-    #             prev_var_idx = curr_var_idx
-    #             curr_var_idx += len(poly.lw)
-
-    #         self.__write_constr_output_layer(prob, cnt_imgs, target, prev_var_idx)
-
-    #         cnt_imgs += 1
-
-
-    # def __write_bounds(self, prob, lst_poly_coll, backdoor_indexes):
-    #     lw0, up0 = lst_poly_coll[0][0].lw, lst_poly_coll[0][0].up
-
-    #     for var_idx in backdoor_indexes:
-    #         prob.write('  {} <= x{} <= {}\n'.format(lw0[var_idx], var_idx, up0[var_idx]))
-
-    #     cnt_imgs = 0
-
-    #     for lst_poly in lst_poly_coll:
-    #         var_idx = 0
-    #         for poly in lst_poly:
-    #             for i in range(len(poly.lw)):
-    #                 lw_i = poly.lw[i]
-    #                 up_i = poly.up[i]
-
-    #                 if var_idx not in backdoor_indexes:
-    #                     if lw_i == up_i:
-    #                         prob.write('  x{}_{} = {}\n'.format(var_idx, cnt_imgs, lw_i))
-    #                     else:
-    #                         prob.write('  {} <= x{}_{} <= {}\n'.format(lw_i, var_idx, cnt_imgs, up_i))
-
-    #                 var_idx += 1
-    #         cnt_imgs += 1
-
-    #     prob.flush()
-
-
-    # def __write_problem(self, lst_poly_coll, backdoor_indexes, target):
-    #     filename = 'prob' + str(target) + '.lp'
-    #     prob = open(filename, 'w')
-
-    #     prob.write('Minimize\n')
-    #     prob.write('  0\n')
-
-    #     prob.write('Subject To\n')
-
-    #     self.__write_constr(prob, lst_poly_coll, backdoor_indexes, target)
-
-    #     prob.write('Bounds\n')
-
-    #     self.__write_bounds(prob, lst_poly_coll, backdoor_indexes)
-
-    #     prob.write('End\n')
-
-    #     prob.flush()
-    #     prob.close()
-
-
-    # def __verifyI(self, model, valid_x0s, valid_bdi, target):
-    #     has_unknown = False
-
-    #     for backdoor_indexes in valid_bdi:
-    #         has_safe, lst_poly_coll = False, []
-
-    #         for x0, output_x0 in valid_x0s:
-    #             lw, up = x0.copy(), x0.copy()
-
-    #             lw[backdoor_indexes] = model.lower[backdoor_indexes]
-    #             up[backdoor_indexes] = model.upper[backdoor_indexes]
-
-    #             x0_poly = Poly()
-    #             x0_poly.lw, x0_poly.up = lw, up
-    #             # just let x0_poly.le and x0_poly.ge is None
-    #             x0_poly.shape = model.shape
-
-    #             lst_poly = [x0_poly]
-    #             self.__run(model, 0, lst_poly)
-
-    #             output_lw, output_up = lst_poly[-1].lw.copy(), lst_poly[-1].up.copy()
-    #             output_lw[target] = output_up[target]
-
-    #             if np.argmax(output_lw) != target:
-    #                 has_safe = True
-    #                 break
-    #             else:
-    #                 self.__write_problem([lst_poly], backdoor_indexes, target)
-
-    #                 filename = 'prob' + str(target) + '.lp'
-    #                 opt = gp.read(filename)
-    #                 opt.setParam(GRB.Param.DualReductions, 0)
-
-    #                 opt.optimize()
-    #                 os.remove(filename)
-
-    #                 if opt.status == GRB.INFEASIBLE:
-    #                     # print('Infeasible 1 image with target = {}'.format(target))
-    #                     has_safe = True
-    #                     break
-
-    #             lst_poly_coll.append(lst_poly)
-
-    #         if not has_safe: # unsafe, try solver
-    #             self.__write_problem(lst_poly_coll, backdoor_indexes, target)
-
-    #             filename = 'prob' + str(target) + '.lp'
-    #             opt = gp.read(filename)
-    #             opt.setParam(GRB.Param.DualReductions, 0)
-
-    #             opt.optimize()
-    #             os.remove(filename)
-
-    #             if opt.status == GRB.INFEASIBLE:
-    #                 # print('Infeasible all images with target = {}'.format(target))
-    #                 pass
-    #             elif opt.status == GRB.OPTIMAL:
-    #                 stamp = self.__get_stamp(opt, backdoor_indexes)
-
-    #                 # print('Solve target = {} with stamp = {} and position = {}'.format(target, stamp, backdoor_indexes))
-
-    #                 if not self.__validate(model, valid_x0s, backdoor_indexes, target, stamp, 1.0):
-    #                     # print('The stamp for target = {} is not validate with chosen images I'.format(target))
-    #                     stamp = self.__attack(model, valid_x0s, backdoor_indexes, target)
-
-    #                 if stamp is not None:
-    #                     return False, (stamp, backdoor_indexes)
-    #                 else:
-    #                     has_unknown = True
-    #             else:
-    #                 stamp = self.__attack(model, valid_x0s, backdoor_indexes, target)
-
-    #                 if stamp is not None:
-    #                     return False, (stamp, backdoor_indexes)
-    #                 else:
-    #                     has_unknown = True
-
-    #     if has_unknown:
-    #         return False, None
-    #     else:
-    #         return True, None
-
-
-    # def __hypothesis_test(self, model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold):
-    #     rate_k = pow(rate, num_imgs) # attack num_imgs successfully at the same time
-
-    #     p0 = (1 - rate_k) + threshold # not having the attack
-    #     p1 = (1 - rate_k) - threshold
-
-    #     # print('p0 = {}, p1 = {}'.format(p0, p1))
-
-    #     alpha, beta = 0.01, 0.01
-
-    #     h0 = beta / (1 - alpha) # 0.01
-    #     h1 = (1 - beta) / alpha # 99.0
-
-    #     pr, no = 1, 0
-        
-    #     while True:
-    #         no = no + 1
-
-    #         if num_imgs > len(valid_x0s):
-    #             assert False
-    #         else:
-    #             chosen_idx = np.random.choice(len(valid_x0s), num_imgs, replace=False)
-    #             chosen_x0s = []
-    #             for i in chosen_idx:
-    #                 chosen_x0s.append(valid_x0s[i])
-
-    #         res, sbi = self.__verifyI(model, chosen_x0s, valid_bdi, target)
-
-    #         if res: # no backdoor
-    #             # print('VerifyI with target = {}'.format(target, rate))
-    #             pr = pr * p1 / p0 # decrease, favorite H0
-    #         elif sbi is not None: # backdoor with stamp
-    #             stamp, backdoor_indexes = sbi[0], sbi[1]
-    #             if self.__validate(model, valid_x0s, backdoor_indexes, target, stamp, rate): # real stamp
-    #                 return False, sbi
-    #             else:
-    #                 # print('The stamp for target = {} is not validate with all images with rate = {}'.format(target, rate))
-    #                 pr = pr * (1 - p1) / (1 - p0) # increase, favorite H1
-    #         else: # unknown
-    #             # print('Unknown with target = {}'.format(target, rate))
-    #             pr = pr * (1 - p1) / (1 - p0) # increase, favorite H1
-
-    #         if pr <= h0:
-    #             print('Accept H0 after {} rounds. The probability of not having an attack with target = {} >= {} for K = {}.'.format(no, target, p0, num_imgs))
-    #             return True, None
-    #         elif pr >= h1:
-    #             print('Accept H1 after {} rounds. The probability of not having an attack with target = {} <= {} for K = {}.'.format(no, target, p1, num_imgs))
-    #             return False, None
-
-
-    # def __verify(self, model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold):
-    #     if rate == 1.0: # no hypothesis test when rate = 1.0, instead try to verify all images
-    #         print('Run verifyI with target = {}'.format(target))
-    #         res, sbi = self.__verifyI(model, valid_x0s, valid_bdi, target)
-    #     else:
-    #         print('Run hypothesis test with target = {}'.format(target))
-    #         res, sbi = self.__hypothesis_test(model, valid_x0s, valid_bdi, target, num_imgs, rate, threshold)
-
-    #     if res:
-    #         return None, None
-    #     elif sbi is not None:
-    #         stamp, backdoor_indexes = sbi[0], sbi[1]
-    #         print('Real stamp = {} for target = {} at position = {}'.format(stamp, target, backdoor_indexes))
-    #         return target, sbi
-    #     else:
-    #         return target, None
-
-
-    # def __get_stamp(self, opt, backdoor_indexes):
-    #     stamp = []
-
-    #     # opt.write('model.sol')
-    #     for idx in backdoor_indexes:
-    #         var = opt.getVarByName('x' + str(idx))
-    #         stamp.append(var.x)
-
-    #     return np.array(stamp)
-
-
-    def __validate(self, model, valid_x0s, trigger, mask, target, rate):
+    def __validate(self, model, valid_x0s_with_bd, trigger, mask, target, rate):
         cnt = 0
 
-        for x0, output_x0 in valid_x0s:
+        for x0, x_bd, output_x0, output_x_bd in valid_x0s_with_bd:
             xi = (1 - mask) * x0 + mask * trigger
-
             output = model.apply(xi).reshape(-1)
+
+            assert np.all(xi == x_bd)
+            assert np.all(output == output_x_bd)
 
             if np.argmax(output) == target: # attack successfully
                 cnt += 1
 
-        return (cnt / len(valid_x0s)) >= rate
+        return (cnt / len(valid_x0s_with_bd)) >= rate
 
 
     def __attack(self, model, valid_x0s, target, dataset):
