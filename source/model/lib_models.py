@@ -12,6 +12,25 @@ class Model:
             self.ptmodel = torch.load(path)
 
 
+    def copy(self):
+        new_model = Model(None, None, None, None, None)
+        
+        new_model.shape = self.shape.copy()
+        new_model.lower = self.lower.copy()
+        new_model.upper = self.upper.copy()
+
+        if self.layers is None:
+            new_model.layers = None
+            new_model.ptmodel = self.ptmodel.copy()
+        else:
+            new_model.layers = []
+            for layer in self.layers:
+                new_model.layers.append(layer.copy())
+            new_model.ptmodel = None
+
+        return new_model
+
+
     def __apply_ptmodel(self, x):
         x = torch.from_numpy(x).view(self.shape.tolist())
 

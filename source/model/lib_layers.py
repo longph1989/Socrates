@@ -12,12 +12,19 @@ class Layer:
     def reset(self):
         pass
 
+    def copy(self):
+        pass
+
 
 class Function(Layer):
     def __init__(self, name, params):
         self.name = name
         self.params = params
         self.func = get_func(name, params)
+
+    def copy(self):
+        new_layer = Function(self.name, self.params)
+        return new_layer
 
     def apply(self, x):
         return self.func(x)
@@ -153,6 +160,15 @@ class Linear(Layer):
         self.weights = weights.transpose(1, 0)
         self.bias = bias.reshape(-1, bias.size)
         self.func = get_func(name, None)
+
+    def copy(self):
+        new_layer = Linear(np.zeros((1,1)), np.zeros(1), None)
+
+        new_layer.weights = self.weights.copy()
+        new_layer.bias = self.bias.copy()
+        new_layer.func = self.func
+
+        return new_layer
 
     def apply(self, x):
         if self.func == None:
