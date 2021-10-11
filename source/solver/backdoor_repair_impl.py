@@ -69,7 +69,7 @@ class BackDoorRepairImpl():
             assert False
         else:
             print('The stamp satisfies the success rate = {} with target = {}'.format(rate, target))
-            res = self.__clean_backdoor(model, valid_x0s_with_bd, trigger, mask, target, num_repair)
+            res = self.__clean_backdoor(model, valid_x0s, valid_x0s_with_bd, trigger, mask, target, num_repair)
 
             if res is not None:
                 opt, repair_layer, repair_neuron = res
@@ -98,16 +98,17 @@ class BackDoorRepairImpl():
 
 
     def __get_new_weights_and_bias(self, new_model, opt, repair_layer, repair_neuron, num_weis):
-        # opt.write('model.sol')
+        opt.write('model.sol')
+
         for idx in range(num_weis):
             var = opt.getVarByName('w' + str(idx))
             new_model.layers[repair_layer].weights[idx,repair_neuron] = var.x
 
         var = opt.getVarByName('b')
-        new_model.layers[repair_layer].weights[0,repair_neuron] = var.x
+        new_model.layers[repair_layer].bias[0,repair_neuron] = var.x
 
 
-    def __clean_backdoor(self, model, valid_x0s_with_bd, trigger, mask, target, num_repair):
+    def __clean_backdoor(self, model, valid_x0s, valid_x0s_with_bd, trigger, mask, target, num_repair):
         print('\nBegin cleansing')
         assert self.__validate(model, valid_x0s_with_bd, trigger, mask, target, 1.0)
 
@@ -152,7 +153,7 @@ class BackDoorRepairImpl():
         print('min_bias = {}, max_bias = {}\n'.format(min_bias, max_bias))
 
         for repair_layer, repair_neuron in list(zip(repair_layers, repair_neurons)):
-            self.__write_problem(model, valid_x0s_with_bd, trigger, mask, target, repair_layer, repair_neuron,
+            self.__write_problem(model, valid_x0s, valid_x0s_with_bd, trigger, mask, target, repair_layer, repair_neuron,
                 min_weight, max_weight, min_bias, max_bias)
 
             filename = 'prob.lp'
@@ -174,19 +175,14 @@ class BackDoorRepairImpl():
 
 
     def __collect_min_max_value(self, model):
-        min_weight, max_weight = 1e9, -1e9
-        min_bias, max_bias = 1e9, -1e9
+        max_weight, max_bias, coef = 0.0, 0.0, 1.0
 
         for layer in model.layers:
             if layer.is_linear_layer():
+                max_weight = max(max_weight, np.max(np.abs(layer.weights)))
+                max_bias = max(max_bias, np.max(np.abs(layer.bias)))
 
-                min_weight = min(min_weight, np.min(layer.weights))
-                max_weight = max(max_weight, np.max(layer.weights))
-
-                min_bias = min(min_bias, np.min(layer.bias))
-                max_bias = max(max_bias, np.max(layer.bias))
-
-        return min_weight, max_weight, min_bias, max_bias
+        return -coef * max_weight, coef * max_weight, -coef * max_bias, coef * max_bias
 
 
     def __write_bounds(self, prob, lw_coll, up_coll, min_weight, max_weight, min_bias, max_bias, num_weis):
@@ -215,7 +211,7 @@ class BackDoorRepairImpl():
                 prob.write(' a{}_{}'.format(idx, cnt_imgs))
 
 
-    def __write_problem(self, model, valid_x0s_with_bd, trigger, mask, target,
+    def __write_problem(self, model, valid_x0s, valid_x0s_with_bd, trigger, mask, target,
             repair_layer, repair_neuron, min_weight, max_weight, min_bias, max_bias):
         filename = 'prob.lp'
         prob = open(filename, 'w')
@@ -230,7 +226,7 @@ class BackDoorRepairImpl():
         cnt_imgs, has_bins = 0, False
 
         # original input
-        for x_0, x_bd, output_x0, output_x_bd in valid_x0s_with_bd:
+        for x_0, output_x0 in valid_x0s:
             input_repair = model.apply_to(x_0, repair_layer).reshape(-1)
             y0 = np.argmax(output_x0)
 
@@ -406,7 +402,8 @@ class BackDoorRepairImpl():
         # output constraints
         for output_idx in range(len(lw_list[-1])):
             if output_idx != y0:
-                prob.write('  x{}_{} - x{}_{} > 0.0\n'.format(prev_var_idx + y0, cnt_imgs, prev_var_idx + output_idx, cnt_imgs))
+                # use 0.001 to guarantee the output condition
+                prob.write('  x{}_{} - x{}_{} > 0.001\n'.format(prev_var_idx + y0, cnt_imgs, prev_var_idx + output_idx, cnt_imgs))
 
         flat_lw_list = [item for sublist in lw_list for item in sublist]
         flat_up_list = [item for sublist in up_list for item in sublist]
