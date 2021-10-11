@@ -216,6 +216,10 @@ class RefinementImpl():
                 self.tasks.append(task1)
                 self.tasks.append(task2)
 
+                for task in self.tasks:
+                    if task.idx > ref_layer:
+                        assert False
+
                 return 1 # to continue
             else:
                 return 0 # False, unknown
@@ -333,7 +337,7 @@ class RefinementImpl():
                     up = poly_i.up[ref_idx]
                     cf = ge_i[ref_idx]
 
-                    if ((i == 0 or func == sigmoid or func == tanh) and (lw < up - 0.1)) \
+                    if ((i == 0 or func == sigmoid or func == tanh) and (lw < up)) \
                             or (func == relu and lw < 0 and up > 0):
                         impact = max(abs(cf * lw), abs(cf * up))
                         sum_impact = sum_impact + impact
@@ -344,7 +348,7 @@ class RefinementImpl():
                         up = poly_i.up[ref_idx]
                         cf = ge_i[ref_idx]
 
-                        if ((i == 0 or func == sigmoid or func == tanh) and (lw < up - 0.1)) \
+                        if ((i == 0 or func == sigmoid or func == tanh) and (lw < up)) \
                                 or (func == relu and lw < 0 and up > 0):
                             impact = max(abs(cf * lw), abs(cf * up))
                             norm_impact = impact / sum_impact
@@ -402,7 +406,7 @@ class RefinementImpl():
                     lw = poly_i.lw[ref_idx]
                     up = poly_i.up[ref_idx]
 
-                    if ((i == 0 or func == sigmoid or func == tanh) and (lw < up - 0.1)) \
+                    if ((i == 0 or func == sigmoid or func == tanh) and (lw < up)) \
                             or (func == relu and lw < 0 and up > 0):
                         ref_value = 0 if func == relu else (lw + up) / 2
                         choice_lst.append((i, ref_idx, ref_value))
