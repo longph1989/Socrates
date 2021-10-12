@@ -25,12 +25,12 @@ class BackDoorRepairImpl():
     def __solve_backdoor_repair(self, model, spec, display):
         target = spec['target']
         rate = spec['rate']
-        rate = 0.1
 
         total_imgs = spec['total_imgs']
-        total_imgs = 10
         num_repair = spec['num_repair']
         dataset = spec['dataset']
+
+        known_stamp = spec['known_stamp']
 
         y0s = np.array(ast.literal_eval(read(spec['pathY'])))
         valid_x0s = self.__get_valid_x0s(model, total_imgs, y0s, spec['pathX'], target)
@@ -43,30 +43,48 @@ class BackDoorRepairImpl():
 
         print('Lower bound = {} and Upper bound = {}'.format(model.lower[0], model.upper[0]))
 
-        print('\nGenerate reversed trigger with target = {}'.format(target))
+        if known_stamp:
+            position = spec['stamp_pos']
+            size = spec['stamp_size']
 
-        stamp = self.__attack(model, valid_x0s, target, dataset)
+            print('\nPredefine stamp position = {} with target = {}'.format(position, target))
 
-        if dataset == 'mnist':
-            trigger = stamp[:(1 * 28 * 28)]
-            mask = stamp[(1 * 28 * 28):]
-        elif dataset == 'cifar':
-            trigger = stamp[:(3 * 32 * 32)]
-            mask = stamp[(3 * 32 * 32):]
+            backdoor_indexes = self.__get_backdoor_indexes(size, position, dataset)
+            print('\nStamp indexes = {}'.format(backdoor_indexes))
 
-        print('trigger = {}'.format(trigger))
-        print('mask = {}'.format(mask))
-        print('sum mask = {}\n'.format(np.sum(mask)))
+            if dataset == 'mnist':
+                trigger = np.zeros(1 * 28 * 28)
+                mask = np.zeros(1 * 28 * 28)
+            elif dataset == 'cifar':
+                trigger = np.zeros(3 * 32 * 32)
+                mask = np.zeros(3 * 32 * 32)
 
-        valid_x0s_with_bd = self.__get_x0s_with_bd(model, valid_x0s, trigger, mask, target)
+            trigger[backdoor_indexes] = 1.0
+            mask[backdoor_indexes] = 1.0
+        else:
+            print('\nGenerate reversed trigger with target = {}'.format(target))
+            stamp = self.__attack(model, valid_x0s, target, dataset)
+
+            if dataset == 'mnist':
+                trigger = stamp[:(1 * 28 * 28)]
+                mask = stamp[(1 * 28 * 28):]
+            elif dataset == 'cifar':
+                trigger = stamp[:(3 * 32 * 32)]
+                mask = stamp[(3 * 32 * 32):]
+
+            print('trigger = {}'.format(trigger))
+            print('mask = {}'.format(mask))
+            print('sum mask = {}\n'.format(np.sum(mask)))
+
+        valid_x0s_with_bd, successful_atk_cnt = self.__get_x0s_with_bd(model, valid_x0s, trigger, mask, target)
 
         print('len(valid_x0s) =', len(valid_x0s))
         print('len(valid_x0s_with_bd) =', len(valid_x0s_with_bd))
+        print('successful_atk_cnt =', successful_atk_cnt)
 
-        if len(valid_x0s_with_bd) / len(valid_x0s) < rate:
-            print('\nrate = {}'.format(len(valid_x0s_with_bd) / len(valid_x0s)))
+        if successful_atk_cnt / len(valid_x0s) < rate:
+            print('\nrate = {}'.format(successful_atk_cnt / len(valid_x0s)))
             print('The stamp does not satisfy the success rate = {} with target = {}'.format(rate, target))
-            assert False
         else:
             print('The stamp satisfies the success rate = {} with target = {}'.format(rate, target))
             res = self.__clean_backdoor(model, valid_x0s, valid_x0s_with_bd, trigger, mask, target, num_repair)
@@ -89,12 +107,40 @@ class BackDoorRepairImpl():
                 print('new bias = {}'.format(new_model.layers[repair_layer].bias[0,repair_neuron]))
 
                 new_valid_x0s = self.__get_valid_x0s(new_model, total_imgs, y0s, spec['pathX'], target)
-                new_valid_x0s_with_bd = self.__get_x0s_with_bd(new_model, new_valid_x0s, trigger, mask, target)
+                new_valid_x0s_with_bd, new_successful_atk_cnt = self.__get_x0s_with_bd(new_model, new_valid_x0s, trigger, mask, target)
 
                 print('len(new_valid_x0s) =', len(new_valid_x0s))
                 print('len(new_valid_x0s_with_bd) =', len(new_valid_x0s_with_bd))
+                print('new_successful_atk_cnt =', new_successful_atk_cnt)
 
         return None, None
+
+
+    def __get_backdoor_indexes(self, size, position, dataset):
+        if position < 0:
+            return None
+
+        if dataset == 'mnist':
+            num_chans, num_rows, num_cols = 1, 28, 28
+        elif dataset == 'cifar':
+            num_chans, num_rows, num_cols = 3, 32, 32
+
+        row_idx = int(position / num_cols)
+        col_idx = position - row_idx * num_cols
+
+        if row_idx + size > num_rows or col_idx + size > num_cols:
+            return None
+
+        indexes = []
+
+        for i in range(num_chans):
+            tmp = position + i * num_rows * num_cols
+            for j in range(size):
+                for k in range(size):
+                    indexes.append(tmp + k)
+                tmp += num_cols
+
+        return indexes
 
 
     def __get_new_weights_and_bias(self, new_model, opt, repair_layer, repair_neuron, num_weis):
@@ -110,7 +156,7 @@ class BackDoorRepairImpl():
 
     def __clean_backdoor(self, model, valid_x0s, valid_x0s_with_bd, trigger, mask, target, num_repair):
         print('\nBegin cleansing')
-        assert self.__validate(model, valid_x0s_with_bd, trigger, mask, target, 1.0)
+        # assert self.__validate(model, valid_x0s_with_bd, trigger, mask, target, 1.0)
 
 #####################################################################################################################################
         number_of_layers = len(model.layers)
@@ -487,6 +533,7 @@ class BackDoorRepairImpl():
 
     def __get_x0s_with_bd(self, model, valid_x0s, trigger, mask, target):
         valid_x0s_with_bd = []
+        successful_atk_cnt = 0
 
         for i in range(len(valid_x0s)):
             x0, output_x0 = valid_x0s[i]
@@ -496,31 +543,31 @@ class BackDoorRepairImpl():
             output_x_bd = model.apply(x_bd).reshape(-1)
             target_x_bd = np.argmax(output_x_bd)
 
-            if target_x_bd == target:
-                valid_x0s_with_bd.append((x0, x_bd, output_x0, output_x_bd))
+            if target_x_bd == target: successful_atk_cnt += 1
+            valid_x0s_with_bd.append((x0, x_bd, output_x0, output_x_bd))
 
-        return valid_x0s_with_bd
+        return valid_x0s_with_bd, successful_atk_cnt
 
 
-    def __validate(self, model, valid_x0s_with_bd, trigger, mask, target, rate):
-        cnt = 0
+    # def __validate(self, model, valid_x0s_with_bd, trigger, mask, target, rate):
+    #     cnt = 0
 
-        for x0, x_bd, output_x0, output_x_bd in valid_x0s_with_bd:
-            xi = (1 - mask) * x0 + mask * trigger
-            output = model.apply(xi).reshape(-1)
+    #     for x0, x_bd, output_x0, output_x_bd in valid_x0s_with_bd:
+    #         xi = (1 - mask) * x0 + mask * trigger
+    #         output = model.apply(xi).reshape(-1)
 
-            assert np.all(xi == x_bd)
-            assert np.all(output == output_x_bd)
+    #         assert np.all(xi == x_bd)
+    #         assert np.all(output == output_x_bd)
 
-            if np.argmax(output) == target: # attack successfully
-                cnt += 1
+    #         if np.argmax(output) == target: # attack successfully
+    #             cnt += 1
 
-        return (cnt / len(valid_x0s_with_bd)) >= rate
+    #     return (cnt / len(valid_x0s_with_bd)) >= rate
 
 
     def __attack(self, model, valid_x0s, target, dataset):
         def obj_func(x, model, valid_x0s, target, length, half_len):
-            res, lam = 0, 1
+            res, lam = 0.0, 1.0
 
             for x0, output_x0 in valid_x0s:
                 trigger = x[:half_len] # trigger

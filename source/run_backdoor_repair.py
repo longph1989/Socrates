@@ -17,6 +17,10 @@ def add_assertion(args, spec):
     assertion['target'] = args.target
     assertion['rate'] = args.rate
 
+    assertion['known_stamp'] = args.known_stamp
+    assertion['stamp_pos'] = args.stamp_pos
+    assertion['stamp_size'] = args.stamp_size
+
     assertion['total_imgs'] = args.total_imgs
     assertion['num_repair'] = args.num_repair
 
@@ -87,8 +91,15 @@ def main():
                         help='the success rate')
     parser.add_argument('--target', type=int,
                         help='the target used in verify and attack')
+
+    parser.add_argument('--known_stamp', action='store_true',
+                        help='is the stamp known or need to be generated')
+    parser.add_argument('--stamp_pos', type=int, default=0,
+                        help='the position of the stamp')
+    parser.add_argument('--stamp_size', type=int, default=3,
+                        help='the size of the stamp')
     
-    parser.add_argument('--algorithm', type=str, default='backdoor',
+    parser.add_argument('--algorithm', type=str, default='backdoor_repair',
                         help='the chosen algorithm')
     parser.add_argument('--total_imgs', type=int, default=10000,
                         help='the number of images')
