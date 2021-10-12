@@ -1,5 +1,4 @@
 import autograd.numpy as np
-import cvxpy as cp
 import multiprocessing
 import ast
 import os
@@ -284,20 +283,11 @@ class RefinementImpl():
 
 
     def __find_sus_adv(self, ge_x0, x0, lw, up):
-        x = cp.Variable(len(x0) + 1)
-        lw = np.append(lw, 1)
-        up = np.append(up, 1)
-
-        objective = cp.Minimize(cp.sum(cp.multiply(x, ge_x0)))
-        constraints = [lw <= x, x <= up]
-        problem = cp.Problem(objective, constraints)
-
-        result = problem.solve(solver=cp.CBC)
-
-        if result <= 0:
-            return x.value[:-1]
-        else:
-            assert False
+        x = lw.copy()
+        for i in range(len(x0)):
+            if ge_x0[i] < 0.0:
+                x[i] = up[i]
+        return x
 
 
     # choose refinement
