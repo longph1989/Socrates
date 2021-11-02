@@ -6,8 +6,6 @@ import ast
 from json_parser import parse
 from utils import *
 
-from solver.lib_solvers import DeepCegar
-
 import time
 
 def add_assertion(args, spec):
