@@ -15,13 +15,14 @@ def add_assertion(args, spec):
     assertion = dict()
 
     assertion['target'] = args.target
-    assertion['rate'] = args.rate
+    assertion['exp_rate'] = args.exp_rate
 
     assertion['known_stamp'] = args.known_stamp
     assertion['stamp_pos'] = args.stamp_pos
     assertion['stamp_size'] = args.stamp_size
 
     assertion['total_imgs'] = args.total_imgs
+    assertion['num_imgs'] = args.num_imgs
     assertion['num_repair'] = args.num_repair
 
     if 'mnist' in args.dataset:
@@ -75,7 +76,7 @@ def run_cleansing(args):
 
     model, assertion, solver, display = parse(spec)
 
-    res, stamp = solver.solve(model, assertion)
+    solver.solve(model, assertion)
 
 
 def main():
@@ -87,8 +88,8 @@ def main():
 
     parser.add_argument('--spec', type=str, default='spec.json',
                         help='the specification file')
-    parser.add_argument('--rate', type=float, default=0.90,
-                        help='the success rate')
+    parser.add_argument('--exp_rate', type=float, default=0.90,
+                        help='the expected success rate')
     parser.add_argument('--target', type=int,
                         help='the target used in verify and attack')
 
@@ -102,7 +103,9 @@ def main():
     parser.add_argument('--algorithm', type=str, default='backdoor_repair',
                         help='the chosen algorithm')
     parser.add_argument('--total_imgs', type=int, default=10000,
-                        help='the number of images')
+                        help='the total number of images')
+    parser.add_argument('--num_imgs', type=int, default=10,
+                        help='the number of images used to repair each time')
     parser.add_argument('--num_repair', type=int, default=10,
                         help='the number of repair')
     parser.add_argument('--dataset', type=str,

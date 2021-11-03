@@ -1,5 +1,4 @@
 import autograd.numpy as np
-import cvxpy as cp
 import multiprocessing
 import ast
 import os
@@ -24,18 +23,16 @@ import matplotlib.pyplot as plt
 class BackDoorRepairImpl():
     def __solve_backdoor_repair(self, model, spec, display):
         target = spec['target']
-        rate = spec['rate']
-        rate = 0.0
+        exp_rate = spec['exp_rate']
 
         total_imgs = spec['total_imgs']
-        total_imgs = 10
-        num_repair = spec['num_repair']
         dataset = spec['dataset']
 
         known_stamp = spec['known_stamp']
+        pathX, pathY = spec['pathX'], spec['pathY']
 
-        y0s = np.array(ast.literal_eval(read(spec['pathY'])))
-        valid_x0s = self.__get_valid_x0s(model, total_imgs, y0s, spec['pathX'], target)
+        y0s = np.array(ast.literal_eval(read(pathY)))
+        valid_x0s = self.__get_valid_x0s(model, total_imgs, y0s, pathX, target)
 
         if len(valid_x0s) == 0:
             print('No data to analyze target = {}'.format(target))
@@ -78,46 +75,20 @@ class BackDoorRepairImpl():
             print('mask = {}'.format(mask))
             print('sum mask = {}\n'.format(np.sum(mask)))
 
-        valid_x0s_with_bd, successful_atk_cnt = self.__get_x0s_with_bd(model, valid_x0s, trigger, mask, target)
+        valid_x0s_with_bd, succ_atk_cnt = self.__get_x0s_with_bd(model, valid_x0s, trigger, mask, target)
 
         print('len(valid_x0s) =', len(valid_x0s))
         print('len(valid_x0s_with_bd) =', len(valid_x0s_with_bd))
-        print('successful_atk_cnt =', successful_atk_cnt)
+        print('succ_atk_cnt =', succ_atk_cnt)
+        
+        succ_rate = succ_atk_cnt / len(valid_x0s)
 
-        if successful_atk_cnt / len(valid_x0s) < rate:
-            print('\nrate = {}'.format(successful_atk_cnt / len(valid_x0s)))
-            print('The stamp does not satisfy the success rate = {} with target = {}'.format(rate, target))
+        if succ_rate < exp_rate:
+            print('\nsucc_rate = {}'.format(succ_rate))
+            print('The stamp does not satisfy the success rate = {} with target = {}'.format(exp_rate, target))
         else:
-            print('The stamp satisfies the success rate = {} with target = {}'.format(rate, target))
-            res = self.__clean_backdoor(model, valid_x0s, valid_x0s_with_bd, trigger, mask, target, num_repair)
-
-            if res is not None:
-                opt, repair_layer, repair_neuron = res
-
-                print(repair_layer)
-                print(repair_neuron)
-
-                print('old weights = {}'.format(model.layers[repair_layer].weights[:,repair_neuron]))
-                print('old bias = {}'.format(model.layers[repair_layer].bias[0,repair_neuron]))
-
-                new_model = model.copy()
-                num_weis_in = len(model.layers[repair_layer].weights[:,repair_neuron])
-                num_weis_out = model.layers[repair_layer + 2].get_number_neurons()
-                print('num_weis_in = {}'.format(num_weis_in))
-                print('num_weis_out = {}'.format(num_weis_out))
-                self.__get_new_weights_and_bias(new_model, opt, repair_layer, repair_neuron, num_weis_in, num_weis_out)
-
-                print('new weights = {}'.format(new_model.layers[repair_layer].weights[:,repair_neuron]))
-                print('new bias = {}'.format(new_model.layers[repair_layer].bias[0,repair_neuron]))
-
-                new_valid_x0s = self.__get_valid_x0s(new_model, total_imgs, y0s, spec['pathX'], target)
-                new_valid_x0s_with_bd, new_successful_atk_cnt = self.__get_x0s_with_bd(new_model, new_valid_x0s, trigger, mask, target)
-
-                print('len(new_valid_x0s) =', len(new_valid_x0s))
-                print('len(new_valid_x0s_with_bd) =', len(new_valid_x0s_with_bd))
-                print('new_successful_atk_cnt =', new_successful_atk_cnt)
-
-        return None, None
+            print('The stamp satisfies the success rate = {} with target = {}'.format(exp_rate, target))
+            self.__clean_backdoor(model, valid_x0s_with_bd, succ_atk_cnt, trigger, mask, spec)
 
 
     def __get_backdoor_indexes(self, size, position, dataset):
@@ -147,8 +118,8 @@ class BackDoorRepairImpl():
         return indexes
 
 
-    def __get_new_weights_and_bias(self, new_model, opt, repair_layer, repair_neuron, num_weis_in, num_weis_out):
-        opt.write('model.sol')
+    def __update_new_weights_and_bias(self, new_model, opt, repair_layer, repair_neuron, num_weis_in, num_weis_out):
+        # opt.write('model.sol')
 
         for idx in range(num_weis_in):
             var = opt.getVarByName('w' + str(idx))
@@ -162,11 +133,18 @@ class BackDoorRepairImpl():
         new_model.layers[repair_layer].bias[0,repair_neuron] = var.x
 
 
-    def __clean_backdoor(self, model, valid_x0s, valid_x0s_with_bd, trigger, mask, target, num_repair):
-        print('\nBegin cleansing')
-        # assert self.__validate(model, valid_x0s_with_bd, trigger, mask, target, 1.0)
+    def __clean_backdoor(self, model, valid_x0s_with_bd, succ_atk_cnt, trigger, mask, spec):
+        target = spec['target']
 
-#####################################################################################################################################
+        total_imgs = spec['total_imgs']
+        num_imgs = spec['num_imgs']
+        num_repair = spec['num_repair']
+
+        pathX, pathY = spec['pathX'], spec['pathY']
+        y0s = np.array(ast.literal_eval(read(pathY)))
+    
+        print('\nBegin cleansing')
+        
         number_of_layers = len(model.layers)
 
         ie_ave_matrix = []
@@ -194,7 +172,8 @@ class BackDoorRepairImpl():
         print(ie_ave_matrix)
 
         repair_layers, repair_neurons = [], []
-        for i in range (0, num_repair):
+        for i in range(num_repair):
+            if i >= len(ie_ave_matrix): break
             repair_layers.append(int(ie_ave_matrix[i][1]))
             repair_neurons.append(int(ie_ave_matrix[i][2]))
         
@@ -207,33 +186,51 @@ class BackDoorRepairImpl():
         print('min_bias = {}, max_bias = {}\n'.format(min_bias, max_bias))
 
         for repair_layer, repair_neuron in list(zip(repair_layers, repair_neurons)):
-            if not model.layers[repair_layer].is_linear_layer(): continue
-
-            number_of_neurons = model.layers[repair_layer].get_number_neurons()
+            if not model.layers[repair_layer].is_linear_layer(): assert False
 
             print('\nRepair layer: {}'.format(repair_layer))
             print('Repair neuron: {}'.format(repair_neuron))
+            
+            for i in range(num_repair):        
+                sample_x0s_with_bd = random.sample(valid_x0s_with_bd, num_imgs)
+                print('\nSample {} imgs to clean'.format(num_imgs))
 
-            self.__write_problem(model, valid_x0s, valid_x0s_with_bd, trigger, mask, target, repair_layer, repair_neuron,
-                min_weight, max_weight, min_bias, max_bias)
+                self.__write_problem(model, sample_x0s_with_bd, trigger, mask, target, repair_layer, repair_neuron,
+                    min_weight, max_weight, min_bias, max_bias)
 
-            filename = 'prob.lp'
-            opt = gp.read(filename)
-            opt.setParam(GRB.Param.DualReductions, 0)
-            opt.setParam(GRB.Param.NonConvex, 2)
+                filename = 'prob.lp'
+                opt = gp.read(filename)
+                opt.setParam(GRB.Param.DualReductions, 0)
+                opt.setParam(GRB.Param.NonConvex, 2)
+                opt.setParam(GRB.Param.TimeLimit, 60.0)
 
-            opt.optimize()
-            # os.remove(filename)
+                opt.optimize()
+                os.remove(filename)
+                
+                if opt.status == GRB.TIME_LIMIT:
+                    print('Timeout')
+                if opt.status == GRB.INFEASIBLE:
+                    print('Infeasible')
+                elif opt.status == GRB.OPTIMAL:
+                    print('Optimal')
+                    
+                    new_model = model.copy()
+                    num_weis_in = len(model.layers[repair_layer].weights[:,repair_neuron])
+                    num_weis_out = model.layers[repair_layer + 2].get_number_neurons()
+                    
+                    self.__update_new_weights_and_bias(new_model, opt, repair_layer, repair_neuron, num_weis_in, num_weis_out)
+     
+                    new_valid_x0s = self.__get_valid_x0s(new_model, total_imgs, y0s, pathX, target)
+                    new_valid_x0s_with_bd, new_succ_atk_cnt = self.__get_x0s_with_bd(new_model, new_valid_x0s, trigger, mask, target)
 
-            if opt.status == GRB.INFEASIBLE:
-                print('Infeasible')
-                # os.remove(filename)
-            elif opt.status == GRB.OPTIMAL:
-                print('Optimal')
-                # os.remove(filename)
-                return opt, repair_layer, repair_neuron
+                    print('len(new_valid_x0s) =', len(new_valid_x0s))
+                    print('len(new_valid_x0s_with_bd) =', len(new_valid_x0s_with_bd))
+                    print('new_succ_atk_cnt =', new_succ_atk_cnt)
 
-        return None
+                    if len(new_valid_x0s_with_bd) / len(valid_x0s_with_bd) < 0.9 or new_succ_atk_cnt / succ_atk_cnt > 0.1:
+                        continue
+                    else:
+                        break
 
 
     def __collect_min_max_value(self, model):
@@ -273,7 +270,7 @@ class BackDoorRepairImpl():
                 prob.write(' a{}_{}'.format(idx, cnt_imgs))
 
 
-    def __write_problem(self, model, valid_x0s, valid_x0s_with_bd, trigger, mask, target,
+    def __write_problem(self, model, sample_x0s_with_bd, trigger, mask, target,
             repair_layer, repair_neuron, min_weight, max_weight, min_bias, max_bias):
         filename = 'prob.lp'
         prob = open(filename, 'w')
@@ -288,7 +285,7 @@ class BackDoorRepairImpl():
         cnt_imgs, has_bins = 0, False
 
         # original input
-        for x_0, output_x0 in valid_x0s:
+        for x_0, _, output_x0, _ in sample_x0s_with_bd:
             input_repair = model.apply_to(x_0, repair_layer).reshape(-1)
             y0 = np.argmax(output_x0)
 
@@ -304,7 +301,7 @@ class BackDoorRepairImpl():
             cnt_imgs += 1
 
         # input with backdoor
-        for x_0, x_bd, output_x0, output_x_bd in valid_x0s_with_bd:
+        for _, x_bd, output_x0, _ in sample_x0s_with_bd:
             input_repair = model.apply_to(x_bd, repair_layer).reshape(-1)
             y0 = np.argmax(output_x0)
 
@@ -603,7 +600,6 @@ class BackDoorRepairImpl():
         avg = dy_sum / len(valid_x0s_with_bd)
 
         return avg
-#####################################################################################################################################
 
 
     def __get_valid_x0s(self, model, total_imgs, y0s, path, target):
@@ -624,7 +620,7 @@ class BackDoorRepairImpl():
                 print('y0 = {}'.format(y0))
                 print('y0s[i] = {}\n'.format(y0s[i]))
 
-            if y0 == y0s[i] and y0 != target:
+            if y0 == y0s[i]:
                 valid_x0s.append((x0, output_x0))
 
         return valid_x0s
@@ -636,35 +632,17 @@ class BackDoorRepairImpl():
 
         for i in range(len(valid_x0s)):
             x0, output_x0 = valid_x0s[i]
-
+            y0 = np.argmax(output_x0)
+            
             x_bd = (1 - mask) * x0 + mask * trigger
 
             output_x_bd = model.apply(x_bd).reshape(-1)
-            target_x_bd = np.argmax(output_x_bd)
+            y_bd = np.argmax(output_x_bd)
 
-            if target_x_bd == target: successful_atk_cnt += 1
+            if y0 != target and y_bd == target: successful_atk_cnt += 1
             valid_x0s_with_bd.append((x0, x_bd, output_x0, output_x_bd))
 
-            print('x_bd = {}'.format(x_bd))
-            print('output_x_bd = {}'.format(output_x_bd))
-
         return valid_x0s_with_bd, successful_atk_cnt
-
-
-    # def __validate(self, model, valid_x0s_with_bd, trigger, mask, target, rate):
-    #     cnt = 0
-
-    #     for x0, x_bd, output_x0, output_x_bd in valid_x0s_with_bd:
-    #         xi = (1 - mask) * x0 + mask * trigger
-    #         output = model.apply(xi).reshape(-1)
-
-    #         assert np.all(xi == x_bd)
-    #         assert np.all(output == output_x_bd)
-
-    #         if np.argmax(output) == target: # attack successfully
-    #             cnt += 1
-
-    #     return (cnt / len(valid_x0s_with_bd)) >= rate
 
 
     def __attack(self, model, valid_x0s, target, dataset):
