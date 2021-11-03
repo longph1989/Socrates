@@ -88,7 +88,10 @@ class BackDoorRepairImpl():
             print('The stamp does not satisfy the success rate = {} with target = {}'.format(exp_rate, target))
         else:
             print('The stamp satisfies the success rate = {} with target = {}'.format(exp_rate, target))
-            self.__clean_backdoor(model, valid_x0s_with_bd, succ_atk_cnt, trigger, mask, spec)
+            res = self.__clean_backdoor(model, valid_x0s_with_bd, succ_atk_cnt, trigger, mask, spec)
+            
+            if res: print('\nCleasing finish')
+            else: print('\nCannot clean')
 
 
     def __get_backdoor_indexes(self, size, position, dataset):
@@ -139,6 +142,9 @@ class BackDoorRepairImpl():
         total_imgs = spec['total_imgs']
         num_imgs = spec['num_imgs']
         num_repair = spec['num_repair']
+        
+        clean_atk = spec['clean_atk']
+        clean_acc = spec['clean_acc']
 
         pathX, pathY = spec['pathX'], spec['pathY']
         y0s = np.array(ast.literal_eval(read(pathY)))
@@ -227,10 +233,10 @@ class BackDoorRepairImpl():
                     print('len(new_valid_x0s_with_bd) =', len(new_valid_x0s_with_bd))
                     print('new_succ_atk_cnt =', new_succ_atk_cnt)
 
-                    if len(new_valid_x0s_with_bd) / len(valid_x0s_with_bd) < 0.9 or new_succ_atk_cnt / succ_atk_cnt > 0.1:
-                        continue
-                    else:
-                        break
+                    if len(new_valid_x0s) / len(valid_x0s_with_bd) >= clean_acc and new_succ_atk_cnt / len(new_valid_x0s) <= clean_atk:
+                        return True
+                        
+        return False
 
 
     def __collect_min_max_value(self, model):

@@ -24,6 +24,9 @@ def add_assertion(args, spec):
     assertion['total_imgs'] = args.total_imgs
     assertion['num_imgs'] = args.num_imgs
     assertion['num_repair'] = args.num_repair
+    
+    assertion['clean_atk'] = args.clean_atk
+    assertion['clean_acc'] = args.clean_acc
 
     if 'mnist' in args.dataset:
         assertion['dataset'] = 'mnist'
@@ -63,8 +66,8 @@ def get_dataset(dataset):
 
 
 def run_cleansing(args):
-    print('Backdoor target = {} with total imgs = {}, and num repair = {}'.
-        format(args.target, args.total_imgs, args.num_repair))
+    print('Backdoor target = {} with total imgs = {}, clean atk = {}, clean acc = {}, and num repair = {}'.
+        format(args.target, args.total_imgs, args.clean_atk, args.clean_acc, args.num_repair))
 
     with open(args.spec, 'r') as f:
         spec = json.load(f)
@@ -89,7 +92,11 @@ def main():
     parser.add_argument('--spec', type=str, default='spec.json',
                         help='the specification file')
     parser.add_argument('--exp_rate', type=float, default=0.90,
-                        help='the expected success rate')
+                        help='the expected success rate of the trigger before cleansing')
+    parser.add_argument('--clean_atk', type=float, default=0.20,
+                        help='the success rate of the same trigger after cleansing')
+    parser.add_argument('--clean_acc', type=float, default=0.80,
+                        help='the accuracy of the clean model')
     parser.add_argument('--target', type=int,
                         help='the target used in verify and attack')
 
