@@ -1,5 +1,4 @@
 import autograd.numpy as np
-import cvxpy as cp
 
 from ctypes import *
 
@@ -182,18 +181,18 @@ def back_substitute1(args):
     return idx, best_lw, best_up, lst_le, lst_ge
 
 
-def input_tighten(args):
-    idx, x, constraints, lw_i, up_i = args
+# def input_tighten(args):
+#     idx, x, constraints, lw_i, up_i = args
 
-    if lw_i == up_i: return idx, lw_i, up_i
+#     if lw_i == up_i: return idx, lw_i, up_i
 
-    objective = cp.Minimize(x[idx])
-    problem = cp.Problem(objective, constraints)
-    lw_i = round(problem.solve(solver=cp.CBC), 9)
+#     objective = cp.Minimize(x[idx])
+#     problem = cp.Problem(objective, constraints)
+#     lw_i = round(problem.solve(solver=cp.CBC), 9)
 
-    objective = cp.Minimize(-x[idx])
-    problem = cp.Problem(objective, constraints)
-    up_i = -round(problem.solve(solver=cp.CBC), 9)
+#     objective = cp.Minimize(-x[idx])
+#     problem = cp.Problem(objective, constraints)
+#     up_i = -round(problem.solve(solver=cp.CBC), 9)
 
-    return idx, lw_i, up_i
+#     return idx, lw_i, up_i
 
