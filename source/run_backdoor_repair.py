@@ -93,9 +93,9 @@ def main():
                         help='the specification file')
     parser.add_argument('--exp_rate', type=float, default=0.90,
                         help='the expected success rate of the trigger before cleansing')
-    parser.add_argument('--clean_atk', type=float, default=0.20,
+    parser.add_argument('--clean_atk', type=float, default=0.10,
                         help='the success rate of the same trigger after cleansing')
-    parser.add_argument('--clean_acc', type=float, default=0.80,
+    parser.add_argument('--clean_acc', type=float, default=0.90,
                         help='the accuracy of the clean model')
     parser.add_argument('--target', type=int,
                         help='the target used in verify and attack')

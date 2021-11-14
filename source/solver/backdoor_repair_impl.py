@@ -121,19 +121,12 @@ class BackDoorRepairImpl():
         return indexes
 
 
-    def __update_new_weights_and_bias(self, new_model, opt, repair_layer, repair_neuron, num_weis_in, num_weis_out):
+    def __update_new_weights_and_bias(self, new_model, opt, repair_layer, repair_neuron, num_weights):
         # opt.write('model.sol')
 
-        for idx in range(num_weis_in):
+        for idx in range(num_weights):
             var = opt.getVarByName('w' + str(idx))
-            new_model.layers[repair_layer].weights[idx,repair_neuron] = var.x
-
-        for idx in range(num_weis_out):
-            var = opt.getVarByName('w' + str(idx + num_weis_in))
             new_model.layers[repair_layer + 2].weights[repair_neuron,idx] = var.x
-
-        var = opt.getVarByName('b')
-        new_model.layers[repair_layer].bias[0,repair_neuron] = var.x
 
 
     def __clean_backdoor(self, model, valid_x0s_with_bd, succ_atk_cnt, trigger, mask, spec):
@@ -186,10 +179,9 @@ class BackDoorRepairImpl():
         print('\nRepair layers: {}'.format(repair_layers))
         print('Repair neurons: {}'.format(repair_neurons))
 
-        min_weight, max_weight, min_bias, max_bias = self.__collect_min_max_value(model)
+        min_weight, max_weight = self.__collect_min_max_value(model)
 
-        print('\nmin_weight = {}, max_weight = {}'.format(min_weight, max_weight))
-        print('min_bias = {}, max_bias = {}\n'.format(min_bias, max_bias))
+        print('\nmin_weight = {}, max_weight = {}\n'.format(min_weight, max_weight))
 
         for repair_layer, repair_neuron in list(zip(repair_layers, repair_neurons)):
             if not model.layers[repair_layer].is_linear_layer(): assert False
@@ -201,8 +193,7 @@ class BackDoorRepairImpl():
                 sample_x0s_with_bd = random.sample(valid_x0s_with_bd, num_imgs)
                 print('\nSample {} imgs to clean'.format(num_imgs))
 
-                self.__write_problem(model, sample_x0s_with_bd, trigger, mask, target, repair_layer, repair_neuron,
-                    min_weight, max_weight, min_bias, max_bias)
+                self.__write_problem(model, sample_x0s_with_bd, trigger, mask, target, repair_layer, repair_neuron, min_weight, max_weight)
 
                 filename = 'prob.lp'
                 opt = gp.read(filename)
@@ -221,10 +212,9 @@ class BackDoorRepairImpl():
                     print('Optimal')
                     
                     new_model = model.copy()
-                    num_weis_in = len(model.layers[repair_layer].weights[:,repair_neuron])
-                    num_weis_out = model.layers[repair_layer + 2].get_number_neurons()
+                    num_weights = model.layers[repair_layer + 2].get_number_neurons()
                     
-                    self.__update_new_weights_and_bias(new_model, opt, repair_layer, repair_neuron, num_weis_in, num_weis_out)
+                    self.__update_new_weights_and_bias(new_model, opt, repair_layer, repair_neuron, num_weights)
      
                     new_valid_x0s = self.__get_valid_x0s(new_model, total_imgs, y0s, pathX, target)
                     new_valid_x0s_with_bd, new_succ_atk_cnt = self.__get_x0s_with_bd(new_model, new_valid_x0s, trigger, mask, target)
@@ -247,13 +237,12 @@ class BackDoorRepairImpl():
                 max_weight = max(max_weight, np.max(np.abs(layer.weights)))
                 max_bias = max(max_bias, np.max(np.abs(layer.bias)))
 
-        return -coef * max_weight, coef * max_weight, -coef * max_bias, coef * max_bias
+        return -coef * max_weight, coef * max_weight
 
 
-    def __write_bounds(self, prob, lw_coll, up_coll, min_weight, max_weight, min_bias, max_bias, num_weis):
-        for idx in range(num_weis):
+    def __write_bounds(self, prob, lw_coll, up_coll, min_weight, max_weight, num_weights):
+        for idx in range(num_weights):
             prob.write('  {} <= w{} <= {}\n'.format(min_weight, idx, max_weight))
-        prob.write('  {} <= b <= {}\n'.format(min_bias, max_bias))
 
         for cnt_imgs in range(len(lw_coll)):
             lw_list = lw_coll[cnt_imgs]
@@ -266,23 +255,41 @@ class BackDoorRepairImpl():
                 else:
                     prob.write('  {} <= x{}_{} <= {}\n'.format(lw, var_idx, cnt_imgs, up))
 
-        prob.flush()
-
 
     def __write_binary(self, prob, bins_coll):
         prob.write(' ')
         for cnt_imgs in range(len(bins_coll)):
             for idx in range(bins_coll[cnt_imgs]):
                 prob.write(' a{}_{}'.format(idx, cnt_imgs))
+        prob.write('\n')
+
+
+    def __write_objective(self, prob, num_weights, old_weights):
+        prob.write('  [ w0 ^ 2')
+        for idx in range(1, num_weights):
+            prob.write(' + w{} ^ 2 '.format(idx))
+        prob.write(' ]')
+
+        for idx in range(num_weights):
+            old_weight = old_weights[idx]
+            if old_weight > 0.0:
+                prob.write(' - {} w{}'.format(2 * old_weight, idx))
+            elif old_weight < 0.0:
+                prob.write(' + {} w{}'.format(2 * abs(old_weight), idx))
+        prob.write('\n')
 
 
     def __write_problem(self, model, sample_x0s_with_bd, trigger, mask, target,
-            repair_layer, repair_neuron, min_weight, max_weight, min_bias, max_bias):
+            repair_layer, repair_neuron, min_weight, max_weight):
         filename = 'prob.lp'
         prob = open(filename, 'w')
 
+        # fix outgoing weights
+        num_weights = model.layers[repair_layer + 2].get_number_neurons()
+        old_weights = model.layers[repair_layer + 2].weights[repair_neuron,:].copy()
+
         prob.write('Minimize\n')
-        prob.write('  0\n')
+        self.__write_objective(prob, num_weights, old_weights)
 
         lw_coll, up_coll, bins_coll = [], [], []
 
@@ -292,11 +299,12 @@ class BackDoorRepairImpl():
 
         # original input
         for x_0, _, output_x0, _ in sample_x0s_with_bd:
-            input_repair = model.apply_to(x_0, repair_layer).reshape(-1)
+            # compute input up to the next layer
+            input_repair = model.apply_to(x_0, repair_layer + 2).reshape(-1)
             y0 = np.argmax(output_x0)
 
             lw_list, up_list, num_bins = self.__write_constr(prob, model, input_repair, repair_layer, repair_neuron,
-                min_weight, max_weight, min_bias, max_bias, cnt_imgs, y0)
+                min_weight, max_weight, cnt_imgs, y0)
 
             if num_bins > 0: has_bins = True
             
@@ -308,11 +316,12 @@ class BackDoorRepairImpl():
 
         # input with backdoor
         for _, x_bd, output_x0, _ in sample_x0s_with_bd:
-            input_repair = model.apply_to(x_bd, repair_layer).reshape(-1)
+            # compute input up to the next layer
+            input_repair = model.apply_to(x_bd, repair_layer + 2).reshape(-1)
             y0 = np.argmax(output_x0)
 
             lw_list, up_list, num_bins = self.__write_constr(prob, model, input_repair, repair_layer, repair_neuron,
-                min_weight, max_weight, min_bias, max_bias, cnt_imgs, y0)
+                min_weight, max_weight, cnt_imgs, y0)
 
             if num_bins > 0: has_bins = True
             
@@ -323,68 +332,20 @@ class BackDoorRepairImpl():
             cnt_imgs += 1
 
         prob.write('Bounds\n')
-        # self.__write_bounds(prob, lw_coll, up_coll, min_weight, max_weight, min_bias, max_bias, len(input_repair))
-        self.__write_bounds(prob, lw_coll, up_coll, min_weight, max_weight, min_bias, max_bias,
-            len(input_repair) + model.layers[repair_layer + 2].get_number_neurons())
+        self.__write_bounds(prob, lw_coll, up_coll, min_weight, max_weight, num_weights)
 
         if has_bins:
             prob.write('Binary\n')
             self.__write_binary(prob, bins_coll)
 
-        prob.write('\nEnd\n')
+        prob.write('End\n')
 
         prob.flush()
         prob.close()
 
 
-    def __write_constr_repair_layer(self, prob, input_repair, repair_neuron, number_of_neurons,
-            weights, bias, min_weight, max_weight, min_bias, max_bias, cnt_imgs, prev_var_idx, curr_var_idx):
-        lw_layer, up_layer = [], []
-
-        for neuron_idx in range(number_of_neurons):
-            # repair neuron
-            if neuron_idx == repair_neuron:
-                # compute bounds
-                lw, up = 0.0, 0.0
-
-                for input_val in input_repair:
-                    if input_val > 0:
-                        lw += min_weight * input_val
-                        up += max_weight * input_val
-                    elif input_val < 0:
-                        lw += max_weight * input_val
-                        up += min_weight * input_val
-
-                lw, up = lw + min_bias, up + max_bias
-                assert lw <= up
-
-                lw_layer.append(lw)
-                up_layer.append(up)
-
-                # write constraints
-                prob.write('  x{}_{}'.format(curr_var_idx + neuron_idx, cnt_imgs))
-                # input vals are coefs, weights and bias are variables
-                coefs = -input_repair
-                for coef_idx in range(len(coefs)):
-                    coef = coefs[coef_idx]
-                    if coef > 0.0:
-                        prob.write(' + {} w{}'.format(coef, coef_idx))
-                    elif coef < 0.0:
-                        prob.write(' - {} w{}'.format(abs(coef), coef_idx))
-                prob.write(' - b = 0.0\n')
-            # other neurons
-            else:
-                # concrete values for other neurons
-                val = (np.sum(weights[neuron_idx] * input_repair) + bias[neuron_idx])
-
-                lw_layer.append(val)
-                up_layer.append(val)
-
-        return lw_layer, up_layer
-
-
-    def __write_constr_next_layer(self, prob, input_repair, repair_neuron, number_of_neurons, lw_prev, up_prev,
-            weights, bias, min_weight, max_weight, min_bias, max_bias, cnt_imgs, prev_var_idx, curr_var_idx):
+    def __write_constr_next_layer(self, prob, repair_neuron, number_of_neurons, lw_prev, up_prev,
+            weights, bias, min_weight, max_weight, cnt_imgs, prev_var_idx, curr_var_idx):
         lw_layer, up_layer = [], []
 
         for neuron_idx in range(number_of_neurons):
@@ -417,7 +378,7 @@ class BackDoorRepairImpl():
             for coef_idx in range(len(coefs)):
                 coef = coefs[coef_idx]
                 if coef_idx == repair_neuron:
-                    prob.write(' - [ w{} * x{}_{} ]'.format(neuron_idx + len(input_repair), prev_var_idx + coef_idx, cnt_imgs))
+                    prob.write(' - [ w{} * x{}_{} ]'.format(neuron_idx, prev_var_idx + coef_idx, cnt_imgs))
                 else:
                     if coef > 0.0:
                         prob.write(' + {} x{}_{}'.format(coef, prev_var_idx + coef_idx, cnt_imgs))
@@ -494,7 +455,7 @@ class BackDoorRepairImpl():
 
 
     def __write_constr(self, prob, model, input_repair, repair_layer, repair_neuron,
-            min_weight, max_weight, min_bias, max_bias, cnt_imgs, y0):
+            min_weight, max_weight, cnt_imgs, y0):
         lw_list, up_list = [], []
         lw_input, up_input = [], []
         num_bins = 0
@@ -509,7 +470,7 @@ class BackDoorRepairImpl():
         curr_var_idx = len(input_repair)
         prev_var_idx = 0
 
-        for layer_idx in range(repair_layer, len(model.layers)):
+        for layer_idx in range(repair_layer + 2, len(model.layers)):
             layer = model.layers[layer_idx]
             lw_layer, up_layer = [], []
 
@@ -519,16 +480,11 @@ class BackDoorRepairImpl():
                 bias = layer.bias.transpose(1, 0).reshape(-1) # shape: num_neuron
                 number_of_neurons = layer.get_number_neurons()
 
-                # repair layer
-                if layer_idx == repair_layer:
-                    lw_prev, up_prev = None, None
-                    lw_layer, up_layer = self.__write_constr_repair_layer(prob, input_repair, repair_neuron, number_of_neurons,
-                                            weights, bias, min_weight, max_weight, min_bias, max_bias, cnt_imgs, prev_var_idx, curr_var_idx)
                 # next linear layer
-                elif layer_idx == repair_layer + 2:
+                if layer_idx == repair_layer + 2:
                     lw_prev, up_prev = lw_list[-1], up_list[-1]
-                    lw_layer, up_layer = self.__write_constr_next_layer(prob, input_repair, repair_neuron, number_of_neurons, lw_prev, up_prev,
-                                            weights, bias, min_weight, max_weight, min_bias, max_bias, cnt_imgs, prev_var_idx, curr_var_idx)                 
+                    lw_layer, up_layer = self.__write_constr_next_layer(prob, repair_neuron, number_of_neurons, lw_prev, up_prev,
+                                            weights, bias, min_weight, max_weight, cnt_imgs, prev_var_idx, curr_var_idx)                 
                 # other linear layers
                 else:
                     lw_prev, up_prev = lw_list[-1], up_list[-1]
