@@ -139,6 +139,8 @@ class BackDoorRepairImpl():
         clean_atk = spec['clean_atk']
         clean_acc = spec['clean_acc']
 
+        time_limit = spec['time_limit']
+
         pathX, pathY = spec['pathX'], spec['pathY']
         y0s = np.array(ast.literal_eval(read(pathY)))
     
@@ -199,14 +201,14 @@ class BackDoorRepairImpl():
                 opt = gp.read(filename)
                 opt.setParam(GRB.Param.DualReductions, 0)
                 opt.setParam(GRB.Param.NonConvex, 2)
-                opt.setParam(GRB.Param.TimeLimit, 60.0)
+                opt.setParam(GRB.Param.TimeLimit, time_limit)
 
                 opt.optimize()
                 os.remove(filename)
                 
                 if opt.status == GRB.TIME_LIMIT:
                     print('Timeout')
-                if opt.status == GRB.INFEASIBLE:
+                elif opt.status == GRB.INFEASIBLE:
                     print('Infeasible')
                 elif opt.status == GRB.OPTIMAL:
                     print('Optimal')
@@ -225,6 +227,8 @@ class BackDoorRepairImpl():
 
                     if len(new_valid_x0s) / len(valid_x0s_with_bd) >= clean_acc and new_succ_atk_cnt / len(new_valid_x0s) <= clean_atk:
                         return True
+                else:
+                    print('Status = {}'.format(opt.status))
                         
         return False
 

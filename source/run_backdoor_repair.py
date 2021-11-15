@@ -27,6 +27,7 @@ def add_assertion(args, spec):
     
     assertion['clean_atk'] = args.clean_atk
     assertion['clean_acc'] = args.clean_acc
+    assertion['time_limit'] = args.time_limit
 
     if 'mnist' in args.dataset:
         assertion['dataset'] = 'mnist'
@@ -97,6 +98,8 @@ def main():
                         help='the success rate of the same trigger after cleansing')
     parser.add_argument('--clean_acc', type=float, default=0.90,
                         help='the accuracy of the clean model')
+    parser.add_argument('--time_limit', type=float, default=60.0,
+                        help='the time limit of the optimizer')
     parser.add_argument('--target', type=int,
                         help='the target used in verify and attack')
 
