@@ -111,11 +111,13 @@ class SPRTImpl():
         pr = 1
         no = 0
 
+        size = np.prod(model.shape)
+
         while True:
             vars_dict = dict()
 
             for var in assertion.vars:
-                x = self.__generate_x(model.shape, model.lower, model.upper)
+                x = generate_x(size, model.lower, model.upper)
                 vars_dict[var.name] = x
 
             vars_dict.update(assertion.init_dict)

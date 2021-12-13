@@ -75,13 +75,16 @@ class BackDoorRepairImpl():
             print('mask = {}'.format(mask))
             print('sum mask = {}\n'.format(np.sum(mask)))
 
-        valid_x0s_with_bd, succ_atk_cnt = self.__get_x0s_with_bd(model, valid_x0s, trigger, mask, target)
+        valid_x0s_with_bd, non_target_cnt, succ_atk_cnt = self.__get_x0s_with_bd(model, valid_x0s, trigger, mask, target)
+
+        assert len(valid_x0s) == len(valid_x0s_with_bd)
 
         print('len(valid_x0s) =', len(valid_x0s))
         print('len(valid_x0s_with_bd) =', len(valid_x0s_with_bd))
+        print('non_target_cnt =', non_target_cnt)
         print('succ_atk_cnt =', succ_atk_cnt)
         
-        succ_rate = succ_atk_cnt / len(valid_x0s)
+        succ_rate = succ_atk_cnt / non_target_cnt
 
         if succ_rate < exp_rate:
             print('\nsucc_rate = {}'.format(succ_rate))
@@ -156,7 +159,12 @@ class BackDoorRepairImpl():
                 number_of_neurons = model.layers[do_layer].get_number_neurons()
 
                 for do_neuron in range(number_of_neurons):
+                    start = time.time()
                     ie, min_val, max_val = self.get_ie_do_h_dy(model, valid_x0s_with_bd, trigger, mask, target, do_layer, do_neuron)
+                    end = time.time()
+
+                    print('time = {}'.format(end - start))
+
                     mie = np.mean(np.array(ie))
 
                     if mie > 0.0:
@@ -219,13 +227,16 @@ class BackDoorRepairImpl():
                     self.__update_new_weights_and_bias(new_model, opt, repair_layer, repair_neuron, num_weights)
      
                     new_valid_x0s = self.__get_valid_x0s(new_model, total_imgs, y0s, pathX, target)
-                    new_valid_x0s_with_bd, new_succ_atk_cnt = self.__get_x0s_with_bd(new_model, new_valid_x0s, trigger, mask, target)
+                    new_valid_x0s_with_bd, new_non_target_cnt, new_succ_atk_cnt = self.__get_x0s_with_bd(new_model, new_valid_x0s, trigger, mask, target)
+
+                    assert len(new_valid_x0s) == len(new_valid_x0s_with_bd)
 
                     print('len(new_valid_x0s) =', len(new_valid_x0s))
                     print('len(new_valid_x0s_with_bd) =', len(new_valid_x0s_with_bd))
+                    print('new_non_target_cnt =', new_non_target_cnt)
                     print('new_succ_atk_cnt =', new_succ_atk_cnt)
 
-                    if len(new_valid_x0s) / len(valid_x0s_with_bd) >= clean_acc and new_succ_atk_cnt / len(new_valid_x0s) <= clean_atk:
+                    if len(new_valid_x0s) / len(valid_x0s_with_bd) >= clean_acc and new_succ_atk_cnt / new_non_target_cnt <= clean_atk:
                         return True
                 else:
                     print('Status = {}'.format(opt.status))
@@ -593,8 +604,7 @@ class BackDoorRepairImpl():
 
 
     def __get_x0s_with_bd(self, model, valid_x0s, trigger, mask, target):
-        valid_x0s_with_bd = []
-        successful_atk_cnt = 0
+        valid_x0s_with_bd, non_target_cnt, succ_atk_cnt = [], 0, 0
 
         for i in range(len(valid_x0s)):
             x0, output_x0 = valid_x0s[i]
@@ -605,10 +615,13 @@ class BackDoorRepairImpl():
             output_x_bd = model.apply(x_bd).reshape(-1)
             y_bd = np.argmax(output_x_bd)
 
-            if y0 != target and y_bd == target: successful_atk_cnt += 1
+            if y0 != target:
+                non_target_cnt += 1
+                if y_bd == target: succ_atk_cnt += 1
+
             valid_x0s_with_bd.append((x0, x_bd, output_x0, output_x_bd))
 
-        return valid_x0s_with_bd, successful_atk_cnt
+        return valid_x0s_with_bd, non_target_cnt, succ_atk_cnt
 
 
     def __attack(self, model, valid_x0s, target, dataset):

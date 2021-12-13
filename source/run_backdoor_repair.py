@@ -92,7 +92,7 @@ def main():
 
     parser.add_argument('--spec', type=str, default='spec.json',
                         help='the specification file')
-    parser.add_argument('--exp_rate', type=float, default=0.90,
+    parser.add_argument('--exp_rate', type=float, default=0.80,
                         help='the expected success rate of the trigger before cleansing')
     parser.add_argument('--clean_atk', type=float, default=0.10,
                         help='the success rate of the same trigger after cleansing')

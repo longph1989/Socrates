@@ -1,5 +1,4 @@
 import autograd.numpy as np
-import cvxpy as cp
 import multiprocessing
 import ast
 import os
