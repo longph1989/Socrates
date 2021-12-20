@@ -229,6 +229,8 @@ def parse_solver(spec):
         solver = Refinement(has_ref, max_ref, ref_typ, max_sus)
     elif algorithm == 'backdoor':
         solver = BackDoor()
+    elif algorithm == 'backdoor_repair':
+        solver = BackDoorRepair()
     elif algorithm == 'dtmc':
         solver = DTMC()
     elif algorithm == 'dtmc_rnn':

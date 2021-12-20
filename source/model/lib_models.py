@@ -12,6 +12,25 @@ class Model:
             self.ptmodel = torch.load(path)
 
 
+    def copy(self):
+        new_model = Model(None, None, None, None, None)
+        
+        new_model.shape = self.shape.copy()
+        new_model.lower = self.lower.copy()
+        new_model.upper = self.upper.copy()
+
+        if self.layers is None:
+            new_model.layers = None
+            new_model.ptmodel = self.ptmodel.copy()
+        else:
+            new_model.layers = []
+            for layer in self.layers:
+                new_model.layers.append(layer.copy())
+            new_model.ptmodel = None
+
+        return new_model
+
+
     def __apply_ptmodel(self, x):
         x = torch.from_numpy(x).view(self.shape.tolist())
 
@@ -45,6 +64,21 @@ class Model:
             return output
         else:
             return output[0, y]
+
+
+    def apply_to(self, x, idx):
+        if self.layers == None:
+            # only work when layers is not None
+            raise NameError('Not support yet!')
+
+        output = x # no need for recurrent yet
+
+        for i in range(len(self.layers)):
+            if i < idx:
+                layer = self.layers[i]
+                output = layer.apply(output)
+
+        return output
 
 
     def forward(self, x_poly, idx, lst_poly):
@@ -204,3 +238,70 @@ class Model:
             layer.reset()
 
         return output
+
+#####################################################################################################################################
+    def apply_intervention(self, x, do_layer, do_neuron, do_value):
+        if self.layers == None:
+            return self.__apply_ptmodel(x)
+
+        shape_i = [1, *self.shape[1:]]
+        size_i = np.prod(shape_i)
+
+        length = int(x.size / size_i)
+
+        # only handle single input
+        if length != 1:
+            return None, None
+
+        for i in range(length):
+            x_i = x[size_i * i : size_i * (i + 1)].reshape(shape_i)
+            output = x_i
+            j = 0
+
+            for layer in self.layers:
+                output = layer.apply(output)
+
+                if do_layer == j:
+                    output[0][do_neuron] = do_value
+
+                j = j + 1
+
+        for layer in self.layers:
+            layer.reset()
+
+        return output
+
+
+    def apply_get_h(self, x, do_layer, do_neuron):
+        if self.layers == None:
+            return self.__apply_ptmodel(x)
+
+        shape_i = [1, *self.shape[1:]]
+        size_i = np.prod(shape_i)
+
+        length = int(x.size / size_i)
+
+        hidden = 0.0
+
+        # only handle single input
+        if length != 1:
+            return None, None
+
+        for i in range(length):
+            x_i = x[size_i * i : size_i * (i + 1)].reshape(shape_i)
+            output = x_i
+            j = 0
+
+            for layer in self.layers:
+                output = layer.apply(output)
+
+                if do_layer == j:
+                    hidden = output[0][do_neuron]
+
+                j = j + 1
+
+        for layer in self.layers:
+            layer.reset()
+
+        return output, hidden
+#####################################################################################################################################

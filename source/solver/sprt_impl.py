@@ -113,6 +113,8 @@ class SPRTImpl():
         
         size = np.prod(model.shape)
 
+        size = np.prod(model.shape)
+
         while True:
             vars_dict = dict()
 

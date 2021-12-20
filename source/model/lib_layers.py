@@ -12,12 +12,19 @@ class Layer:
     def reset(self):
         pass
 
+    def copy(self):
+        pass
+
 
 class Function(Layer):
     def __init__(self, name, params):
         self.name = name
         self.params = params
         self.func = get_func(name, params)
+
+    def copy(self):
+        new_layer = Function(self.name, self.params)
+        return new_layer
 
     def apply(self, x):
         return self.func(x)
@@ -138,12 +145,30 @@ class Function(Layer):
         else:
             return True
 
+    def is_activation_layer(self):
+        return True
+
+    def is_linear_layer(self):
+        return False
+
+    def get_number_neurons(self):
+        return None
+
 
 class Linear(Layer):
     def __init__(self, weights, bias, name):
         self.weights = weights.transpose(1, 0)
         self.bias = bias.reshape(-1, bias.size)
         self.func = get_func(name, None)
+
+    def copy(self):
+        new_layer = Linear(np.zeros((1,1)), np.zeros(1), None)
+
+        new_layer.weights = self.weights.copy()
+        new_layer.bias = self.bias.copy()
+        new_layer.func = self.func
+
+        return new_layer
 
     def apply(self, x):
         if self.func == None:
@@ -180,6 +205,15 @@ class Linear(Layer):
 
     def is_poly_exact(self):
         return True
+
+    def is_activaiton_layer(self):
+        return False
+
+    def is_linear_layer(self):
+        return True
+
+    def get_number_neurons(self):
+        return len(self.bias[0])
 
 
 class BasicRNN(Layer):
