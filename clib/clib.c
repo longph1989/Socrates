@@ -29,3 +29,11 @@ double *array_mul_c(double* matrix, double* coefs, int* indexes, int m, int n) {
 
     return res;
 }
+
+double *compute_lower_bounds(double **coefs, double **previous_lower_bounds, double **previous_upper_bounds) {
+
+}
+
+double *compute_upper_bounds(double **coefs, double **previous_lower_bounds, double **previous_upper_bounds) {
+    
+}
