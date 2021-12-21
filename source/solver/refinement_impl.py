@@ -9,8 +9,26 @@ from scipy.optimize import minimize
 from scipy.optimize import Bounds
 from autograd import grad
 from assertion.lib_functions import di
+from numpy.ctypeslib import ndpointer
 from utils import *
 from poly_utils import *
+from ctypes import *
+
+
+clib = CDLL('./clib/clib.so')
+_doublepp = ndpointer(dtype=np.uintp, ndim=1, flags='C')
+
+
+class LayerC(Structure):
+    _fields_ = [('lw', ndpointer(c_double)), ('up', ndpointer(c_double)), ('le', _doublepp), ('ge', _doublepp)]
+
+LayerCPtr = POINTER(LayerC)
+
+
+class NetworkC(Structure):
+    _fields_ = [('layers', POINTER(POINTER(LayerC)))]
+
+NetworkCPtr = POINTER(NetworkC)
 
 
 class Poly():
@@ -37,6 +55,35 @@ class Poly():
     def back_substitute(self, lst_poly, get_ineq=False):
         no_neurons = len(self.lw)
         num_cores = os.cpu_count()
+
+        create_network_c = clib.create_network
+        create_network_c.restype = NetworkCPtr
+        create_network_c.argtype = c_size_t
+
+        add_first_layer_c = clib.add_first_layer
+        add_first_layer_c.restype = c_void
+        add_first_layer_c.argtypes = (NetworkCPtr, ndpointer(c_double), ndpointer(c_double))
+
+        add_other_layers_c = clib.add_other_layers
+        add_other_layers_c.restype = c_void
+        add_other_layers_c.argtypes = (NetworkCPtr, ndpointer(c_double), ndpointer(c_double), _doublepp, _doublepp. c_size_t)
+
+        free_network_c = clib.free_network
+        free_network_c.restype = c_void
+        free_network_c.argtype = NetworkCPtr
+
+        nn_c = create_network_c(len(lst_poly))
+
+        for i in range(len(lst_poly)):
+            if i == 0:
+                add_first_layer_c(nn_c, lst_poly[i].lw, lst_poly[i].up)
+            else:
+                add_other_layers_c(nn_c, lst_poly[i].lw, lst_poly[i].up, get_xpp(lst_poly[i].le), get_xpp(lst_poly[i].ge), i)
+
+        free_network_c(nn_c)
+
+        # compute_lower_bounds(get_xpp(self.ge), num_cores)
+        # compute_lower_bounds(get_xpp(self.le), num_cores)
 
         for i in range(no_neurons):
             args = (i, self.le[i], self.ge[i], lst_poly)

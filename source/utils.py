@@ -143,3 +143,6 @@ def generate_x(size, lower, upper):
     x = (upper - lower) * x + lower
 
     return x
+
+def get_xpp(array):
+    return (array.__array_interface__['data'][0] + np.arange(array.shape[0]) * array.strides[0]).astype(np.uintp)
