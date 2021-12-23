@@ -3,6 +3,7 @@
 
 network *create_network(const size_t num_layers) {
     network *nn = (network *) malloc(sizeof(network));
+    nn->layers = (layer **) malloc(num_layers * sizeof(layer *));
     nn->num_layers = num_layers;
 
     return nn;
@@ -39,6 +40,7 @@ void free_network(network *nn, const size_t size) {
     for (size_t i = 0; i < size; i++) {
         free(nn->layers[i]);
     }
+    free(nn->layers);
     free(nn);
 }
 
@@ -59,7 +61,7 @@ void *compute_lower_bounds_thread(void *args) {
         double *coefs_i = coefs[i];
         double *coefs_next = NULL;
 
-        for (size_t j = nn->num_layers - 1; j >= 0; j--) {
+        for (int j = nn->num_layers - 1; j >= 0; j--) {
             layer *layer_j = nn->layers[j];
             double *lw_j = layer_j->lw;
             double *up_j = layer_j->up;
@@ -78,7 +80,8 @@ void *compute_lower_bounds_thread(void *args) {
                 }
 
                 res_i += coefs_i[layer_j->num_neurons];
-            } else {
+            }
+            else {
                 layer *layer_j1 = nn->layers[j - 1];
 
                 res_i = 0.0;
@@ -106,6 +109,7 @@ void *compute_lower_bounds_thread(void *args) {
 
             if (j == nn->num_layers - 1) {
                 res[i] = res_i;
+                coefs_i = coefs_next;
             } else {
                 res[i] = MAX(res[i], res_i);
                 free_array(coefs_i);
@@ -134,7 +138,7 @@ void *compute_upper_bounds_thread(void *args) {
         double *coefs_i = coefs[i];
         double *coefs_next = NULL;
 
-        for (size_t j = nn->num_layers - 1; j >= 0; j--) {
+        for (int j = nn->num_layers - 1; j >= 0; j--) {
             layer *layer_j = nn->layers[j];
             double *lw_j = layer_j->lw;
             double *up_j = layer_j->up;
@@ -181,6 +185,7 @@ void *compute_upper_bounds_thread(void *args) {
 
             if (j == nn->num_layers - 1) {
                 res[i] = res_i;
+                coefs_i = coefs_next;
             } else {
                 res[i] = MIN(res[i], res_i);
                 free_array(coefs_i);
@@ -194,7 +199,9 @@ void *compute_upper_bounds_thread(void *args) {
 
 
 double *compute_lower_bounds(network *nn, double **coefs, const size_t row, const size_t col, const size_t NUM_THREADS) {
-    double *res = malloc(row * sizeof(double));
+    double *res = (double *) malloc(row * sizeof(double));
+    for (size_t i = 0; i < row; i++)
+        res[i] = 0.0;
 
     pthread_t threads[NUM_THREADS];
     thread_arg_t thread_args[NUM_THREADS];
@@ -232,7 +239,9 @@ double *compute_lower_bounds(network *nn, double **coefs, const size_t row, cons
 
 
 double *compute_upper_bounds(network *nn, double **coefs, const size_t row, const size_t col, const size_t NUM_THREADS) {
-    double *res = malloc(row * sizeof(double));
+    double *res = (double *) malloc(row * sizeof(double));
+    for (size_t i = 0; i < row; i++)
+        res[i] = 0.0;
 
     pthread_t threads[NUM_THREADS];
     thread_arg_t thread_args[NUM_THREADS];

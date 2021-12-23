@@ -20,13 +20,13 @@ _doublepp = ndpointer(dtype=np.uintp, ndim=1, flags='C')
 
 
 class LayerC(Structure):
-    _fields_ = [('lw', ndpointer(c_double)), ('up', ndpointer(c_double)), ('le', _doublepp), ('ge', _doublepp)]
+    _fields_ = [('lw', ndpointer(c_double)), ('up', ndpointer(c_double)), ('le', _doublepp), ('ge', _doublepp), ('num_neurons', c_size_t)]
 
 LayerCPtr = POINTER(LayerC)
 
 
 class NetworkC(Structure):
-    _fields_ = [('layers', POINTER(POINTER(LayerC)))]
+    _fields_ = [('layers', POINTER(POINTER(LayerC))), ('num_layers', c_size_t)]
 
 NetworkCPtr = POINTER(NetworkC)
 
@@ -61,29 +61,42 @@ class Poly():
         create_network_c.argtype = c_size_t
 
         add_first_layer_c = clib.add_first_layer
-        add_first_layer_c.restype = c_void
-        add_first_layer_c.argtypes = (NetworkCPtr, ndpointer(c_double), ndpointer(c_double))
+        add_first_layer_c.argtypes = (NetworkCPtr, ndpointer(c_double), ndpointer(c_double), c_size_t)
 
         add_other_layers_c = clib.add_other_layers
-        add_other_layers_c.restype = c_void
-        add_other_layers_c.argtypes = (NetworkCPtr, ndpointer(c_double), ndpointer(c_double), _doublepp, _doublepp. c_size_t)
+        add_other_layers_c.argtypes = (NetworkCPtr, ndpointer(c_double), ndpointer(c_double), _doublepp, _doublepp, c_size_t, c_size_t)
 
         free_network_c = clib.free_network
-        free_network_c.restype = c_void
-        free_network_c.argtype = NetworkCPtr
+        free_network_c.argtypes = (NetworkCPtr, c_size_t)
+
+        compute_lower_bounds_c = clib.compute_lower_bounds
+        compute_lower_bounds_c.restype = POINTER(c_double * len(self.lw))
+        compute_lower_bounds_c.argtypes = (NetworkCPtr, _doublepp, c_size_t, c_size_t, c_size_t)
+
+        compute_upper_bounds_c = clib.compute_upper_bounds
+        compute_upper_bounds_c.restype = POINTER(c_double * len(self.up))
+        compute_upper_bounds_c.argtypes = (NetworkCPtr, _doublepp, c_size_t, c_size_t, c_size_t)
 
         nn_c = create_network_c(len(lst_poly))
 
         for i in range(len(lst_poly)):
             if i == 0:
-                add_first_layer_c(nn_c, lst_poly[i].lw, lst_poly[i].up)
+                add_first_layer_c(nn_c, lst_poly[i].lw, lst_poly[i].up, len(lst_poly[i].lw))
             else:
-                add_other_layers_c(nn_c, lst_poly[i].lw, lst_poly[i].up, get_xpp(lst_poly[i].le), get_xpp(lst_poly[i].ge), i)
+                add_other_layers_c(nn_c, lst_poly[i].lw, lst_poly[i].up, get_xpp(lst_poly[i].le), get_xpp(lst_poly[i].ge), len(lst_poly[i].lw), i)
 
-        free_network_c(nn_c)
+        new_lw_ptr = compute_lower_bounds_c(nn_c, get_xpp(self.ge), len(self.ge), len(self.ge[0]), num_cores)
+        new_up_ptr = compute_upper_bounds_c(nn_c, get_xpp(self.le), len(self.le), len(self.le[0]), num_cores)
 
-        # compute_lower_bounds(get_xpp(self.ge), num_cores)
-        # compute_lower_bounds(get_xpp(self.le), num_cores)
+        new_lw = np.frombuffer(new_lw_ptr.contents)
+        new_up = np.frombuffer(new_up_ptr.contents)
+
+        print('==============================')
+
+        print('new_lw = {}'.format(new_lw))
+        print('new_up = {}'.format(new_up))
+
+        free_network_c(nn_c, len(lst_poly))
 
         for i in range(no_neurons):
             args = (i, self.le[i], self.ge[i], lst_poly)
@@ -91,6 +104,11 @@ class Poly():
             self.lw[i], self.up[i] = lw_i, up_i
 
             if up_i < lw_i: break # unreachable state
+
+        print('self_lw = {}'.format(self.lw))
+        print('self_up = {}'.format(self.up))
+
+        print('==============================')
 
         # get_ineq only happens at the last step
         # no_neurons in this case always be 1
