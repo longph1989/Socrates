@@ -13,11 +13,16 @@ network *create_network(const size_t num_layers) {
 void add_first_layer(const network *nn, double *lw, double *up, const size_t num_neurons) {
     layer *new_layer = (layer *) malloc(sizeof(layer));
     
-    new_layer->lw = lw;
-    new_layer->up = up;
+    new_layer->lw = (double *) malloc(num_neurons * sizeof(double));
+    new_layer->up = (double *) malloc(num_neurons * sizeof(double));
     new_layer->le = NULL;
     new_layer->ge = NULL;
     new_layer->num_neurons = num_neurons;
+
+    for (size_t i = 0; i < num_neurons; i++) {
+        new_layer->lw[i] = lw[i];
+        new_layer->up[i] = up[i];
+    }
 
     nn->layers[0] = new_layer;
 }
@@ -26,20 +31,55 @@ void add_first_layer(const network *nn, double *lw, double *up, const size_t num
 void add_other_layers(const network *nn, double *lw, double *up, double **le, double **ge, const size_t num_neurons, const size_t idx) {
     layer *new_layer = (layer *) malloc(sizeof(layer));
     
-    new_layer->lw = lw;
-    new_layer->up = up;
-    new_layer->le = le;
-    new_layer->ge = ge;
+    new_layer->lw = (double *) malloc(num_neurons * sizeof(double));
+    new_layer->up = (double *) malloc(num_neurons * sizeof(double));
+    new_layer->le = (double **) malloc(num_neurons * sizeof(double *));
+    new_layer->ge = (double **) malloc(num_neurons * sizeof(double *));
     new_layer->num_neurons = num_neurons;
+
+    for (size_t i = 0; i < num_neurons; i++) {
+        new_layer->lw[i] = lw[i];
+        new_layer->up[i] = up[i];
+    }
+
+    for (size_t i = 0; i < num_neurons; i++) {
+        size_t prev_num_neurons1 = nn->layers[idx - 1]->num_neurons + 1;
+        new_layer->le[i] = (double *) malloc(prev_num_neurons1 * sizeof(double));
+        new_layer->ge[i] = (double *) malloc(prev_num_neurons1 * sizeof(double));
+        double *le_i = le[i]; double *ge_i = ge[i];
+
+        for (size_t j = 0; j < prev_num_neurons1; j++) {
+            new_layer->le[i][j] = le_i[j];
+            new_layer->ge[i][j] = ge_i[j];
+        }
+    }
 
     nn->layers[idx] = new_layer;
 }
 
 
-void free_network(network *nn, const size_t size) {
-    for (size_t i = 0; i < size; i++) {
+void free_layer(layer* layer) {
+    size_t num_neurons = layer->num_neurons;
+    
+    free(layer->lw); free(layer->up);
+    
+    if (layer->le != NULL) {
+        for (size_t i = 0; i < num_neurons; i++) {
+            free(layer->le[i]); free(layer->ge[i]);
+        }
+        free(layer->le); free(layer->ge);
+    } 
+}
+
+
+void free_network(network *nn) {
+    size_t num_layers = nn->num_layers;
+
+    for (size_t i = 0; i < num_layers; i++) {
+        free_layer(nn->layers[i]);
         free(nn->layers[i]);
     }
+
     free(nn->layers);
     free(nn);
 }
@@ -80,8 +120,7 @@ void *compute_lower_bounds_thread(void *args) {
                 }
 
                 res_i += coefs_i[layer_j->num_neurons];
-            }
-            else {
+            } else {
                 layer *layer_j1 = nn->layers[j - 1];
 
                 res_i = 0.0;

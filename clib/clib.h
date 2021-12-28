@@ -39,7 +39,9 @@ void add_first_layer(const network *nn, double *lw, double *up, const size_t num
 
 void add_other_layers(const network *nn, double *lw, double *up, double **le, double **ge, const size_t num_neurons, const size_t idx);
 
-void free_network(network *nn, const size_t size);
+void free_layer(layer *layer);
+
+void free_network(network *nn);
 
 void *compute_lower_bounds_thread(void *args);
 

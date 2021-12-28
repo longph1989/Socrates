@@ -52,7 +52,7 @@ class Poly():
 
         return new_poly
 
-    def back_substitute(self, lst_poly, get_ineq=False):
+    def back_substitute_c(self, lst_poly):
         no_neurons = len(self.lw)
         num_cores = os.cpu_count()
 
@@ -67,7 +67,7 @@ class Poly():
         add_other_layers_c.argtypes = (NetworkCPtr, ndpointer(c_double), ndpointer(c_double), _doublepp, _doublepp, c_size_t, c_size_t)
 
         free_network_c = clib.free_network
-        free_network_c.argtypes = (NetworkCPtr, c_size_t)
+        free_network_c.argtype = NetworkCPtr
 
         compute_lower_bounds_c = clib.compute_lower_bounds
         compute_lower_bounds_c.restype = POINTER(c_double * len(self.lw))
@@ -80,10 +80,19 @@ class Poly():
         nn_c = create_network_c(len(lst_poly))
 
         for i in range(len(lst_poly)):
+            lst_poly[i].lw = np.ascontiguousarray(lst_poly[i].lw, dtype=np.double)
+            lst_poly[i].up = np.ascontiguousarray(lst_poly[i].up, dtype=np.double)
+
             if i == 0:
                 add_first_layer_c(nn_c, lst_poly[i].lw, lst_poly[i].up, len(lst_poly[i].lw))
             else:
+                lst_poly[i].le = np.ascontiguousarray(lst_poly[i].le, dtype=np.double)
+                lst_poly[i].ge = np.ascontiguousarray(lst_poly[i].ge, dtype=np.double)
+
                 add_other_layers_c(nn_c, lst_poly[i].lw, lst_poly[i].up, get_xpp(lst_poly[i].le), get_xpp(lst_poly[i].ge), len(lst_poly[i].lw), i)
+
+        self.ge = np.ascontiguousarray(self.ge, dtype=np.double)
+        self.le = np.ascontiguousarray(self.le, dtype=np.double)
 
         new_lw_ptr = compute_lower_bounds_c(nn_c, get_xpp(self.ge), len(self.ge), len(self.ge[0]), num_cores)
         new_up_ptr = compute_upper_bounds_c(nn_c, get_xpp(self.le), len(self.le), len(self.le[0]), num_cores)
@@ -91,24 +100,33 @@ class Poly():
         new_lw = np.frombuffer(new_lw_ptr.contents)
         new_up = np.frombuffer(new_up_ptr.contents)
 
-        print('==============================')
+        # print('==============================')
 
-        print('new_lw = {}'.format(new_lw))
-        print('new_up = {}'.format(new_up))
+        # print('new_lw = {}'.format(new_lw))
+        # print('new_up = {}'.format(new_up))
 
-        free_network_c(nn_c, len(lst_poly))
+        self.lw, self.up = new_lw, new_up
 
-        for i in range(no_neurons):
-            args = (i, self.le[i], self.ge[i], lst_poly)
-            _, lw_i, up_i, lst_le_i, lst_ge_i = back_substitute0(args)
-            self.lw[i], self.up[i] = lw_i, up_i
+        free_network_c(nn_c)
 
-            if up_i < lw_i: break # unreachable state
 
-        print('self_lw = {}'.format(self.lw))
-        print('self_up = {}'.format(self.up))
+    def back_substitute(self, lst_poly, get_ineq=False):
+        if not get_ineq:
+            self.back_substitute_c(lst_poly)
+        else:
+            no_neurons = len(self.lw)
 
-        print('==============================')
+            for i in range(no_neurons):
+                args = (i, self.le[i], self.ge[i], lst_poly)
+                _, lw_i, up_i, lst_le_i, lst_ge_i = back_substitute0(args)
+                self.lw[i], self.up[i] = lw_i, up_i
+
+                if up_i < lw_i: break # unreachable state
+
+            # print('self_lw = {}'.format(self.lw))
+            # print('self_up = {}'.format(self.up))
+
+            # print('==============================')
 
         # get_ineq only happens at the last step
         # no_neurons in this case always be 1
