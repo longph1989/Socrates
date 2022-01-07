@@ -1,5 +1,6 @@
 import autograd.numpy as np
 import ast
+import onnx
 
 from antlr4 import *
 from assertion.AssertionLexer import AssertionLexer
@@ -12,6 +13,26 @@ from assertion.lib_functions import set_model
 from solver.lib_solvers import *
 from utils import *
 from display import *
+
+
+def parse_onnx(path):
+    onnx_model = onnx.load(path)
+    onnx.checker.check_model(onnx_model)
+
+    layers = list()
+
+    for node in onnx_model.graph.node:
+        print(node.op_type)
+        op_type = node.op_type
+
+        if op_type == 'MatMul' or op_type == 'Gemm':
+            pass
+        elif op_type == 'Relu':
+            layers.append(Function('relu', None))
+        elif op_type == 'Sigmoid':
+            layers.append(Function('sigmoid', None))
+        elif op_type == 'Tanh':
+            layers.append(Function('tanh', None))
 
 
 def parse_layers(spec):
@@ -186,9 +207,19 @@ def parse_model(spec):
     shape = np.array(ast.literal_eval(read(spec['shape'])))
     lower, upper = parse_bounds(np.prod(shape), spec['bounds'])
     layers = parse_layers(spec['layers']) if 'layers' in spec else None
-    path = spec['path'] if 'path' in spec else None
 
-    return Model(shape, lower, upper, layers, path)
+    if layers is None:
+        assert 'path' in spec
+        path = spec['path']
+
+        if path.endswith('onnx'):
+            parse_onnx(path)
+
+        assert False
+
+    assert layers is not None
+
+    return Model(shape, lower, upper, layers, None)
 
 
 def parse_assertion(spec):
