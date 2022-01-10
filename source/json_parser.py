@@ -237,7 +237,8 @@ def parse_solver(spec):
         solver = DTMC_rnn()
     elif algorithm == 'verifair':
         solver = VeriFair()
-
+    elif algorithm == 'causal':
+        solver = Causal()
     return solver
 
 

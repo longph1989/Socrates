@@ -240,6 +240,45 @@ class Model:
         return output
 
 #####################################################################################################################################
+    def apply_repair_fixed(self, x, repair_neuron, repair_w, repair_layer):
+        if self.layers == None:
+            return self.__apply_ptmodel(x)
+
+        shape_i = [1, *self.shape[1:]]
+        size_i = np.prod(shape_i)
+
+        length = int(x.size / size_i)
+
+        # only handle single input
+        if length != 1:
+            return None, None
+
+        for i in range(length):
+            x_i = x[size_i * i : size_i * (i + 1)].reshape(shape_i)
+            output = x_i
+            j = 0
+
+            # input
+            for l_idx in range(0, len(repair_layer)):
+                if repair_layer[l_idx] == -1:
+                    n_idxs = repair_neuron[l_idx]
+                    output[0][n_idxs] = (1 + repair_w[l_idx]) * output[0][n_idxs]
+
+            for layer in self.layers:
+                output = layer.apply(output)
+
+                for l_idx in range (0, len(repair_layer)):
+                    if repair_layer[l_idx] == j:
+                        n_idxs = repair_neuron[l_idx]
+                        output[0][n_idxs] = (1 + repair_w[l_idx]) * output[0][n_idxs]
+
+                j = j + 1
+
+        for layer in self.layers:
+            layer.reset()
+
+        return output
+
     def apply_intervention(self, x, do_layer, do_neuron, do_value):
         if self.layers == None:
             return self.__apply_ptmodel(x)
