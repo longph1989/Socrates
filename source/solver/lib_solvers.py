@@ -6,7 +6,7 @@ from solver.backdoor_repair_impl import BackDoorRepairImpl
 from solver.dtmc_impl import DTMCImpl
 from solver.dtmc_rnn import DTMCImpl_rnn
 from solver.verifair_impl import VeriFairimpl
-
+from solver.causal_impl import CausalImpl
 
 class Optimize():
     def solve(self, model, assertion, display=None):
@@ -69,4 +69,11 @@ class VeriFair():
         pass
     def solve(self, model, assertion, display=None):
         impl = VeriFairimpl()
+        impl.solve(model, assertion, display)
+
+class Causal():
+    def __init__(self):
+        pass
+    def solve(self, model, assertion, display=None):
+        impl = CausalImpl()
         impl.solve(model, assertion, display)
