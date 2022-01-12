@@ -40,6 +40,8 @@ def parse_onnx(path):
             layers.append(Function('sigmoid', None))
         elif op_type == 'Tanh':
             layers.append(Function('tanh', None))
+        else:
+            raise NameError('Not support yet!')
 
     return layers
 
