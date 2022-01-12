@@ -6,6 +6,7 @@ from antlr4 import *
 from assertion.AssertionLexer import AssertionLexer
 from assertion.AssertionParser import AssertionParser
 from assertion.AssertionVisitor import AssertionVisitor
+from onnx import numpy_helper
 
 from model.lib_models import *
 from model.lib_layers import *
@@ -16,23 +17,31 @@ from display import *
 
 
 def parse_onnx(path):
-    onnx_model = onnx.load(path)
-    onnx.checker.check_model(onnx_model)
+    model = onnx.load(path)
+    onnx.checker.check_model(model)
 
+    constants_map = {}
     layers = list()
 
-    for node in onnx_model.graph.node:
-        print(node.op_type)
+    for initial in model.graph.initializer:
+        const = numpy_helper.to_array(initial)
+        constants_map[initial.name] = const
+
+    for node in model.graph.node:
         op_type = node.op_type
 
-        if op_type == 'MatMul' or op_type == 'Gemm':
-            pass
+        if op_type == 'Gemm':
+            weights = constants_map[node.input[1]]
+            bias = constants_map[node.input[2]]
+            layers.append(Linear(weights, bias, None))
         elif op_type == 'Relu':
             layers.append(Function('relu', None))
         elif op_type == 'Sigmoid':
             layers.append(Function('sigmoid', None))
         elif op_type == 'Tanh':
             layers.append(Function('tanh', None))
+
+    return layers
 
 
 def parse_layers(spec):
@@ -213,11 +222,7 @@ def parse_model(spec):
         path = spec['path']
 
         if path.endswith('onnx'):
-            parse_onnx(path)
-
-        assert False
-
-    assert layers is not None
+            layers = parse_onnx(path)
 
     return Model(shape, lower, upper, layers, None)
 
