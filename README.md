@@ -1,10 +1,12 @@
 # SOCRATES
 
-**SOCRATES** is a unified platform for neural network verification developed by Sun Jun's team at SMU.
+**SOCRATES** is a unified platform for neural network analysis developed by [Sun Jun’s team at SMU](https://sav-smu.github.io/).
 
-Unlike most existing neural network verification approaches which are scattered (i.e., each approach tackles some restricted classes of neural networks against certain particular properties), incomparable (i.e., each approach has its own assumptions and input format) and thus hard to apply, reuse or extend, **SOCRATES** aims at providing a unified platform for neural network verification. Specifically, it supports a standardized format for a variety of neural network models, an asseration language for property specification as well as two novel algorithms for verifying or falsifying neural network models.
+Unlike most existing neural network analysis approaches which are scattered (i.e., each approach tackles some restricted classes of neural networks against certain particular properties), incomparable (i.e., each approach has its own assumptions and input format) and thus hard to apply, reuse or extend, **SOCRATES** aims at providing a unified platform for neural network testing, verification and repair. Specifically, it supports a standardized format for a variety of neural network models, an asseration language for property specification as well as many engines for testing, verifying, and repairing neural network models.
 
 **SOCRATES** is still in active development. Any suggestions and collaborations are welcomed.
+
+The benchmark of **SOCRATES** is available at [benchmark](https://figshare.com/s/f2c4959b59cf32da4891). More information are available at [**SOCRATES** website](https://socrates4nn.github.io/).
 
 ## Installation:
 
@@ -28,5 +30,5 @@ pip install numpy scipy matplotlib torch autograd antlr4-python3-runtime==4.8 sk
 
 ## Contact:
 
-- You may use github system to raise new issues or suggestions.
+- You may use GitHub system to raise new issues or suggestions.
 - For collaborations, you may reach us via email addresses.
