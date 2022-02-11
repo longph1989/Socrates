@@ -56,17 +56,17 @@ def main():
     model, assertion, solver, display = parse(spec)
 
     if args.dataset == 'bank':
-        pathX = '../benchmark/causal/bank/data/'
-        pathY = '../benchmark/causal/bank/data/labels.txt'
+        pathX = 'benchmark/causal/bank/data/'
+        pathY = 'benchmark/causal/bank/data/labels.txt'
     elif args.dataset == 'census':
-        pathX = '../benchmark/causal/census/data/'
-        pathY = '../benchmark/causal/census/data/labels.txt'
+        pathX = 'benchmark/causal/census/data/'
+        pathY = 'benchmark/causal/census/data/labels.txt'
     elif args.dataset == 'credit':
-        pathX = '../benchmark/causal/credit/data/'
-        pathY = '../benchmark/causal/credit/data/labels.txt'
+        pathX = 'benchmark/causal/credit/data/'
+        pathY = 'benchmark/causal/credit/data/labels.txt'
     elif args.dataset == 'FairSquare':
-        pathX = '../benchmark/causal/FairSquare/data/'
-        pathY = '../benchmark/causal/FairSquare/data/labels.txt'
+        pathX = 'benchmark/causal/FairSquare/data/'
+        pathY = 'benchmark/causal/FairSquare/data/labels.txt'
 
     y0s = np.array(ast.literal_eval(read(pathY)))
 
