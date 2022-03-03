@@ -8,7 +8,8 @@ from json_parser import parse
 def add_solver(args, spec):
     solver = dict()
 
-    solver['algorithm'] = 'continual'
+    assert args.algorithm == 'continual'
+    solver['algorithm'] = args.algorithm
     spec['solver'] = solver
 
 
@@ -18,6 +19,8 @@ def main():
 
     parser.add_argument('--spec', type=str, default='spec.json',
                         help='the specification file')
+    parser.add_argument('--algorithm', type=str, default='continual',
+                        help='the chosen algorithm')
 
     args = parser.parse_args()
 

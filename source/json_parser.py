@@ -239,6 +239,8 @@ def parse_solver(spec):
         solver = VeriFair()
     elif algorithm == 'causal':
         solver = Causal()
+    elif algorithm == 'continual':
+        solver = Continual()
     return solver
 
 
