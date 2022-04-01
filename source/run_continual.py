@@ -24,13 +24,24 @@ def main():
 
     args = parser.parse_args()
 
-    with open(args.spec, 'r') as f:
-        spec = json.load(f)
+    base = 'benchmark/reluplex/specs/prop1/prop1_nnet_'
+    models = []
 
-    add_solver(args, spec)
+    for i in range(1,6):
+        sub_models = []
+        for j in range(1,10):
+            args.spec = base + str(i) + '_' + str(j) + '.json'
 
-    model, assertion, solver, display = parse(spec)
-    solver.solve(model, assertion)
+            with open(args.spec, 'r') as f:
+                spec = json.load(f)
+
+            add_solver(args, spec)
+
+            model, assertion, solver, display = parse(spec)
+            sub_models.append(model)
+        models.append(sub_models)
+    
+    solver.solve(models, assertion)
 
 
 if __name__ == '__main__':
