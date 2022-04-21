@@ -28,21 +28,19 @@ def main():
     base = 'benchmark/reluplex/specs/prop1/prop1_nnet_'
     models = []
 
-    # for i in range(1,6):
-    #     sub_models = []
-    #     for j in range(1,10):
-    #         args.spec = base + str(i) + '_' + str(j) + '.json'
+    for i in range(1,6):
+        sub_models = []
+        for j in range(1,10):
+            args.spec = base + str(i) + '_' + str(j) + '.json'
 
-    #         with open(args.spec, 'r') as f:
-    #             spec = json.load(f)
+            with open(args.spec, 'r') as f:
+                spec = json.load(f)
 
-    #         add_solver(args, spec)
+            add_solver(args, spec)
 
-    #         model, assertion, solver, display = parse(spec)
-    #         sub_models.append(model)
-    #     models.append(sub_models)
-    solver = Continual()
-    assertion = None
+            model, assertion, solver, display = parse(spec)
+            sub_models.append(model)
+        models.append(sub_models)
     
     solver.solve(models, assertion)
 
