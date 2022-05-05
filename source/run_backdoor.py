@@ -7,6 +7,7 @@ import os
 from json_parser import parse
 from autograd import grad
 from utils import *
+from datetime import datetime
 
 import time
 import multiprocessing
@@ -96,6 +97,7 @@ def run_verify(zipped_args):
     bd_target, fa_target, sb_target = [], [], []
 
     for target in range(start, end):
+        time1 = time.time()
         args.target = target
 
         print('Backdoor target = {} with size = {}, total imgs = {}, num imgs = {}, rate = {}, alpha = {}, beta = {}, and threshold = {}'.
@@ -107,10 +109,17 @@ def run_verify(zipped_args):
         model, assertion, solver, display = parse(spec)
 
         res, sbi = solver.solve(model, assertion)
+        time2 = time.time()
+
+        t = round(time2 - time1)
+        m = int(t / 60)
+        s = t - 60 * m
+
+        print('Running time = {}m {}s for target = {}'.format(m, s, target))
 
         if res is not None:
             bd_target.append(res)
-        
+
             if sbi is None:
                 fa_target.append(res)
             else:
@@ -179,6 +188,12 @@ def run_verify_parallel(args):
 
 
 def main():
+    now = datetime.now()
+
+    # dd/mm/YY H:M:S
+    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+    print("Runing at date and time =", dt_string)
+
     start = time.time()
 
     np.set_printoptions(threshold=20)
@@ -205,7 +220,7 @@ def main():
                         help='turn on/off attack')
     parser.add_argument('--atk_pos', type=int,
                         help='the attack position')
-    
+
     parser.add_argument('--algorithm', type=str, default='backdoor',
                         help='the chosen algorithm')
     parser.add_argument('--num_procs', type=int, default=0,
