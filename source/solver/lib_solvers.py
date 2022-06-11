@@ -8,6 +8,7 @@ from solver.dtmc_rnn import DTMCImpl_rnn
 from solver.verifair_impl import VeriFairimpl
 from solver.causal_impl import CausalImpl
 from solver.continual_impl import ContinualImpl
+from solver.continual_impl import ContinualImpl2
 
 class Optimize():
     def solve(self, model, assertion, display=None):
