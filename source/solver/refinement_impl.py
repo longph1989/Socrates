@@ -40,7 +40,7 @@ class Poly():
 
         for i in range(no_neurons):
             args = (i, self.le[i], self.ge[i], lst_poly)
-            _, lw_i, up_i, lst_le_i, lst_ge_i = back_substitute1(args)
+            _, lw_i, up_i, lst_le_i, lst_ge_i = back_substitute0(args)
             self.lw[i], self.up[i] = lw_i, up_i
 
             if up_i < lw_i: break # unreachable state
