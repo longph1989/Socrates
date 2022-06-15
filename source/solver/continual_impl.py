@@ -54,7 +54,7 @@ class ContinualImpl():
 
     # loss function to keep prop 3
     def __loss_fn3(self, pred, x, y):
-        loss1 = self.loss_fn0(pred, x, y)
+        loss1 = self.__loss_fn0(pred, x, y)
         loss2 = 0.0
 
         if -0.3035 <= torch.take(x, torch.tensor([0])) and torch.take(x, torch.tensor([0])) <= -0.2986 and \
@@ -111,6 +111,9 @@ class ContinualImpl():
 
 
     def __run(self, model, idx, lst_poly):
+        print('idx =', idx, 'lw =', lst_poly[-1].lw)
+        print('idx =', idx, 'up =', lst_poly[-1].up)
+
         if idx == len(model.layers):
             poly_out = lst_poly[idx]
             return poly_out
@@ -121,9 +124,6 @@ class ContinualImpl():
             up_next = poly_next.up
 
             if np.any(up_next < lw_next):
-                print(idx)
-                print(lw_next)
-                print(up_next)
                 assert False # unreachable states
 
             lst_poly.append(poly_next)
@@ -144,7 +144,9 @@ class ContinualImpl():
             out_lw = poly_out.lw.copy()
             out_lw[0] = poly_out.up[0]
 
-            if np.argmax(out_lw) == 0: assert False
+            if np.argmax(out_lw) == 0:
+                print(out_lw)
+                assert False
         elif prop == 4:
             out_lw = poly_out.lw.copy()
             out_lw[0] = poly_out.up[0]
@@ -246,7 +248,7 @@ class ContinualImpl():
         optimizer = torch.optim.SGD(new_model.parameters(), lr=1e-3, weight_decay=1e-4)
         # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[40,80,120], gamma=0.1)
 
-        num_of_epochs = 0
+        num_of_epochs = 200
 
         for i in range(num_of_epochs):
             print('\n------------- Epoch {} -------------\n'.format(i))
@@ -270,38 +272,40 @@ class ContinualImpl():
         return load_model
 
 
-    # def __prop3_test(self, model):
-    #     lower = np.array([-0.3035, -0.0095, 0.4934, 0.3, 0.3, -0.25, -0.5])
-    #     upper = np.array([-0.2986, 0.0095, 0.5, 0.5, 0.5, 0.5, 0.5])
+    def __prop3_test(self, model):
+        lower = np.array([-0.3035, -0.0095, 0.4934, 0.3, 0.3, -0.25, -0.5])
+        upper = np.array([-0.2986, 0.0095, 0.5, 0.5, 0.5, 0.5, 0.5])
 
-    #     threshold, alpha, beta, delta = 0.99, 0.01, 0.01, 0.005
+        threshold, alpha, beta, delta = 0.99, 0.01, 0.01, 0.005
 
-    #     p0 = threshold + delta
-    #     p1 = threshold - delta
+        p0 = threshold + delta
+        p1 = threshold - delta
 
-    #     h0 = beta / (1 - alpha)
-    #     h1 = (1 - beta) / alpha
+        h0 = beta / (1 - alpha)
+        h1 = (1 - beta) / alpha
 
-    #     pr, no = 1, 0
+        pr, no = 1, 0
 
-    #     with torch.no_grad():
-    #         while True:
-    #             x = torch.Tensor(generate_x(7, lower, upper))
-    #             pred = model(x).numpy()
+        with torch.no_grad():
+            for i in range(int(1e6)):
+                x = torch.Tensor(generate_x(7, lower, upper))
+                pred = model(x).numpy()
 
-    #             no = no + 1
+                no = no + 1
 
-    #             if np.argmax(pred) != 0:
-    #                 pr = pr * p1 / p0
-    #             else:
-    #                 pr = pr * (1 - p1) / (1 - p0)
+                if np.argmax(pred) != 0:
+                    pr = pr * p1 / p0
+                else:
+                    assert False
+                    pr = pr * (1 - p1) / (1 - p0)
 
-    #             if pr <= h0:
-    #                 print('Accept H0. The assertion is satisfied with p >= {} after {} tests.'.format(p0, no))
-    #                 break
-    #             elif pr >= h1:
-    #                 print('Accept H1. The assertion is satisfied with p <= {} after {} tests.'.format(p1, no))
-    #                 break
+                # if pr <= h0:
+                #     print('Accept H0. The assertion is satisfied with p >= {} after {} tests.'.format(p0, no))
+                #     break
+                # elif pr >= h1:
+                #     print('Accept H1. The assertion is satisfied with p <= {} after {} tests.'.format(p1, no))
+                #     break
+        print(no)
 
 
     def __get_layers(self, model):
@@ -311,9 +315,11 @@ class ContinualImpl():
             name, param = params[i]
             if 'weight' in name:
                 weight = np.array(param.data)
+                print(name)
                 print(weight.shape)
             elif 'bias' in name:
                 bias = np.array(param.data)
+                print(name)
                 print(bias.shape)
 
                 layers.append(Linear(weight, bias, None))
@@ -337,32 +343,35 @@ class ContinualImpl():
         lower0 = np.array([-0.3284, -0.5, -0.5, -0.5, -0.5])
         upper0 = np.array([0.6799, 0.5, 0.5, 0.5, 0.5])
 
-        train_x0, train_y0 = self.__gen_train_data(models, lower0, upper0, aux=True)
-        test_x, test_y = self.__gen_test_data(models, lower0, upper0)
+        # train_x0, train_y0 = self.__gen_train_data(models, lower0, upper0, aux=True)
+        # test_x, test_y = self.__gen_test_data(models, lower0, upper0)
 
-        # data from condition 3 bounds
+        # # data from condition 3 bounds
 
         lower3 = np.array([-0.3035, -0.0095, 0.4934, 0.3, 0.3])
         upper3 = np.array([-0.2986, 0.0095, 0.5, 0.5, 0.5])
 
-        train_x3, train_y3 = self.__gen_train_data(models, lower3, upper3, skip=[0])
+        # train_x3, train_y3 = self.__gen_train_data(models, lower3, upper3, skip=[0])
 
-        device = 'cpu'
-        new_model0 = NewNetwork().to(device)
+        # device = 'cpu'
+        # new_model0 = NewNetwork().to(device)
 
-        train_x = np.concatenate((train_x0, train_x3), axis=0)
-        train_y = np.concatenate((train_y0, train_y3), axis=0)
-        new_model1 = self.__train_new_model(new_model0, device, train_x, train_y, test_x, test_y, self.__loss_fn0)
+        # train_x = np.concatenate((train_x0, train_x3), axis=0)
+        # train_y = np.concatenate((train_y0, train_y3), axis=0)
+        # new_model1 = self.__train_new_model(new_model0, device, train_x, train_y, test_x, test_y, self.__loss_fn3)
+        # self.__save_model(new_model1, "model1b.pt")
+
+        new_model1 = self.__load_model("model1b.pt")
         print('finish model 1')
 
-        # self.__prop3_test(new_model1)
+        self.__prop3_test(new_model1)
 
-        formal_lower0, formal_upper0 = list(lower0.copy()), list(lower0.copy())
+        formal_lower0, formal_upper0 = list(lower0.copy()), list(upper0.copy())
         formal_lower0.extend([-0.5, -0.5])
         formal_upper0.extend([0.5, 0.5])
 
-        formal_lower3, formal_upper3 = list(lower3.copy()), list(lower3.copy())
-        formal_lower3.extend([-0.25, -0.25])
+        formal_lower3, formal_upper3 = list(lower3.copy()), list(upper3.copy())
+        formal_lower3.extend([-0.25, -0.5])
         formal_upper3.extend([0.5, 0.5])
 
         formal_model = self.__get_formal_model(new_model1, np.array(formal_lower0), np.array(formal_upper0))
@@ -393,39 +402,17 @@ class ContinualImpl():
         
         # self.__prop3_test(new_model2)
 
-        # formal_model = self.__get_formal_model(new_model2, lower0, upper0)
-        # self.__verify(formal_model, lower3, upper3, 3)
+        # formal_model = self.__get_formal_model(new_model2, np.array(formal_lower0), np.array(formal_upper0))
+        # self.__verify(formal_model, np.array(formal_lower3), np.array(formal_upper3), 3)
 
 
-
-class MNISTNet1(nn.Module):
-    def __init__(self):
-        super(MNISTNet1, self).__init__()
+class MNISTNet(nn.Module):
+    def __init__(self, lbl):
+        super(MNISTNet, self).__init__()
         self.fc1 = nn.Linear(784, 128)
         self.fc2 = nn.Linear(128, 128)
         self.fc3 = nn.Linear(128, 128)
-        self.fc4 = nn.Linear(128, 2)
-
-    def forward(self, x):
-        x = torch.flatten(x, 1)
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = self.fc2(x)
-        x = F.relu(x)
-        x = self.fc3(x)
-        x = F.relu(x)
-        x = self.fc4(x)
-        output = x # cross entropy in pytorch already includes softmax
-        return output
-
-
-class MNISTNet2(nn.Module):
-    def __init__(self):
-        super(MNISTNet2, self).__init__()
-        self.fc1 = nn.Linear(784, 128)
-        self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, 128)
-        self.fc4 = nn.Linear(128, 4)
+        self.fc4 = nn.Linear(128, lbl)
 
     def forward(self, x):
         x = torch.flatten(x, 1)
@@ -445,7 +432,7 @@ class ContinualImpl2():
         self.cnt = 0
         self.pos = 0
 
-    def train(self, model, device, train_loader, optimizer, epoch):
+    def __train(self, model, device, train_loader, optimizer, epoch):
         model.train()
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(device), target.to(device)
@@ -454,13 +441,13 @@ class ContinualImpl2():
             loss = F.cross_entropy(output, target)
             loss.backward()
             optimizer.step()
-            # if batch_idx % 10 == 0:
-            #     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-            #         epoch, batch_idx * len(data), len(train_loader.dataset),
-            #         100. * batch_idx / len(train_loader), loss.item()))
+            if batch_idx % 10 == 0:
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    epoch, batch_idx * len(data), len(train_loader.dataset),
+                    100. * batch_idx / len(train_loader), loss.item()))
 
 
-    def test(self, model, device, test_loader):
+    def __test(self, model, device, test_loader):
         model.eval()
         test_loss = 0
         correct = 0
@@ -490,86 +477,7 @@ class ContinualImpl2():
         return load_model
 
 
-    def __print_model(self, model):
-        for name, param in model.named_parameters():
-            print(name)
-            print(param.data)
-
-
-    def solve(self, models, assertion, display=None):
-        device = torch.device("cpu")
-
-        train_kwargs = {'batch_size': 100}
-        test_kwargs = {'batch_size': 1000}
-
-        transform=transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
-            ])
-
-        train1 = datasets.MNIST('../data', train=True, download=True, transform=transform)
-        train2 = datasets.MNIST('../data', train=True, download=True, transform=transform)
-        # train3 = datasets.MNIST('../data', train=True, download=True, transform=transform)
-        # train4 = datasets.MNIST('../data', train=True, download=True, transform=transform)
-        # train5 = datasets.MNIST('../data', train=True, download=True, transform=transform)
-
-        test1 = datasets.MNIST('../data', train=False, transform=transform)
-        test2 = datasets.MNIST('../data', train=False, transform=transform)
-        # test3 = datasets.MNIST('../data', train=False, transform=transform)
-        # test4 = datasets.MNIST('../data', train=False, transform=transform)
-        # test5 = datasets.MNIST('../data', train=False, transform=transform)
-
-        train_indices1 = (train1.targets == 0) | (train1.targets == 1)
-        train1.data, train1.targets = train1.data[train_indices1], train1.targets[train_indices1]
-
-        test_indices1 = (test1.targets == 0) | (test1.targets == 1)
-        test1.data, test1.targets = test1.data[test_indices1], test1.targets[test_indices1]
-
-        train_indices2 = (train2.targets == 2) | (train2.targets == 3)
-        train2.data, train2.targets = train2.data[train_indices2], train2.targets[train_indices2]
-
-        test_indices2 = (test2.targets == 0) | (test2.targets == 1) | (test2.targets == 2) | (test2.targets == 3)
-        test2.data, test2.targets = test2.data[test_indices2], test2.targets[test_indices2]
-
-        # train_indices3 = (train3.targets == 4) | (train3.targets == 5)
-        # train3.data, train3.targets = train3.data[train_indices3], train3.targets[train_indices3]
-
-        # train_indices4 = (train4.targets == 6) | (train4.targets == 7)
-        # train4.data, train4.targets = train4.data[train_indices4], train4.targets[train_indices4]
-
-        # train_indices5 = (train5.targets == 8) | (train5.targets == 9)
-        # train5.data, train5.targets = train5.data[train_indices5], train5.targets[train_indices5]
-
-        train_loader1 = torch.utils.data.DataLoader(train1, **train_kwargs)
-        train_loader2 = torch.utils.data.DataLoader(train2, **train_kwargs)
-        # train_loader3 = torch.utils.data.DataLoader(train3, **train_kwargs)
-        # train_loader4 = torch.utils.data.DataLoader(train4, **train_kwargs)
-        # train_loader5 = torch.utils.data.DataLoader(train5, **train_kwargs)
-
-        test_loader1 = torch.utils.data.DataLoader(test1, **test_kwargs)
-        test_loader2 = torch.utils.data.DataLoader(test2, **test_kwargs)
-        # test_loader3 = torch.utils.data.DataLoader(test3, **test_kwargs)
-        # test_loader4 = torch.utils.data.DataLoader(test4, **test_kwargs)
-        # test_loader5 = torch.utils.data.DataLoader(test5, **test_kwargs)
-
-        model1 = MNISTNet1().to(device)
-        optimizer1 = optim.SGD(model1.parameters(), lr=1e-3)
-
-        for epoch in range(1, 10 + 1):
-            self.train(model1, device, train_loader1, optimizer1, epoch)
-            self.test(model1, device, test_loader1)
-
-        # print("model1:")
-        # self.__print_model(model1)
-        # print("==============================")
-
-        model2 = MNISTNet2().to(device)
-        optimizer2 = optim.SGD(model2.parameters(), lr=1e-3)
-
-        # print("model2 before load:")
-        # self.__print_model(model2)
-        # print("==============================")
-
+    def __transfer_model(self, model1, model2):
         params1 = model1.named_parameters()
         params2 = model2.named_parameters()
 
@@ -581,19 +489,76 @@ class ContinualImpl2():
 
         model2.load_state_dict(dict_params2)
 
-        # print("model2 after load:")
-        # self.__print_model(model2)
-        # print("==============================")
 
-        for name2, param2 in model2.named_parameters():
-            if name2 == 'fc4.weight' or name2 == 'fc4.bias': continue
-            param2.requires_grad = False
+    def __print_model(self, model):
+        for name, param in model.named_parameters():
+            print(name)
+            print(param.data)
 
-        for epoch in range(1, 10 + 1):
-            self.train(model2, device, train_loader2, optimizer2, epoch)
-            self.test(model2, device, test_loader2)
 
-        # print("model2 after train:")
-        # self.__print_model(model2)
+    def __mask_off(self, train_index):
+        for index in range(len(train_index)):
+            if train_index[index]:
+                if random.random() > 0.2:
+                    train_index[index] = False
+
+
+    def __train_iteration(self):
+        device = torch.device("cpu")
+
+        train_kwargs = {'batch_size': 100}
+        test_kwargs = {'batch_size': 1000}
+
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+
+        for lbl in range(2, 11, 2):
+            print(lbl)
+
+            train = datasets.MNIST('../data', train=True, download=True, transform=transform)
+            test = datasets.MNIST('../data', train=False, transform=transform)
+
+            if lbl == 2:
+                train_index, test_index = train.targets == 0, test.targets == 0
+            
+            for i in range(lbl - 2, lbl):
+                if i == 0: continue
+                train_index = train_index | (train.targets == i)
+                test_index = test_index | (test.targets == i)
+
+            train.data, train.targets = train.data[train_index], train.targets[train_index]
+            test.data, test.targets = test.data[test_index], test.targets[test_index]
+
+            train_loader = torch.utils.data.DataLoader(train, **train_kwargs)
+            test_loader = torch.utils.data.DataLoader(test, **test_kwargs)
+
+            if lbl > 2: old_model = model
+            model = MNISTNet(lbl).to(device)
+            if lbl > 2: self.__transfer_model(old_model, model)
+
+            optimizer = optim.SGD(model.parameters(), lr=1e-3)
+
+            for epoch in range(lbl * 10):
+                self.__train(model, device, train_loader, optimizer, epoch)
+                self.__test(model, device, test_loader)
+
+            if lbl == 2:
+                self.__save_model(model, 'mnist1.pt')
+            elif lbl == 4:
+                self.__save_model(model, 'mnist2.pt')
+            elif lbl == 6:
+                self.__save_model(model, 'mnist3.pt')
+            elif lbl == 8:
+                self.__save_model(model, 'mnist4.pt')
+            elif lbl == 10:
+                self.__save_model(model, 'mnist5.pt')
+
+            self.__mask_off(train_index)
+
+
+    def solve(self, models, assertion, display=None):
+        self.__train_iteration()
         
         return None 

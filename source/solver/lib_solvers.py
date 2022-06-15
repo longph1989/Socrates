@@ -84,5 +84,5 @@ class Continual():
     def __init__(self):
         pass
     def solve(self, model, assertion, display=None):
-        impl = ContinualImpl()
+        impl = ContinualImpl2()
         impl.solve(model, assertion, display)
