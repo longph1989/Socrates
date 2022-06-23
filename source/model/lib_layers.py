@@ -177,8 +177,12 @@ class Linear(Layer):
             return self.func(x @ self.weights + self.bias)
 
 
-    def get_weight(self):
+    def get_weights(self):
         return self.weights
+
+
+    def get_bias(self):
+        return self.bias
 
 
     def apply_poly(self, x_poly, lst_poly):

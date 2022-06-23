@@ -21,6 +21,9 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
 
+import gurobipy as gp
+from gurobipy import GRB
+
 
 
 def save_model(model, name):
@@ -191,7 +194,130 @@ class ContinualImpl1():
     #     return loss1 + loss2
 
 
-    def __verify(self, model, lower, upper, prop):
+    def __write_constr_hidden_layers(self, prob, coefs, const, prev_var_idx, curr_var_idx):
+        prob.write('  x{}'.format(curr_var_idx))
+
+        for i in range(len(coefs)):
+            coef = coefs[i]
+            var_idx = prev_var_idx + i
+
+            if coef > 0:
+                prob.write(' + {} x{}'.format(coef, var_idx))
+            elif coef < 0:
+                prob.write(' - {} x{}'.format(abs(coef), var_idx))
+
+        prob.write(' = {}\n'.format(const))
+        prob.flush()
+
+
+    def __write_constr_output_layer(self, prob, prev_var_idx):
+        for i in range(5):
+            if i != 0:
+                prob.write('  x{} - x{} > 0.0\n'.format(prev_var_idx, prev_var_idx + i))
+
+        prob.flush()
+
+
+    def __write_constr_relu_layers(self, prob, prev_var_idx, curr_var_idx, bin_idx, number_of_neurons):
+        const = 1000.0
+        for i in range(number_of_neurons):
+            pvar_idx, cvar_idx = prev_var_idx + i, curr_var_idx + i
+            cbin_idx = bin_idx + i
+
+            prob.write('  x{} - x{} >= 0.0\n'.format(cvar_idx, pvar_idx))
+            prob.write('  x{} - x{} - {} b{} <= 0.0\n'.format(cvar_idx, pvar_idx, const, cbin_idx))
+            prob.write('  x{} >= 0.0\n'.format(cvar_idx))
+            prob.write('  x{} + {} b{} <= {}\n'.format(cvar_idx, const, cbin_idx, const))
+            
+
+    def __write_constr(self, prob, model):
+        prev_var_idx, curr_var_idx = 0, 7
+        num_bins = 0
+
+        for i in range(len(model.layers)):
+            layer = model.layers[i]
+
+            if layer.is_linear_layer():
+                weights = layer.weights.transpose(1, 0)
+                bias = layer.bias.reshape(-1)
+
+                for i in range(len(bias)):
+                    coefs, const = -weights[i], bias[i]
+                    self.__write_constr_hidden_layers(prob, coefs, const, prev_var_idx, curr_var_idx + i)
+
+                prev_var_idx = curr_var_idx
+                curr_var_idx = curr_var_idx + len(bias)
+            else:
+                # the old bias value
+                self.__write_constr_relu_layers(prob, prev_var_idx, curr_var_idx, num_bins, len(bias))
+
+                prev_var_idx = curr_var_idx
+                curr_var_idx = curr_var_idx + len(bias)
+                num_bins = num_bins + len(bias)
+
+        self.__write_constr_output_layer(prob, prev_var_idx)
+
+        return num_bins
+
+
+    def __write_bounds(self, prob, lower, upper):
+        for i in range(len(lower)):
+            prob.write('  {} <= x{} <= {}\n'.format(lower[i], i, upper[i]))
+
+        prob.flush()
+
+
+    def __write_binary(self, prob, num_bins):
+        prob.write(' ')
+        for i in range(num_bins):
+            prob.write(' b{}'.format(i))
+        prob.write('\n')
+
+
+    def __write_problem(self, model, lower, upper):
+        filename = 'prob.lp'
+        prob = open(filename, 'w')
+
+        prob.write('Minimize\n')
+        prob.write('  0\n')
+
+        prob.write('Subject To\n')
+        num_bins = self.__write_constr(prob, model)
+
+        prob.write('Bounds\n')
+        self.__write_bounds(prob, lower, upper)
+
+        prob.write('Binary\n')
+        self.__write_binary(prob, num_bins)
+
+        prob.write('End\n')
+
+        prob.flush()
+        prob.close()
+
+
+    def __verrify_milp(self, model, lower, upper):
+        self.__write_problem(model, lower, upper)
+
+        filename = 'prob.lp'
+        opt = gp.read(filename)
+        opt.setParam(GRB.Param.DualReductions, 0)
+
+        opt.optimize()
+
+        print(opt.status)
+
+        if opt.status == GRB.INFEASIBLE:
+            print('Infeasible')
+        elif opt.status == GRB.OPTIMAL:
+            print('Satisfiable')
+        else:
+            print('Unknown')
+
+
+    def __verify(self, model, lower, upper):
+        self.__verrify_milp(model, lower, upper)
+
         x0_poly = Poly()
 
         x0_poly.lw, x0_poly.up = lower, upper
@@ -201,21 +327,18 @@ class ContinualImpl1():
         lst_poly = [x0_poly]
         poly_out = progagate(model, 0, lst_poly)
 
-        if prop == 3:
-            out_lw = poly_out.lw.copy()
-            out_lw[0] = poly_out.up[0]
+        print(poly_out.lw)
+        print(poly_out.up)
 
-            if np.argmax(out_lw) == 0:
-                print(out_lw)
-                assert False
-            else:
-                print('Verified!!!')
-        elif prop == 4:
-            out_lw = poly_out.lw.copy()
-            out_lw[0] = poly_out.up[0]
+        out_lw = poly_out.lw.copy()
+        out_lw[0] = poly_out.up[0]
 
-            if np.argmax(out_lw) == 0:
-                assert False
+        if np.argmax(out_lw) == 0:
+            print(out_lw)
+            assert False
+        else:
+            print(out_lw)
+            print('Verified!!!')
 
 
     def __gen_train_data_rec(self, model, dims, xs, ys, x, idx, ln, x1, x2):
@@ -321,40 +444,6 @@ class ContinualImpl1():
         return model
 
 
-    def __prop3_test(self, model):
-        lower = np.array([-0.3035, -0.0095, 0.4934, 0.3, 0.3, -0.25, -0.5])
-        upper = np.array([-0.2986, 0.0095, 0.5, 0.5, 0.5, 0.5, 0.5])
-
-        threshold, alpha, beta, delta = 0.99, 0.01, 0.01, 0.005
-
-        p0 = threshold + delta
-        p1 = threshold - delta
-
-        h0 = beta / (1 - alpha)
-        h1 = (1 - beta) / alpha
-
-        pr, no = 1, 0
-
-        with torch.no_grad():
-            while True:
-                x = torch.Tensor(generate_x(7, lower, upper))
-                pred = model(x).numpy()
-
-                no = no + 1
-
-                if np.argmax(pred) != 0:
-                    pr = pr * p1 / p0
-                else:
-                    pr = pr * (1 - p1) / (1 - p0)
-
-                if pr <= h0:
-                    print('Accept H0. The assertion is satisfied with p >= {} after {} tests.'.format(p0, no))
-                    break
-                elif pr >= h1:
-                    print('Accept H1. The assertion is satisfied with p <= {} after {} tests.'.format(p1, no))
-                    break
-
-
     def solve(self, models, assertion, display=None):
         # data from normal bounds
 
@@ -376,12 +465,10 @@ class ContinualImpl1():
         # train_x = np.concatenate((train_x0, train_x3), axis=0)
         # train_y = np.concatenate((train_y0, train_y3), axis=0)
         # model1 = self.__train_new_model(model0, train_x, train_y, test_x, test_y, nn.CrossEntropyLoss())
-        # save_model(model1, "acasxu1.pt")
+        # save_model(model1, "acasxu1_200.pt")
 
-        model1 = load_model(ACASXuNet, "acasxu1.pt")
+        model1 = load_model(ACASXuNet, "acasxu1_200.pt")
         print('finish model 1')
-
-        self.__prop3_test(model1)
 
         formal_lower0, formal_upper0 = list(lower0.copy()), list(upper0.copy())
         formal_lower0.extend([-0.5, -0.5])
@@ -392,7 +479,7 @@ class ContinualImpl1():
         formal_upper3.extend([0.5, 0.5])
 
         formal_model1 = get_formal_model(model1, (1,7), np.array(formal_lower0), np.array(formal_upper0))
-        self.__verify(formal_model1, np.array(formal_lower3), np.array(formal_upper3), 3)
+        self.__verify(formal_model1, np.array(formal_lower3), np.array(formal_upper3))
 
         # data from condition 4 bounds
 
