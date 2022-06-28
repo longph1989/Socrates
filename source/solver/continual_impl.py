@@ -24,6 +24,8 @@ from torch.optim.lr_scheduler import StepLR
 import gurobipy as gp
 from gurobipy import GRB
 
+from functools import partial
+
 
 
 def save_model(model, name):
@@ -106,7 +108,7 @@ def train(model, dataloader, loss_fn, optimizer, device):
 
         # Compute prediction error
         pred = model(x)
-        loss = loss_fn(pred, y)
+        loss = loss_fn(pred, x, y)
 
         # Backpropagation
         optimizer.zero_grad()
@@ -129,12 +131,150 @@ def test(model, dataloader, loss_fn, device):
         for x, y in dataloader:
             x, y = x.to(device), y.to(device)
             pred = model(x)
-            test_loss += loss_fn(pred, y).item()
+            test_loss += loss_fn(pred, x, y).item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
     
     test_loss /= num_batches
     correct /= size
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+
+
+def write_constr_hidden_layers(prob, coefs, const, prev_var_idx, curr_var_idx):
+    prob.write('  x{}'.format(curr_var_idx))
+
+    for i in range(len(coefs)):
+        coef = coefs[i]
+        var_idx = prev_var_idx + i
+
+        if coef > 0:
+            prob.write(' + {} x{}'.format(coef, var_idx))
+        elif coef < 0:
+            prob.write(' - {} x{}'.format(abs(coef), var_idx))
+
+    prob.write(' = {}\n'.format(const))
+    prob.flush()
+
+
+def write_constr_relu_layers(prob, prev_var_idx, curr_var_idx, bin_idx, number_of_neurons):
+    const = 1000.0
+    for i in range(number_of_neurons):
+        pvar_idx, cvar_idx = prev_var_idx + i, curr_var_idx + i
+        cbin_idx = bin_idx + i
+
+        prob.write('  x{} - x{} >= 0.0\n'.format(cvar_idx, pvar_idx))
+        prob.write('  x{} - x{} - {} b{} <= 0.0\n'.format(cvar_idx, pvar_idx, const, cbin_idx))
+        prob.write('  x{} >= 0.0\n'.format(cvar_idx))
+        prob.write('  x{} + {} b{} <= {}\n'.format(cvar_idx, const, cbin_idx, const))
+
+
+def write_constr(prob, model, input_len):
+    prev_var_idx, curr_var_idx = 0, input_len
+    num_bins = 0
+
+    for i in range(len(model.layers)):
+        layer = model.layers[i]
+
+        if layer.is_linear_layer():
+            weights = layer.weights.transpose(1, 0)
+            bias = layer.bias.reshape(-1)
+
+            for i in range(len(bias)):
+                coefs, const = -weights[i], bias[i]
+                write_constr_hidden_layers(prob, coefs, const, prev_var_idx, curr_var_idx + i)
+
+            prev_var_idx = curr_var_idx
+            curr_var_idx = curr_var_idx + len(bias)
+        else:
+            # the old bias value
+            write_constr_relu_layers(prob, prev_var_idx, curr_var_idx, num_bins, len(bias))
+
+            prev_var_idx = curr_var_idx
+            curr_var_idx = curr_var_idx + len(bias)
+            num_bins = num_bins + len(bias)
+
+    # self.__write_constr_output_layer(prob, prev_var_idx)
+
+    return num_bins, prev_var_idx
+
+
+def write_bounds(prob, lower, upper):
+    for i in range(len(lower)):
+        prob.write('  {} <= x{} <= {}\n'.format(lower[i], i, upper[i]))
+
+    prob.flush()
+
+
+def write_binary(prob, num_bins):
+    prob.write(' ')
+    for i in range(num_bins):
+        prob.write(' b{}'.format(i))
+    prob.write('\n')
+
+
+def write_problem(model, lower, upper, output_constr, input_len):
+    filename = 'prob.lp'
+    prob = open(filename, 'w')
+
+    prob.write('Minimize\n')
+    prob.write('  0\n')
+
+    prob.write('Subject To\n')
+    num_bins, prev_var_idx = write_constr(prob, model, input_len)
+    output_constr(prob, prev_var_idx)
+
+    prob.write('Bounds\n')
+    write_bounds(prob, lower, upper)
+
+    prob.write('Binary\n')
+    write_binary(prob, num_bins)
+
+    prob.write('End\n')
+
+    prob.flush()
+    prob.close()
+
+
+def verify_milp(model, lower, upper, output_constr, input_len):
+    write_problem(model, lower, upper, output_constr, input_len)
+
+    filename = 'prob.lp'
+    opt = gp.read(filename)
+    opt.setParam(GRB.Param.DualReductions, 0)
+
+    opt.optimize()
+
+    if opt.status == GRB.INFEASIBLE:
+        print('Infeasible')
+        return True
+    elif opt.status == GRB.OPTIMAL:
+        print('Satisfiable')
+        return False
+    else:
+        print('Unknown')
+        return False
+
+
+class LossFn:
+    def cross_entropy_loss(pred, x, y):
+        loss = nn.CrossEntropyLoss()
+        return loss(pred, y)
+
+    def acasxu_prop3_loss(pred, x, y):
+        loss1 = LossFn.cross_entropy_loss(pred, x, y)
+        loss2 = 0.0
+
+        if -0.3035 <= torch.take(x, torch.tensor([0])) and torch.take(x, torch.tensor([0])) <= -0.2986 and \
+            -0.0095 <= torch.take(x, torch.tensor([1])) and torch.take(x, torch.tensor([1])) <= 0.0095 and \
+            0.4934 <= torch.take(x, torch.tensor([2])) and torch.take(x, torch.tensor([2])) <= 0.5 and \
+            0.3 <= torch.take(x, torch.tensor([3])) and torch.take(x, torch.tensor([3])) <= 0.5 and \
+            0.3 <= torch.take(x, torch.tensor([4])) and torch.take(x, torch.tensor([4])) <= 0.5:
+            if torch.argmax(pred) == 0:
+                # reduce the distance between the value at index 0 and other so it is no longer the max
+                for i in range(1,5):
+                    loss2 += 100 * (torch.take(pred, torch.tensor([0])) - torch.take(pred, torch.tensor([i])))
+
+        return loss1 + loss2 
+
 
 
 class ACASXuNet(nn.Module):
@@ -176,40 +316,6 @@ class ContinualImpl1():
         self.transform = transforms.ToTensor()
 
 
-    # loss function to keep prop 3
-    # def __loss_fn3(self, pred, x, y):
-    #     loss1 = self.__loss_fn0(pred, x, y)
-    #     loss2 = 0.0
-
-    #     if -0.3035 <= torch.take(x, torch.tensor([0])) and torch.take(x, torch.tensor([0])) <= -0.2986 and \
-    #         -0.0095 <= torch.take(x, torch.tensor([1])) and torch.take(x, torch.tensor([1])) <= 0.0095 and \
-    #         0.4934 <= torch.take(x, torch.tensor([2])) and torch.take(x, torch.tensor([2])) <= 0.5 and \
-    #         0.3 <= torch.take(x, torch.tensor([3])) and torch.take(x, torch.tensor([3])) <= 0.5 and \
-    #         0.3 <= torch.take(x, torch.tensor([4])) and torch.take(x, torch.tensor([4])) <= 0.5:
-    #         if torch.argmax(pred) == 0:
-    #             # reduce the distance between the value at index 0 and other so it is no longer the max
-    #             for i in range(1,5):
-    #                 loss2 += 100 * (torch.take(pred, torch.tensor([0])) - torch.take(pred, torch.tensor([i])))
-
-    #     return loss1 + loss2
-
-
-    def __write_constr_hidden_layers(self, prob, coefs, const, prev_var_idx, curr_var_idx):
-        prob.write('  x{}'.format(curr_var_idx))
-
-        for i in range(len(coefs)):
-            coef = coefs[i]
-            var_idx = prev_var_idx + i
-
-            if coef > 0:
-                prob.write(' + {} x{}'.format(coef, var_idx))
-            elif coef < 0:
-                prob.write(' - {} x{}'.format(abs(coef), var_idx))
-
-        prob.write(' = {}\n'.format(const))
-        prob.flush()
-
-
     def __write_constr_output_layer(self, prob, prev_var_idx):
         for i in range(5):
             if i != 0:
@@ -218,106 +324,7 @@ class ContinualImpl1():
         prob.flush()
 
 
-    def __write_constr_relu_layers(self, prob, prev_var_idx, curr_var_idx, bin_idx, number_of_neurons):
-        const = 1000.0
-        for i in range(number_of_neurons):
-            pvar_idx, cvar_idx = prev_var_idx + i, curr_var_idx + i
-            cbin_idx = bin_idx + i
-
-            prob.write('  x{} - x{} >= 0.0\n'.format(cvar_idx, pvar_idx))
-            prob.write('  x{} - x{} - {} b{} <= 0.0\n'.format(cvar_idx, pvar_idx, const, cbin_idx))
-            prob.write('  x{} >= 0.0\n'.format(cvar_idx))
-            prob.write('  x{} + {} b{} <= {}\n'.format(cvar_idx, const, cbin_idx, const))
-            
-
-    def __write_constr(self, prob, model):
-        prev_var_idx, curr_var_idx = 0, 7
-        num_bins = 0
-
-        for i in range(len(model.layers)):
-            layer = model.layers[i]
-
-            if layer.is_linear_layer():
-                weights = layer.weights.transpose(1, 0)
-                bias = layer.bias.reshape(-1)
-
-                for i in range(len(bias)):
-                    coefs, const = -weights[i], bias[i]
-                    self.__write_constr_hidden_layers(prob, coefs, const, prev_var_idx, curr_var_idx + i)
-
-                prev_var_idx = curr_var_idx
-                curr_var_idx = curr_var_idx + len(bias)
-            else:
-                # the old bias value
-                self.__write_constr_relu_layers(prob, prev_var_idx, curr_var_idx, num_bins, len(bias))
-
-                prev_var_idx = curr_var_idx
-                curr_var_idx = curr_var_idx + len(bias)
-                num_bins = num_bins + len(bias)
-
-        self.__write_constr_output_layer(prob, prev_var_idx)
-
-        return num_bins
-
-
-    def __write_bounds(self, prob, lower, upper):
-        for i in range(len(lower)):
-            prob.write('  {} <= x{} <= {}\n'.format(lower[i], i, upper[i]))
-
-        prob.flush()
-
-
-    def __write_binary(self, prob, num_bins):
-        prob.write(' ')
-        for i in range(num_bins):
-            prob.write(' b{}'.format(i))
-        prob.write('\n')
-
-
-    def __write_problem(self, model, lower, upper):
-        filename = 'prob.lp'
-        prob = open(filename, 'w')
-
-        prob.write('Minimize\n')
-        prob.write('  0\n')
-
-        prob.write('Subject To\n')
-        num_bins = self.__write_constr(prob, model)
-
-        prob.write('Bounds\n')
-        self.__write_bounds(prob, lower, upper)
-
-        prob.write('Binary\n')
-        self.__write_binary(prob, num_bins)
-
-        prob.write('End\n')
-
-        prob.flush()
-        prob.close()
-
-
-    def __verrify_milp(self, model, lower, upper):
-        self.__write_problem(model, lower, upper)
-
-        filename = 'prob.lp'
-        opt = gp.read(filename)
-        opt.setParam(GRB.Param.DualReductions, 0)
-
-        opt.optimize()
-
-        print(opt.status)
-
-        if opt.status == GRB.INFEASIBLE:
-            print('Infeasible')
-        elif opt.status == GRB.OPTIMAL:
-            print('Satisfiable')
-        else:
-            print('Unknown')
-
-
     def __verify(self, model, lower, upper):
-        self.__verrify_milp(model, lower, upper)
-
         x0_poly = Poly()
 
         x0_poly.lw, x0_poly.up = lower, upper
@@ -327,17 +334,17 @@ class ContinualImpl1():
         lst_poly = [x0_poly]
         poly_out = progagate(model, 0, lst_poly)
 
-        print(poly_out.lw)
-        print(poly_out.up)
-
         out_lw = poly_out.lw.copy()
         out_lw[0] = poly_out.up[0]
 
-        if np.argmax(out_lw) == 0:
-            print(out_lw)
-            assert False
+        # if np.argmax(out_lw) == 0:
+        if True:
+            print('DeepPoly Failed!!! Use MILP!!!')
+            if verify_milp(model, lower, upper, self.__write_constr_output_layer, 7):
+                print('Verified!!!')
+            else:
+                print('Failed!!!')
         else:
-            print(out_lw)
             print('Verified!!!')
 
 
@@ -434,7 +441,7 @@ class ContinualImpl1():
 
         optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
 
-        num_of_epochs = 200
+        num_of_epochs = 2
 
         for epoch in range(num_of_epochs):
             print('\n------------- Epoch {} -------------\n'.format(epoch))
@@ -450,22 +457,22 @@ class ContinualImpl1():
         lower0 = np.array([-0.3284, -0.5, -0.5, -0.5, -0.5])
         upper0 = np.array([0.6799, 0.5, 0.5, 0.5, 0.5])
 
-        # train_x0, train_y0 = self.__gen_train_data(models, lower0, upper0, aux=True)
-        # test_x, test_y = self.__gen_test_data(models, lower0, upper0)
+        train_x0, train_y0 = self.__gen_train_data(models, lower0, upper0, aux=True)
+        test_x, test_y = self.__gen_test_data(models, lower0, upper0)
 
         # data from condition 3 bounds
 
         lower3 = np.array([-0.3035, -0.0095, 0.4934, 0.3, 0.3])
         upper3 = np.array([-0.2986, 0.0095, 0.5, 0.5, 0.5])
 
-        # train_x3, train_y3 = self.__gen_train_data(models, lower3, upper3, skip=[0])
+        train_x3, train_y3 = self.__gen_train_data(models, lower3, upper3, skip=[0])
 
-        # model0 = ACASXuNet().to(self.device)
+        model0 = ACASXuNet().to(self.device)
 
-        # train_x = np.concatenate((train_x0, train_x3), axis=0)
-        # train_y = np.concatenate((train_y0, train_y3), axis=0)
-        # model1 = self.__train_new_model(model0, train_x, train_y, test_x, test_y, nn.CrossEntropyLoss())
-        # save_model(model1, "acasxu1_200.pt")
+        train_x = np.concatenate((train_x0, train_x3), axis=0)
+        train_y = np.concatenate((train_y0, train_y3), axis=0)
+        model1 = self.__train_new_model(model0, train_x, train_y, test_x, test_y, LossFn.cross_entropy_loss)
+        save_model(model1, "acasxu1_200.pt")
 
         model1 = load_model(ACASXuNet, "acasxu1_200.pt")
         print('finish model 1')
@@ -483,31 +490,32 @@ class ContinualImpl1():
 
         # data from condition 4 bounds
 
-        # lower4 = np.array([-0.3035, -0.0095, 0.0, 0.3182, 0.0833])
-        # upper4 = np.array([-0.2986, 0.0095, 0.0, 0.5, 0.1667])
+        lower4 = np.array([-0.3035, -0.0095, 0.0, 0.3182, 0.0833])
+        upper4 = np.array([-0.2986, 0.0095, 0.0, 0.5, 0.1667])
 
-        # train_x4, train_y4 = self.__gen_train_data(models, lower4, upper4, skip=[0])
+        train_x4, train_y4 = self.__gen_train_data(models, lower4, upper4, skip=[0])
         
-        # train_x, train_y = train_x4, train_y4
+        train_x, train_y = train_x4, train_y4
         
-        # random_x0 = random.sample(range(len(train_x0)), len(train_x0) // 5)
-        # random_x3 = random.sample(range(len(train_x3)), len(train_x3) // 5)
+        random_x0 = random.sample(range(len(train_x0)), len(train_x0) // 5)
+        random_x3 = random.sample(range(len(train_x3)), len(train_x3) // 5)
 
-        # aux_train_x0, aux_train_y0 = train_x0[random_x0], train_y0[random_x0]
-        # aux_train_x3, aux_train_y3 = train_x3[random_x3], train_y3[random_x3]
+        aux_train_x0, aux_train_y0 = train_x0[random_x0], train_y0[random_x0]
+        aux_train_x3, aux_train_y3 = train_x3[random_x3], train_y3[random_x3]
         
-        # train_x = np.concatenate((train_x, aux_train_x0), axis=0)
-        # train_y = np.concatenate((train_y, aux_train_y0), axis=0)
-        # train_x = np.concatenate((train_x, aux_train_x3), axis=0)
-        # train_y = np.concatenate((train_y, aux_train_y3), axis=0)
+        train_x = np.concatenate((train_x, aux_train_x0), axis=0)
+        train_y = np.concatenate((train_y, aux_train_y0), axis=0)
+        train_x = np.concatenate((train_x, aux_train_x3), axis=0)
+        train_y = np.concatenate((train_y, aux_train_y3), axis=0)
 
-        # new_model2 = self.__train_new_model(new_model1, device, train_x, train_y, test_x, test_y, self.__loss_fn3)
-        # print('finish model 2')
+        model2 = self.__train_new_model(model1, train_x, train_y, test_x, test_y, LossFn.acasxu_prop3_loss)
+        save_model(model2, "acasxu2_200.pt")
+
+        model2 = load_model(ACASXuNet, "acasxu2_200.pt")
+        print('finish model 2')
         
-        # self.__prop3_test(new_model2)
-
-        # formal_model = self.__get_formal_model(new_model2, np.array(formal_lower0), np.array(formal_upper0))
-        # self.__verify(formal_model, np.array(formal_lower3), np.array(formal_upper3), 3)
+        formal_model2 = get_formal_model(model2, (1,7), np.array(formal_lower0), np.array(formal_upper0))
+        self.__verify(formal_model2, np.array(formal_lower3), np.array(formal_upper3))
 
 
 class MNISTNet(nn.Module):
@@ -584,12 +592,12 @@ class ContinualImpl2():
             if lbl > 2: transfer_model(old_model, model, ['fc4.weight', 'fc4.bias'])
 
             optimizer = optim.SGD(model.parameters(), lr=1e-3)
-            num_of_epochs = 10 * lbl
+            num_of_epochs = 1 * lbl
 
             for epoch in range(num_of_epochs):
                 print('\n------------- Epoch {} -------------\n'.format(epoch))
-                train(model, train_loader, nn.CrossEntropyLoss(), optimizer, self.device)
-                test(model, test_loader, nn.CrossEntropyLoss(), self.device)
+                train(model, train_loader, LossFn.cross_entropy_loss, optimizer, self.device)
+                test(model, test_loader, LossFn.cross_entropy_loss, self.device)
 
             if lbl == 2:
                 save_model(model, 'mnist1.pt')
@@ -604,6 +612,11 @@ class ContinualImpl2():
 
             self.__mask_off(mask_index)
             masked_index_lst.append(mask_index)
+
+
+    def __write_constr_output_layer(self, y0, y, prob, prev_var_idx):
+        prob.write('  x{} - x{} > 0.0\n'.format(prev_var_idx + y, prev_var_idx + y0))
+        prob.flush()
 
 
     def __verify(self, model, lower, upper, y0):
@@ -633,15 +646,18 @@ class ContinualImpl2():
                 poly_res.back_substitute(lst_poly)
 
                 if poly_res.lw[0] <= 0:
-                    return False
+                    partial_output = partial(self.__write_constr_output_layer, y0, y)
+                    if not verify_milp(model, lower, upper, partial_output, 784):
+                        return False
 
         return True
 
 
     def __verify_iteration(self):
+        robust_lst, target_lst = [], []
+
         for lbl in range(2, 11, 2):
             print(lbl)
-            robust_lst, target_lst = [], []
 
             test_dataset = datasets.MNIST('../data', train=False, transform=self.transform)
 
@@ -668,10 +684,11 @@ class ContinualImpl2():
             shape, lower, upper = (1,784), np.zeros(784), np.ones(784)
             formal_model = get_formal_model(model, shape, lower, upper)
 
-            test(model, test_loader, nn.CrossEntropyLoss(), self.device)
+            test(model, test_loader, LossFn.cross_entropy_loss, self.device)
 
             test_loader = torch.utils.data.DataLoader(test_dataset, **self.test1_kwargs)
 
+            print('robust len = {}'.format(len(robust_lst)))
             for i in range(len(robust_lst)):
                 img, target = robust_lst[i], target_lst[i]
 
@@ -680,14 +697,15 @@ class ContinualImpl2():
                 upper_i = np.minimum(upper_i, formal_model.upper)
 
                 if self.__verify(formal_model, lower_i, upper_i, target):
-                    continue
+                    print('passed')
                 else:
+                    print('failed')
                     assert False
 
             for data, target in test_loader:
                 img = data.numpy().reshape(1, 784)
 
-                lower_i, upper_i = (img - 0.01).reshape(-1), (img + 0.01).reshape(-1)
+                lower_i, upper_i = (img - 0.1).reshape(-1), (img + 0.1).reshape(-1)
                 lower_i = np.maximum(lower_i, formal_model.lower)
                 upper_i = np.minimum(upper_i, formal_model.upper)
                 target = target.numpy()[0]
@@ -696,13 +714,11 @@ class ContinualImpl2():
                     robust_lst.append(img)
                     target_lst.append(target)
 
-                    if len(robust_lst) == 10:
+                    if len(robust_lst) == lbl * 10:
                         print('enough')
                         break
 
 
     def solve(self, models, assertion, display=None):
-        self.__train_iteration()
+        # self.__train_iteration()
         self.__verify_iteration()
-
-        return None 
