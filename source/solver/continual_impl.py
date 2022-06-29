@@ -155,19 +155,42 @@ def write_constr_hidden_layers(prob, coefs, const, prev_var_idx, curr_var_idx):
     prob.flush()
 
 
-def write_constr_relu_layers(prob, prev_var_idx, curr_var_idx, bin_idx, number_of_neurons):
-    const = 1000.0
+def write_constr_relu_layers(prob, prev_var_idx, curr_var_idx, poly, bin_idx, number_of_neurons):
     for i in range(number_of_neurons):
         pvar_idx, cvar_idx = prev_var_idx + i, curr_var_idx + i
-        cbin_idx = bin_idx + i
 
-        prob.write('  x{} - x{} >= 0.0\n'.format(cvar_idx, pvar_idx))
-        prob.write('  x{} - x{} - {} b{} <= 0.0\n'.format(cvar_idx, pvar_idx, const, cbin_idx))
-        prob.write('  x{} >= 0.0\n'.format(cvar_idx))
-        prob.write('  x{} + {} b{} <= {}\n'.format(cvar_idx, const, cbin_idx, const))
+        ge_coefs = -poly.ge[i][i]
+        ge_const = poly.ge[i][-1]
+
+        le_coefs = -poly.le[i][i]
+        le_const = poly.le[i][-1]
+
+        prob.write('  x{}'.format(cvar_idx))
+        if ge_coefs > 0.0:
+            prob.write(' + {} x{}'.format(ge_coefs, pvar_idx))
+        elif ge_coefs < 0.0:
+            prob.write(' - {} x{}'.format(abs(ge_coefs), pvar_idx))
+        prob.write(' >= {}\n'.format(ge_const))
+
+        prob.write('  x{}'.format(cvar_idx))
+        if le_coefs > 0.0:
+            prob.write(' + {} x{}'.format(le_coefs, pvar_idx))
+        elif le_coefs < 0.0:
+            prob.write(' - {} x{}'.format(abs(le_coefs), pvar_idx))
+        prob.write(' <= {}\n'.format(le_const))
+
+    # const = 1000000.0
+    # for i in range(number_of_neurons):
+    #     pvar_idx, cvar_idx = prev_var_idx + i, curr_var_idx + i
+    #     cbin_idx = bin_idx + i
+
+    #     prob.write('  x{} - x{} >= 0.0\n'.format(cvar_idx, pvar_idx))
+    #     prob.write('  x{} - x{} - {} b{} <= 0.0\n'.format(cvar_idx, pvar_idx, const, cbin_idx))
+    #     prob.write('  x{} >= 0.0\n'.format(cvar_idx))
+    #     prob.write('  x{} + {} b{} <= {}\n'.format(cvar_idx, const, cbin_idx, const))
 
 
-def write_constr(prob, model, input_len):
+def write_constr(prob, model, lst_poly, input_len):
     prev_var_idx, curr_var_idx = 0, input_len
     num_bins = 0
 
@@ -186,7 +209,7 @@ def write_constr(prob, model, input_len):
             curr_var_idx = curr_var_idx + len(bias)
         else:
             # the old bias value
-            write_constr_relu_layers(prob, prev_var_idx, curr_var_idx, num_bins, len(bias))
+            write_constr_relu_layers(prob, prev_var_idx, curr_var_idx, lst_poly[i+1], num_bins, len(bias))
 
             prev_var_idx = curr_var_idx
             curr_var_idx = curr_var_idx + len(bias)
@@ -197,9 +220,13 @@ def write_constr(prob, model, input_len):
     return num_bins, prev_var_idx
 
 
-def write_bounds(prob, lower, upper):
-    for i in range(len(lower)):
-        prob.write('  {} <= x{} <= {}\n'.format(lower[i], i, upper[i]))
+def write_bounds(prob, lst_poly):
+    i = 0
+
+    for poly in lst_poly:
+        for j in range(len(poly.lw)):
+            prob.write('  {} <= x{} <= {}\n'.format(poly.lw[j], i, poly.up[j]))
+            i = i + 1
 
     prob.flush()
 
@@ -211,7 +238,7 @@ def write_binary(prob, num_bins):
     prob.write('\n')
 
 
-def write_problem(model, lower, upper, output_constr, input_len):
+def write_problem(model, lst_poly, output_constr, input_len):
     filename = 'prob.lp'
     prob = open(filename, 'w')
 
@@ -219,11 +246,11 @@ def write_problem(model, lower, upper, output_constr, input_len):
     prob.write('  0\n')
 
     prob.write('Subject To\n')
-    num_bins, prev_var_idx = write_constr(prob, model, input_len)
+    num_bins, prev_var_idx = write_constr(prob, model, lst_poly, input_len)
     output_constr(prob, prev_var_idx)
 
     prob.write('Bounds\n')
-    write_bounds(prob, lower, upper)
+    write_bounds(prob, lst_poly)
 
     prob.write('Binary\n')
     write_binary(prob, num_bins)
@@ -234,8 +261,8 @@ def write_problem(model, lower, upper, output_constr, input_len):
     prob.close()
 
 
-def verify_milp(model, lower, upper, output_constr, input_len):
-    write_problem(model, lower, upper, output_constr, input_len)
+def verify_milp(model, lst_poly, output_constr, input_len):
+    write_problem(model, lst_poly, output_constr, input_len)
 
     filename = 'prob.lp'
     opt = gp.read(filename)
@@ -337,10 +364,9 @@ class ContinualImpl1():
         out_lw = poly_out.lw.copy()
         out_lw[0] = poly_out.up[0]
 
-        # if np.argmax(out_lw) == 0:
-        if True:
+        if np.argmax(out_lw) == 0:
             print('DeepPoly Failed!!! Use MILP!!!')
-            if verify_milp(model, lower, upper, self.__write_constr_output_layer, 7):
+            if verify_milp(model, lst_poly, self.__write_constr_output_layer, 7):
                 print('Verified!!!')
             else:
                 print('Failed!!!')
@@ -441,7 +467,7 @@ class ContinualImpl1():
 
         optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
 
-        num_of_epochs = 2
+        num_of_epochs = 200
 
         for epoch in range(num_of_epochs):
             print('\n------------- Epoch {} -------------\n'.format(epoch))
@@ -457,22 +483,22 @@ class ContinualImpl1():
         lower0 = np.array([-0.3284, -0.5, -0.5, -0.5, -0.5])
         upper0 = np.array([0.6799, 0.5, 0.5, 0.5, 0.5])
 
-        train_x0, train_y0 = self.__gen_train_data(models, lower0, upper0, aux=True)
-        test_x, test_y = self.__gen_test_data(models, lower0, upper0)
+        # train_x0, train_y0 = self.__gen_train_data(models, lower0, upper0, aux=True)
+        # test_x, test_y = self.__gen_test_data(models, lower0, upper0)
 
         # data from condition 3 bounds
 
         lower3 = np.array([-0.3035, -0.0095, 0.4934, 0.3, 0.3])
         upper3 = np.array([-0.2986, 0.0095, 0.5, 0.5, 0.5])
 
-        train_x3, train_y3 = self.__gen_train_data(models, lower3, upper3, skip=[0])
+        # train_x3, train_y3 = self.__gen_train_data(models, lower3, upper3, skip=[0])
 
         model0 = ACASXuNet().to(self.device)
 
-        train_x = np.concatenate((train_x0, train_x3), axis=0)
-        train_y = np.concatenate((train_y0, train_y3), axis=0)
-        model1 = self.__train_new_model(model0, train_x, train_y, test_x, test_y, LossFn.cross_entropy_loss)
-        save_model(model1, "acasxu1_200.pt")
+        # train_x = np.concatenate((train_x0, train_x3), axis=0)
+        # train_y = np.concatenate((train_y0, train_y3), axis=0)
+        # model1 = self.__train_new_model(model0, train_x, train_y, test_x, test_y, LossFn.cross_entropy_loss)
+        # save_model(model1, "acasxu1_200.pt")
 
         model1 = load_model(ACASXuNet, "acasxu1_200.pt")
         print('finish model 1')
@@ -488,28 +514,30 @@ class ContinualImpl1():
         formal_model1 = get_formal_model(model1, (1,7), np.array(formal_lower0), np.array(formal_upper0))
         self.__verify(formal_model1, np.array(formal_lower3), np.array(formal_upper3))
 
+        assert False
+
         # data from condition 4 bounds
 
         lower4 = np.array([-0.3035, -0.0095, 0.0, 0.3182, 0.0833])
         upper4 = np.array([-0.2986, 0.0095, 0.0, 0.5, 0.1667])
 
-        train_x4, train_y4 = self.__gen_train_data(models, lower4, upper4, skip=[0])
+        # train_x4, train_y4 = self.__gen_train_data(models, lower4, upper4, skip=[0])
         
-        train_x, train_y = train_x4, train_y4
+        # train_x, train_y = train_x4, train_y4
         
-        random_x0 = random.sample(range(len(train_x0)), len(train_x0) // 5)
-        random_x3 = random.sample(range(len(train_x3)), len(train_x3) // 5)
+        # random_x0 = random.sample(range(len(train_x0)), len(train_x0) // 5)
+        # random_x3 = random.sample(range(len(train_x3)), len(train_x3) // 5)
 
-        aux_train_x0, aux_train_y0 = train_x0[random_x0], train_y0[random_x0]
-        aux_train_x3, aux_train_y3 = train_x3[random_x3], train_y3[random_x3]
+        # aux_train_x0, aux_train_y0 = train_x0[random_x0], train_y0[random_x0]
+        # aux_train_x3, aux_train_y3 = train_x3[random_x3], train_y3[random_x3]
         
-        train_x = np.concatenate((train_x, aux_train_x0), axis=0)
-        train_y = np.concatenate((train_y, aux_train_y0), axis=0)
-        train_x = np.concatenate((train_x, aux_train_x3), axis=0)
-        train_y = np.concatenate((train_y, aux_train_y3), axis=0)
+        # train_x = np.concatenate((train_x, aux_train_x0), axis=0)
+        # train_y = np.concatenate((train_y, aux_train_y0), axis=0)
+        # train_x = np.concatenate((train_x, aux_train_x3), axis=0)
+        # train_y = np.concatenate((train_y, aux_train_y3), axis=0)
 
-        model2 = self.__train_new_model(model1, train_x, train_y, test_x, test_y, LossFn.acasxu_prop3_loss)
-        save_model(model2, "acasxu2_200.pt")
+        # model2 = self.__train_new_model(model1, train_x, train_y, test_x, test_y, LossFn.acasxu_prop3_loss)
+        # save_model(model2, "acasxu2_200.pt")
 
         model2 = load_model(ACASXuNet, "acasxu2_200.pt")
         print('finish model 2')
@@ -592,7 +620,7 @@ class ContinualImpl2():
             if lbl > 2: transfer_model(old_model, model, ['fc4.weight', 'fc4.bias'])
 
             optimizer = optim.SGD(model.parameters(), lr=1e-3)
-            num_of_epochs = 1 * lbl
+            num_of_epochs = 10 * lbl
 
             for epoch in range(num_of_epochs):
                 print('\n------------- Epoch {} -------------\n'.format(epoch))
@@ -647,7 +675,7 @@ class ContinualImpl2():
 
                 if poly_res.lw[0] <= 0:
                     partial_output = partial(self.__write_constr_output_layer, y0, y)
-                    if not verify_milp(model, lower, upper, partial_output, 784):
+                    if not verify_milp(model, lst_poly, partial_output, 784):
                         return False
 
         return True
@@ -689,6 +717,8 @@ class ContinualImpl2():
             test_loader = torch.utils.data.DataLoader(test_dataset, **self.test1_kwargs)
 
             print('robust len = {}'.format(len(robust_lst)))
+            pass_cnt, fail_cnt = 0, 0
+
             for i in range(len(robust_lst)):
                 img, target = robust_lst[i], target_lst[i]
 
@@ -697,15 +727,17 @@ class ContinualImpl2():
                 upper_i = np.minimum(upper_i, formal_model.upper)
 
                 if self.__verify(formal_model, lower_i, upper_i, target):
-                    print('passed')
+                    pass_cnt += 1
                 else:
-                    print('failed')
-                    assert False
+                    fail_cnt += 1
+
+            print('pass_cnt = {}, fail_cnt = {}, percent = {}'.format(pass_cnt, fail_cnt,
+                pass_cnt / len(robust_lst) if len(robust_lst) > 0 else 0))
 
             for data, target in test_loader:
                 img = data.numpy().reshape(1, 784)
 
-                lower_i, upper_i = (img - 0.1).reshape(-1), (img + 0.1).reshape(-1)
+                lower_i, upper_i = (img - 0.01).reshape(-1), (img + 0.01).reshape(-1)
                 lower_i = np.maximum(lower_i, formal_model.lower)
                 upper_i = np.minimum(upper_i, formal_model.upper)
                 target = target.numpy()[0]
