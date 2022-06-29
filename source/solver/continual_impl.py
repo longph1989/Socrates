@@ -576,6 +576,7 @@ class ContinualImpl2():
         self.test1000_kwargs = {'batch_size': 1000}
 
         self.transform = transforms.ToTensor()
+        self.eps = 0.01
 
 
     def __mask_off(self, train_index):
@@ -585,8 +586,24 @@ class ContinualImpl2():
                     train_index[index] = False
 
 
+    def __gen_more_data(self, robust_lst, target_lst):
+        aux_robust_lst, aux_target_lst = [], []
+
+        for i in range(len(target_lst)):
+            img = robust_lst[i]
+            lower_i, upper_i = (img - self.eps).reshape(-1), (img + self.eps).reshape(-1)
+
+            for j in range(20):
+                aux_img = generate_x(784, lower_i, upper_i)
+                aux_robust_lst.append(aux_img)
+                aux_target_lst.append(target_lst[i])
+
+        return aux_robust_lst, aux_target_lst
+
+
     def __train_iteration(self):
         masked_index_lst = []
+        robust_lst, target_lst = [], []
 
         for lbl in range(2, 11, 2):
             print(lbl)
@@ -625,18 +642,36 @@ class ContinualImpl2():
             for epoch in range(num_of_epochs):
                 print('\n------------- Epoch {} -------------\n'.format(epoch))
                 train(model, train_loader, LossFn.cross_entropy_loss, optimizer, self.device)
+
+                if len(robust_lst) > 0:
+                    aux_robust_lst, aux_target_lst = self.__gen_more_data(robust_lst, target_lst)
+                    print('more train with len = {}'.format(len(aux_robust_lst)))
+
+                    robust_train_x = torch.Tensor(np.array(aux_robust_lst)) # transform to torch tensor
+                    robust_train_y = torch.Tensor(np.array(aux_target_lst)).type(torch.LongTensor)
+
+                    robust_dataset = TensorDataset(robust_train_x, robust_train_y) # create dataset
+                    robust_dataloader = DataLoader(robust_dataset, batch_size=100, shuffle=True) # create dataloader
+
+                    train(model, robust_dataloader, LossFn.cross_entropy_loss, optimizer, self.device)
+                
                 test(model, test_loader, LossFn.cross_entropy_loss, self.device)
 
             if lbl == 2:
                 save_model(model, 'mnist1.pt')
+                self.__verify_iteration(robust_lst, target_lst, lbl)
             elif lbl == 4:
                 save_model(model, 'mnist2.pt')
+                self.__verify_iteration(robust_lst, target_lst, lbl)
             elif lbl == 6:
                 save_model(model, 'mnist3.pt')
+                self.__verify_iteration(robust_lst, target_lst, lbl)
             elif lbl == 8:
                 save_model(model, 'mnist4.pt')
+                self.__verify_iteration(robust_lst, target_lst, lbl)
             elif lbl == 10:
                 save_model(model, 'mnist5.pt')
+                self.__verify_iteration(robust_lst, target_lst, lbl)
 
             self.__mask_off(mask_index)
             masked_index_lst.append(mask_index)
@@ -681,76 +716,73 @@ class ContinualImpl2():
         return True
 
 
-    def __verify_iteration(self):
-        robust_lst, target_lst = [], []
+    def __verify_iteration(self, robust_lst, target_lst, lbl):
+        print(lbl)
 
-        for lbl in range(2, 11, 2):
-            print(lbl)
+        test_dataset = datasets.MNIST('../data', train=False, transform=self.transform)
 
-            test_dataset = datasets.MNIST('../data', train=False, transform=self.transform)
+        for i in range(0, lbl):
+            if i == 0:
+                test_index = test_dataset.targets == 0
+            else:
+                test_index = test_index | (test_dataset.targets == i)
 
-            for i in range(lbl - 2, lbl):
-                if i == 0:
-                    test_index = test_dataset.targets == 0
-                else:
-                    test_index = test_index | (test_dataset.targets == i)
+        test_dataset.data, test_dataset.targets = test_dataset.data[test_index], test_dataset.targets[test_index]
+        test_loader = torch.utils.data.DataLoader(test_dataset, **self.test1000_kwargs)
 
-            test_dataset.data, test_dataset.targets = test_dataset.data[test_index], test_dataset.targets[test_index]
-            test_loader = torch.utils.data.DataLoader(test_dataset, **self.test1000_kwargs)
+        if lbl == 2:
+            model = load_model(MNISTNet, 'mnist1.pt', lbl)
+        elif lbl == 4:
+            model = load_model(MNISTNet, 'mnist2.pt', lbl)
+        elif lbl == 6:
+            model = load_model(MNISTNet, 'mnist3.pt', lbl)
+        elif lbl == 8:
+            model = load_model(MNISTNet, 'mnist4.pt', lbl)
+        elif lbl == 10:
+            model = load_model(MNISTNet, 'mnist5.pt', lbl)
 
-            if lbl == 2:
-                model = load_model(MNISTNet, 'mnist1.pt', lbl)
-            elif lbl == 4:
-                model = load_model(MNISTNet, 'mnist2.pt', lbl)
-            elif lbl == 6:
-                model = load_model(MNISTNet, 'mnist3.pt', lbl)
-            elif lbl == 8:
-                model = load_model(MNISTNet, 'mnist4.pt', lbl)
-            elif lbl == 10:
-                model = load_model(MNISTNet, 'mnist5.pt', lbl)
+        shape, lower, upper = (1,784), np.zeros(784), np.ones(784)
+        formal_model = get_formal_model(model, shape, lower, upper)
 
-            shape, lower, upper = (1,784), np.zeros(784), np.ones(784)
-            formal_model = get_formal_model(model, shape, lower, upper)
+        test(model, test_loader, LossFn.cross_entropy_loss, self.device)
 
-            test(model, test_loader, LossFn.cross_entropy_loss, self.device)
+        test_loader = torch.utils.data.DataLoader(test_dataset, **self.test1_kwargs)
 
-            test_loader = torch.utils.data.DataLoader(test_dataset, **self.test1_kwargs)
+        print('robust len = {}'.format(len(robust_lst)))
+        pass_cnt, fail_cnt = 0, 0
 
-            print('robust len = {}'.format(len(robust_lst)))
-            pass_cnt, fail_cnt = 0, 0
+        for i in range(len(robust_lst)):
+            img, target = robust_lst[i], target_lst[i]
 
-            for i in range(len(robust_lst)):
-                img, target = robust_lst[i], target_lst[i]
+            lower_i, upper_i = (img - self.eps).reshape(-1), (img + self.eps).reshape(-1)
+            lower_i = np.maximum(lower_i, formal_model.lower)
+            upper_i = np.minimum(upper_i, formal_model.upper)
 
-                lower_i, upper_i = (img - 0.01).reshape(-1), (img + 0.01).reshape(-1)
-                lower_i = np.maximum(lower_i, formal_model.lower)
-                upper_i = np.minimum(upper_i, formal_model.upper)
+            if self.__verify(formal_model, lower_i, upper_i, target):
+                pass_cnt += 1
+            else:
+                fail_cnt += 1
 
-                if self.__verify(formal_model, lower_i, upper_i, target):
-                    pass_cnt += 1
-                else:
-                    fail_cnt += 1
+        print('pass_cnt = {}, fail_cnt = {}, percent = {}'.format(pass_cnt, fail_cnt,
+            pass_cnt / len(robust_lst) if len(robust_lst) > 0 else 0))
 
-            print('pass_cnt = {}, fail_cnt = {}, percent = {}'.format(pass_cnt, fail_cnt,
-                pass_cnt / len(robust_lst) if len(robust_lst) > 0 else 0))
+        for data, target in test_loader:
+            img = data.numpy().reshape(1, 784)
 
-            for data, target in test_loader:
-                img = data.numpy().reshape(1, 784)
+            lower_i, upper_i = (img - self.eps).reshape(-1), (img + self.eps).reshape(-1)
+            lower_i = np.maximum(lower_i, formal_model.lower)
+            upper_i = np.minimum(upper_i, formal_model.upper)
+            target = target.numpy()[0]
 
-                lower_i, upper_i = (img - 0.01).reshape(-1), (img + 0.01).reshape(-1)
-                lower_i = np.maximum(lower_i, formal_model.lower)
-                upper_i = np.minimum(upper_i, formal_model.upper)
-                target = target.numpy()[0]
+            if target >= lbl - 2 and self.__verify(formal_model, lower_i, upper_i, target):
+                robust_lst.append(img)
+                target_lst.append(target)
 
-                if target >= lbl - 2 and self.__verify(formal_model, lower_i, upper_i, target):
-                    robust_lst.append(img)
-                    target_lst.append(target)
-
-                    if len(robust_lst) == lbl * 10:
-                        print('enough')
-                        break
+                if len(robust_lst) == lbl * 10:
+                    print('enough')
+                    break
 
 
     def solve(self, models, assertion, display=None):
-        # self.__train_iteration()
-        self.__verify_iteration()
+        self.__train_iteration()
+        # self.__verify_iteration()
