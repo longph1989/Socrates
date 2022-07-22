@@ -24,7 +24,7 @@ from torch.optim.lr_scheduler import StepLR
 import gurobipy as gp
 from gurobipy import GRB
 
-from functools import partial
+import math
 
 
 
@@ -43,19 +43,6 @@ def print_model(model):
     for name, param in model.named_parameters():
         print(name)
         print(param.data)
-
-
-def transfer_model(model1, model2, skips):
-    params1 = model1.named_parameters()
-    params2 = model2.named_parameters()
-
-    dict_params2 = dict(params2)
-
-    for name1, param1 in params1:
-        if name1 in skips: continue
-        dict_params2[name1].data.copy_(param1.data)
-
-    model2.load_state_dict(dict_params2)
 
 
 def get_layers(model):
@@ -93,7 +80,7 @@ def progagate(model, idx, lst_poly):
         up_next = poly_next.up
 
         if np.any(up_next < lw_next):
-            assert False # unreachable states
+            raise Exception("unreachable states") # unreachable states
 
         lst_poly.append(poly_next)
         return progagate(model, idx + 1, lst_poly)
@@ -106,9 +93,19 @@ def train(model, dataloader, loss_fn, optimizer, device):
     for batch, (x, y) in enumerate(dataloader):
         x, y = x.to(device), y.to(device)
 
+        if torch.isnan(x).any().item() or torch.isinf(x).any().item():
+            print('invalid input detected at iteration ', x)
+            assert False
+
         # Compute prediction error
         pred = model(x)
-        loss = loss_fn(pred, x, y)
+        loss = loss_fn(pred, y)
+
+        if torch.isnan(loss).any().item():
+            print(x)
+            print(y)
+            save_model(model, 'nan_model.pt')
+            assert False
 
         # Backpropagation
         optimizer.zero_grad()
@@ -118,6 +115,88 @@ def train(model, dataloader, loss_fn, optimizer, device):
         if batch % 100 == 0:
             loss, current = loss.item(), batch * len(x)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+
+
+########################################################################
+activation = {}
+def get_activation(name):
+    def hook(model, input, output):
+        activation[name] = output
+    return hook
+
+def train_prop(model, dataloader, optimizer, device, lst_poly):
+    model.fc1.register_forward_hook(get_activation('fc1'))
+    model.fc2.register_forward_hook(get_activation('fc2'))
+    model.fc3.register_forward_hook(get_activation('fc3'))
+    model.fc4.register_forward_hook(get_activation('fc4'))
+    model.fc5.register_forward_hook(get_activation('fc5'))
+    model.fc6.register_forward_hook(get_activation('fc6'))
+    model.fc7.register_forward_hook(get_activation('fc7'))
+
+    size = len(dataloader.dataset)
+    model.train()
+
+    for batch, (x, y) in enumerate(dataloader):
+        x, y = x.to(device), y.to(device)
+
+        # Compute prediction error
+        pred = model(x)
+
+        # if len(x) == 25:
+        #     print(x)
+        #     print(y)
+
+        for i in range(1,8):
+            layer = 'fc' + str(i)
+            layer_tensor = activation[layer]
+            lower_tensor = torch.Tensor(lst_poly[2 * i - 1].lw)
+            upper_tensor = torch.Tensor(lst_poly[2 * i - 1].up)
+
+            mask_lower = layer_tensor < lower_tensor
+            mask_upper = layer_tensor > upper_tensor
+
+            if len(x) == 25:
+                # print(layer_tensor)
+                # print(lower_tensor)
+                # print(upper_tensor)
+
+                print(mask_lower.sum())
+                print(mask_upper.sum())
+
+                # print(((layer_tensor - lower_tensor) ** 2)[mask_lower])
+                # print(((layer_tensor - lower_tensor) ** 2)[mask_lower].sum())
+
+                # print(((layer_tensor - upper_tensor) ** 2)[mask_upper])
+                # print(((layer_tensor - upper_tensor) ** 2)[mask_upper].sum())
+
+            # abs
+            # sum_lower = (abs(layer_tensor - lower_tensor))[mask_lower].sum()
+            # sum_upper = (abs(layer_tensor - upper_tensor))[mask_upper].sum()
+
+            # square
+            sum_lower = ((layer_tensor - lower_tensor) ** 2)[mask_lower].sum()
+            sum_upper = ((layer_tensor - upper_tensor) ** 2)[mask_upper].sum()
+
+            # all layers
+            if i == 1: loss = (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
+            else: loss = loss + (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
+
+            # if len(x) == 25 and i == 7:
+            #     print('i = {}, loss = {}'.format(i, loss))
+
+            # last layer
+            # if i == 7:
+            #     loss = (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
+
+        # Backpropagation
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        if batch % 100 == 0:
+            loss, current = loss.item(), batch * len(x)
+            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+########################################################################
 
 
 def test(model, dataloader, loss_fn, device):
@@ -131,12 +210,15 @@ def test(model, dataloader, loss_fn, device):
         for x, y in dataloader:
             x, y = x.to(device), y.to(device)
             pred = model(x)
-            test_loss += loss_fn(pred, x, y).item()
+            test_loss += loss_fn(pred, y).item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
     
     test_loss /= num_batches
     correct /= size
+
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+
+    return correct
 
 
 def write_constr_hidden_layers(prob, coefs, const, prev_var_idx, curr_var_idx):
@@ -155,7 +237,7 @@ def write_constr_hidden_layers(prob, coefs, const, prev_var_idx, curr_var_idx):
     prob.flush()
 
 
-def write_constr_relu_layers(prob, prev_var_idx, curr_var_idx, poly, bin_idx, number_of_neurons):
+def write_constr_relu_layers(prob, prev_var_idx, curr_var_idx, poly, number_of_neurons):
     for i in range(number_of_neurons):
         pvar_idx, cvar_idx = prev_var_idx + i, curr_var_idx + i
 
@@ -178,21 +260,11 @@ def write_constr_relu_layers(prob, prev_var_idx, curr_var_idx, poly, bin_idx, nu
         elif le_coefs < 0.0:
             prob.write(' - {} x{}'.format(abs(le_coefs), pvar_idx))
         prob.write(' <= {}\n'.format(le_const))
-
-    # const = 1000000.0
-    # for i in range(number_of_neurons):
-    #     pvar_idx, cvar_idx = prev_var_idx + i, curr_var_idx + i
-    #     cbin_idx = bin_idx + i
-
-    #     prob.write('  x{} - x{} >= 0.0\n'.format(cvar_idx, pvar_idx))
-    #     prob.write('  x{} - x{} - {} b{} <= 0.0\n'.format(cvar_idx, pvar_idx, const, cbin_idx))
-    #     prob.write('  x{} >= 0.0\n'.format(cvar_idx))
-    #     prob.write('  x{} + {} b{} <= {}\n'.format(cvar_idx, const, cbin_idx, const))
+    prob.flush()
 
 
 def write_constr(prob, model, lst_poly, input_len):
     prev_var_idx, curr_var_idx = 0, input_len
-    num_bins = 0
 
     for i in range(len(model.layers)):
         layer = model.layers[i]
@@ -209,15 +281,12 @@ def write_constr(prob, model, lst_poly, input_len):
             curr_var_idx = curr_var_idx + len(bias)
         else:
             # the old bias value
-            write_constr_relu_layers(prob, prev_var_idx, curr_var_idx, lst_poly[i+1], num_bins, len(bias))
+            write_constr_relu_layers(prob, prev_var_idx, curr_var_idx, lst_poly[i+1], len(bias))
 
             prev_var_idx = curr_var_idx
             curr_var_idx = curr_var_idx + len(bias)
-            num_bins = num_bins + len(bias)
 
-    # self.__write_constr_output_layer(prob, prev_var_idx)
-
-    return num_bins, prev_var_idx
+    return prev_var_idx
 
 
 def write_bounds(prob, lst_poly):
@@ -231,13 +300,6 @@ def write_bounds(prob, lst_poly):
     prob.flush()
 
 
-def write_binary(prob, num_bins):
-    prob.write(' ')
-    for i in range(num_bins):
-        prob.write(' b{}'.format(i))
-    prob.write('\n')
-
-
 def write_problem(model, lst_poly, output_constr, input_len):
     filename = 'prob.lp'
     prob = open(filename, 'w')
@@ -246,14 +308,11 @@ def write_problem(model, lst_poly, output_constr, input_len):
     prob.write('  0\n')
 
     prob.write('Subject To\n')
-    num_bins, prev_var_idx = write_constr(prob, model, lst_poly, input_len)
+    prev_var_idx = write_constr(prob, model, lst_poly, input_len)
     output_constr(prob, prev_var_idx)
 
     prob.write('Bounds\n')
     write_bounds(prob, lst_poly)
-
-    prob.write('Binary\n')
-    write_binary(prob, num_bins)
 
     prob.write('End\n')
 
@@ -281,33 +340,10 @@ def verify_milp(model, lst_poly, output_constr, input_len):
         return False
 
 
-class LossFn:
-    def cross_entropy_loss(pred, x, y):
-        loss = nn.CrossEntropyLoss()
-        return loss(pred, y)
-
-    def acasxu_prop3_loss(pred, x, y):
-        loss1 = LossFn.cross_entropy_loss(pred, x, y)
-        loss2 = 0.0
-
-        if -0.3035 <= torch.take(x, torch.tensor([0])) and torch.take(x, torch.tensor([0])) <= -0.2986 and \
-            -0.0095 <= torch.take(x, torch.tensor([1])) and torch.take(x, torch.tensor([1])) <= 0.0095 and \
-            0.4934 <= torch.take(x, torch.tensor([2])) and torch.take(x, torch.tensor([2])) <= 0.5 and \
-            0.3 <= torch.take(x, torch.tensor([3])) and torch.take(x, torch.tensor([3])) <= 0.5 and \
-            0.3 <= torch.take(x, torch.tensor([4])) and torch.take(x, torch.tensor([4])) <= 0.5:
-            if torch.argmax(pred) == 0:
-                # reduce the distance between the value at index 0 and other so it is no longer the max
-                for i in range(1,5):
-                    loss2 += 100 * (torch.take(pred, torch.tensor([0])) - torch.take(pred, torch.tensor([i])))
-
-        return loss1 + loss2 
-
-
-
 class ACASXuNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Linear(7, 50)
+        self.fc1 = nn.Linear(5, 50)
         self.fc2 = nn.Linear(50, 50)
         self.fc3 = nn.Linear(50, 50)
         self.fc4 = nn.Linear(50, 50)
@@ -366,23 +402,22 @@ class ContinualImpl1():
 
         if np.argmax(out_lw) == 0:
             print('DeepPoly Failed!!! Use MILP!!!')
-            if verify_milp(model, lst_poly, self.__write_constr_output_layer, 7):
+            if verify_milp(model, lst_poly, self.__write_constr_output_layer, 5):
                 print('Verified!!!')
             else:
                 print('Failed!!!')
         else:
             print('Verified!!!')
 
+        return lst_poly
 
-    def __gen_train_data_rec(self, model, dims, xs, ys, x, idx, ln, x1, x2):
+
+    def __gen_train_data_rec(self, model, dims, xs, ys, x, idx, ln):
         if idx == ln:
             # output based on the model
             new_x = x.copy()
             y = model.apply(np.array(new_x)).reshape(-1)
 
-            # new dims for x
-            new_x.append((x1 - 2) / 4)
-            new_x.append((x2 - 4) / 8)
             new_x = np.array(new_x)
 
             xs.append(new_x)
@@ -390,20 +425,17 @@ class ContinualImpl1():
         else:
             for val in dims[idx]:
                 x.append(val)
-                self.__gen_train_data_rec(model, dims, xs, ys, x, idx + 1, ln, x1, x2)
+                self.__gen_train_data_rec(model, dims, xs, ys, x, idx + 1, ln)
                 x.pop()
 
 
-    def __gen_train_data(self, models, lower, upper, aux=False, skip=[]):
+    def __gen_train_data(self, models, lower, upper, x1, x2, aux=False, skip=[]):
         xs, ys, dims = [], [], []
         for i in range(len(lower)):
             dims.append(np.linspace(lower[i], upper[i], num=5))
 
-        for x1 in range(5):
-            for x2 in range(9):
-                if x1 in skip: continue
-                model = models[x1][x2]
-                self.__gen_train_data_rec(model, dims, xs, ys, [], 0, len(lower), x1, x2)
+        model = models[x1][x2]
+        self.__gen_train_data_rec(model, dims, xs, ys, [], 0, len(lower))
 
         xs = np.array(xs)
         ys = np.argmin(ys, axis=1).reshape(-1) # get label
@@ -429,16 +461,12 @@ class ContinualImpl1():
         return xs, ys
 
 
-    def __gen_test_data(self, models, lower, upper):
+    def __gen_test_data(self, models, lower, upper, x1, x2):
         xs, ys = [], []
 
         for i in range(100000):
             x = list(generate_x(5, lower, upper))
-            x1, x2 = random.randint(0, 4), random.randint(0, 8)
-
             y = models[x1][x2].apply(np.array(x)).reshape(-1)
-            x.append((x1 - 2) / 4)
-            x.append((x2 - 4) / 8)
 
             xs.append(x)
             ys.append(y)
@@ -452,7 +480,7 @@ class ContinualImpl1():
         return xs, ys
 
 
-    def __train_new_model(self, model, train_x, train_y, test_x, test_y, loss_fn):
+    def __train_new_model(self, model, train_x, train_y, test_x, test_y, file_name, prop_x=None, prop_y=None, lst_poly=None):
         tensor_train_x = torch.Tensor(train_x.copy()) # transform to torch tensor
         tensor_train_y = torch.Tensor(train_y.copy()).type(torch.LongTensor)
 
@@ -465,85 +493,119 @@ class ContinualImpl1():
         test_dataset = TensorDataset(tensor_test_x, tensor_test_y) # create dataset
         test_dataloader = DataLoader(test_dataset, batch_size=100) # create dataloader
 
-        optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+        if prop_x is not None:
+            tensor_prop_x = torch.Tensor(prop_x.copy()) # transform to torch tensor
+            tensor_prop_y = torch.Tensor(prop_y.copy()).type(torch.LongTensor)
+
+            prop_dataset = TensorDataset(tensor_prop_x, tensor_prop_y) # create dataset
+            prop_dataloader = DataLoader(prop_dataset, batch_size=100, shuffle=True) # create dataloader
+
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
 
         num_of_epochs = 200
+        best_acc = 0.0
+
+        if prop_x is not None:
+            print('\nUse special loss function!!! Abs last layer!!!\n')
 
         for epoch in range(num_of_epochs):
             print('\n------------- Epoch {} -------------\n'.format(epoch))
-            train(model, train_dataloader, loss_fn, optimizer, self.device)
-            test(model, test_dataloader, loss_fn, self.device)
+            train(model, train_dataloader, nn.CrossEntropyLoss(), optimizer, self.device)
+            if prop_x is not None:
+                # use special loss function
+                train_prop(model, prop_dataloader, optimizer, self.device, lst_poly)
+            test_acc = test(model, test_dataloader, nn.CrossEntropyLoss(), self.device)
 
-        return model
+            if best_acc < test_acc:
+                best_acc = test_acc
+                save_model(model, file_name)
 
 
     def solve(self, models, assertion, display=None):
-        # data from normal bounds
+        for x1 in range(5):
+            for x2 in range(9):
+                if x1 != 0 or x2 != 2: continue
 
-        lower0 = np.array([-0.3284, -0.5, -0.5, -0.5, -0.5])
-        upper0 = np.array([0.6799, 0.5, 0.5, 0.5, 0.5])
+                print('\n=============================================\n')
+                print('x1 = {}, x2 = {}'.format(x1, x2))
 
-        # train_x0, train_y0 = self.__gen_train_data(models, lower0, upper0, aux=True)
-        # test_x, test_y = self.__gen_test_data(models, lower0, upper0)
+                # data from normal bounds
+                lower0 = np.array([-0.3284, -0.5, -0.5, -0.5, -0.5])
+                upper0 = np.array([0.6799, 0.5, 0.5, 0.5, 0.5])
 
-        # data from condition 3 bounds
+                train_x0, train_y0 = self.__gen_train_data(models, lower0, upper0, x1, x2, aux=True)
+                test_x, test_y = self.__gen_test_data(models, lower0, upper0, x1, x2)
 
-        lower3 = np.array([-0.3035, -0.0095, 0.4934, 0.3, 0.3])
-        upper3 = np.array([-0.2986, 0.0095, 0.5, 0.5, 0.5])
+                # data from condition 3 bounds
+                lower3 = np.array([-0.3035, -0.0095, 0.4934, 0.3, 0.3])
+                upper3 = np.array([-0.2986, 0.0095, 0.5, 0.5, 0.5])
 
-        # train_x3, train_y3 = self.__gen_train_data(models, lower3, upper3, skip=[0])
+                train_x3, train_y3 = self.__gen_train_data(models, lower3, upper3, x1, x2)
 
-        model0 = ACASXuNet().to(self.device)
+                model0 = ACASXuNet().to(self.device)
 
-        # train_x = np.concatenate((train_x0, train_x3), axis=0)
-        # train_y = np.concatenate((train_y0, train_y3), axis=0)
-        # model1 = self.__train_new_model(model0, train_x, train_y, test_x, test_y, LossFn.cross_entropy_loss)
-        # save_model(model1, "acasxu1_200.pt")
+                train_x = np.concatenate((train_x0, train_x3), axis=0)
+                train_y = np.concatenate((train_y0, train_y3), axis=0)
+                
+                file_name1 = "acasxu/acasxu1/acasxu1_200_" + str(x1) + "_" + str(x2) + ".pt"
+                # self.__train_new_model(model0, train_x, train_y, test_x, test_y, file_name1)
 
-        model1 = load_model(ACASXuNet, "acasxu1_200.pt")
-        print('finish model 1')
+                model1 = load_model(ACASXuNet, file_name1)
+                print('finish model 1')
 
-        formal_lower0, formal_upper0 = list(lower0.copy()), list(upper0.copy())
-        formal_lower0.extend([-0.5, -0.5])
-        formal_upper0.extend([0.5, 0.5])
+                ###############################################################################
+                tensor_test_x = torch.Tensor(test_x.copy()) # transform to torch tensor
+                tensor_test_y = torch.Tensor(test_y.copy()).type(torch.LongTensor)
 
-        formal_lower3, formal_upper3 = list(lower3.copy()), list(upper3.copy())
-        formal_lower3.extend([-0.25, -0.5])
-        formal_upper3.extend([0.5, 0.5])
+                test_dataset = TensorDataset(tensor_test_x, tensor_test_y) # create dataset
+                test_dataloader = DataLoader(test_dataset, batch_size=100) # create dataloader
 
-        formal_model1 = get_formal_model(model1, (1,7), np.array(formal_lower0), np.array(formal_upper0))
-        self.__verify(formal_model1, np.array(formal_lower3), np.array(formal_upper3))
+                test(model1, test_dataloader, nn.CrossEntropyLoss(), self.device)
+                ###############################################################################
 
-        assert False
+                formal_lower0, formal_upper0 = list(lower0.copy()), list(upper0.copy())
+                formal_lower3, formal_upper3 = list(lower3.copy()), list(upper3.copy())
 
-        # data from condition 4 bounds
+                formal_model1 = get_formal_model(model1, (1,5), np.array(formal_lower0), np.array(formal_upper0))
+                try:
+                    lst_poly = self.__verify(formal_model1, np.array(formal_lower3), np.array(formal_upper3))
+                except:
+                    print("Error with x1 = {}, x2 = {}".format(x1, x2))
 
-        lower4 = np.array([-0.3035, -0.0095, 0.0, 0.3182, 0.0833])
-        upper4 = np.array([-0.2986, 0.0095, 0.0, 0.5, 0.1667])
+                # data from condition 4 bounds
+                lower4 = np.array([-0.3035, -0.0095, 0.0, 0.3182, 0.0833])
+                upper4 = np.array([-0.2986, 0.0095, 0.0, 0.5, 0.1667])
 
-        # train_x4, train_y4 = self.__gen_train_data(models, lower4, upper4, skip=[0])
-        
-        # train_x, train_y = train_x4, train_y4
-        
-        # random_x0 = random.sample(range(len(train_x0)), len(train_x0) // 5)
-        # random_x3 = random.sample(range(len(train_x3)), len(train_x3) // 5)
+                train_x4, train_y4 = self.__gen_train_data(models, lower4, upper4, x1, x2)
+                
+                train_x, train_y = train_x4, train_y4
+                
+                random_x0 = random.sample(range(len(train_x0)), len(train_x0) // 5)
+                random_x3 = random.sample(range(len(train_x3)), len(train_x3) // 5)
 
-        # aux_train_x0, aux_train_y0 = train_x0[random_x0], train_y0[random_x0]
-        # aux_train_x3, aux_train_y3 = train_x3[random_x3], train_y3[random_x3]
-        
-        # train_x = np.concatenate((train_x, aux_train_x0), axis=0)
-        # train_y = np.concatenate((train_y, aux_train_y0), axis=0)
-        # train_x = np.concatenate((train_x, aux_train_x3), axis=0)
-        # train_y = np.concatenate((train_y, aux_train_y3), axis=0)
+                aux_train_x0, aux_train_y0 = train_x0[random_x0], train_y0[random_x0]
+                aux_train_x3, aux_train_y3 = train_x3[random_x3], train_y3[random_x3]
+                
+                train_x = np.concatenate((train_x, aux_train_x0), axis=0)
+                train_y = np.concatenate((train_y, aux_train_y0), axis=0)
 
-        # model2 = self.__train_new_model(model1, train_x, train_y, test_x, test_y, LossFn.acasxu_prop3_loss)
-        # save_model(model2, "acasxu2_200.pt")
+                file_name2 = "acasxu2_200_" + str(x1) + "_" + str(x2) + ".pt"
+                self.__train_new_model(model1, train_x, train_y, test_x, test_y, file_name2,
+                        aux_train_x3, aux_train_y3, lst_poly)
+                # self.__train_new_model(model1, train_x, train_y, test_x, test_y, file_name2)
 
-        model2 = load_model(ACASXuNet, "acasxu2_200.pt")
-        print('finish model 2')
-        
-        formal_model2 = get_formal_model(model2, (1,7), np.array(formal_lower0), np.array(formal_upper0))
-        self.__verify(formal_model2, np.array(formal_lower3), np.array(formal_upper3))
+                model2 = load_model(ACASXuNet, file_name2)
+                print('finish model 2')
+
+                ###############################################################################
+                test(model2, test_dataloader, nn.CrossEntropyLoss(), self.device)
+                ###############################################################################
+                
+                formal_model2 = get_formal_model(model2, (1,5), np.array(formal_lower0), np.array(formal_upper0))
+                try:
+                    self.__verify(formal_model2, np.array(formal_lower3), np.array(formal_upper3))
+                except:
+                    print("Error with x1 = {}, x2 = {}".format(x1, x2))
 
 
 class MNISTNet(nn.Module):
