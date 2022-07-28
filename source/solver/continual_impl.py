@@ -93,19 +93,9 @@ def train(model, dataloader, loss_fn, optimizer, device):
     for batch, (x, y) in enumerate(dataloader):
         x, y = x.to(device), y.to(device)
 
-        if torch.isnan(x).any().item() or torch.isinf(x).any().item():
-            print('invalid input detected at iteration ', x)
-            assert False
-
         # Compute prediction error
         pred = model(x)
         loss = loss_fn(pred, y)
-
-        if torch.isnan(loss).any().item():
-            print(x)
-            print(y)
-            save_model(model, 'nan_model.pt')
-            assert False
 
         # Backpropagation
         optimizer.zero_grad()
@@ -142,51 +132,28 @@ def train_prop(model, dataloader, optimizer, device, lst_poly):
         # Compute prediction error
         pred = model(x)
 
-        # if len(x) == 25:
-        #     print(x)
-        #     print(y)
-
         for i in range(1,8):
             layer = 'fc' + str(i)
             layer_tensor = activation[layer]
+
             lower_tensor = torch.Tensor(lst_poly[2 * i - 1].lw)
             upper_tensor = torch.Tensor(lst_poly[2 * i - 1].up)
+            mean_tensor = (lower_tensor + upper_tensor) / 2
 
             mask_lower = layer_tensor < lower_tensor
             mask_upper = layer_tensor > upper_tensor
-
-            if len(x) == 25:
-                # print(layer_tensor)
-                # print(lower_tensor)
-                # print(upper_tensor)
-
-                print(mask_lower.sum())
-                print(mask_upper.sum())
-
-                # print(((layer_tensor - lower_tensor) ** 2)[mask_lower])
-                # print(((layer_tensor - lower_tensor) ** 2)[mask_lower].sum())
-
-                # print(((layer_tensor - upper_tensor) ** 2)[mask_upper])
-                # print(((layer_tensor - upper_tensor) ** 2)[mask_upper].sum())
 
             # abs
             # sum_lower = (abs(layer_tensor - lower_tensor))[mask_lower].sum()
             # sum_upper = (abs(layer_tensor - upper_tensor))[mask_upper].sum()
 
             # square
-            sum_lower = ((layer_tensor - lower_tensor) ** 2)[mask_lower].sum()
-            sum_upper = ((layer_tensor - upper_tensor) ** 2)[mask_upper].sum()
+            sum_lower = ((layer_tensor - mean_tensor) ** 2)[mask_lower].sum()
+            sum_upper = ((layer_tensor - mean_tensor) ** 2)[mask_upper].sum()
 
             # all layers
             if i == 1: loss = (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
             else: loss = loss + (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
-
-            # if len(x) == 25 and i == 7:
-            #     print('i = {}, loss = {}'.format(i, loss))
-
-            # last layer
-            # if i == 7:
-            #     loss = (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
 
         # Backpropagation
         optimizer.zero_grad()
@@ -506,7 +473,7 @@ class ContinualImpl1():
         best_acc = 0.0
 
         if prop_x is not None:
-            print('\nUse special loss function!!! Abs last layer!!!\n')
+            print('\nUse special loss function!!! Square all layers with mean!!!\n')
 
         for epoch in range(num_of_epochs):
             print('\n------------- Epoch {} -------------\n'.format(epoch))
@@ -524,8 +491,6 @@ class ContinualImpl1():
     def solve(self, models, assertion, display=None):
         for x1 in range(5):
             for x2 in range(9):
-                if x1 != 0 or x2 != 2: continue
-
                 print('\n=============================================\n')
                 print('x1 = {}, x2 = {}'.format(x1, x2))
 
