@@ -123,21 +123,30 @@ def train_prop(model, dataloader, optimizer, device, lst_poly):
     model.fc6.register_forward_hook(get_activation('fc6'))
     model.fc7.register_forward_hook(get_activation('fc7'))
 
+    all_layers = [model.fc1, model.fc2, model.fc3, model.fc4, model.fc5, model.fc6, model.fc7]
+
     size = len(dataloader.dataset)
     model.train()
 
-    for batch, (x, y) in enumerate(dataloader):
-        x, y = x.to(device), y.to(device)
+    for i in range(7):
+        for j in range(7):
+            if j == i:
+                all_layers[j].requires_grad = True
+            else:
+                all_layers[j].requires_grad = False
 
-        # Compute prediction error
-        pred = model(x)
+        for batch, (x, y) in enumerate(dataloader):
+            x, y = x.to(device), y.to(device)
 
-        for i in range(1,8):
-            layer = 'fc' + str(i)
+            # Compute prediction error
+            pred = model(x)
+
+            k = i + 1
+            layer = 'fc' + str(k)
             layer_tensor = activation[layer]
 
-            lower_tensor = torch.Tensor(lst_poly[2 * i - 1].lw)
-            upper_tensor = torch.Tensor(lst_poly[2 * i - 1].up)
+            lower_tensor = torch.Tensor(lst_poly[2 * k - 1].lw)
+            upper_tensor = torch.Tensor(lst_poly[2 * k - 1].up)
             mean_tensor = (lower_tensor + upper_tensor) / 2
 
             mask_lower = layer_tensor < lower_tensor
@@ -152,17 +161,16 @@ def train_prop(model, dataloader, optimizer, device, lst_poly):
             sum_upper = ((layer_tensor - mean_tensor) ** 2)[mask_upper].sum()
 
             # all layers
-            if i == 1: loss = (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
-            else: loss = loss + (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
+            loss = (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
 
-        # Backpropagation
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            # Backpropagation
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-        if batch % 100 == 0:
-            loss, current = loss.item(), batch * len(x)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            if batch % 100 == 0:
+                loss, current = loss.item(), batch * len(x)
+                print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 ########################################################################
 
 
