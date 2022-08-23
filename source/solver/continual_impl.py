@@ -123,17 +123,18 @@ def train_prop(model, dataloader, optimizer, device, lst_poly):
     model.fc6.register_forward_hook(get_activation('fc6'))
     model.fc7.register_forward_hook(get_activation('fc7'))
 
-    all_layers = [model.fc1, model.fc2, model.fc3, model.fc4, model.fc5, model.fc6, model.fc7]
-
     size = len(dataloader.dataset)
     model.train()
 
     for i in range(7):
-        for j in range(7):
-            if j == i:
-                all_layers[j].requires_grad = True
+        # print('Train layer {}'.format(i))
+        # print_model(model)
+
+        for j, param in enumerate(model.parameters()):
+            if j // 2 == i:
+                param.requires_grad = True
             else:
-                all_layers[j].requires_grad = False
+                param.requires_grad = False
 
         for batch, (x, y) in enumerate(dataloader):
             x, y = x.to(device), y.to(device)
@@ -171,6 +172,12 @@ def train_prop(model, dataloader, optimizer, device, lst_poly):
             if batch % 100 == 0:
                 loss, current = loss.item(), batch * len(x)
                 print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+
+        # print_model(model)
+
+    for j, param in enumerate(model.parameters()):
+        param.requires_grad = True
+    
 ########################################################################
 
 
