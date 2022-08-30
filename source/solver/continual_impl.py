@@ -45,6 +45,37 @@ def print_model(model):
         print(param.data)
 
 
+def transfer_model(model1, model2, skips=[]):
+    params1 = model1.named_parameters()
+    params2 = model2.named_parameters()
+
+    dict_params2 = dict(params2)
+
+    for name1, param1 in params1:
+        if name1 in skips: continue
+
+        if 'fc1.weight' in name1:
+            new_data = torch.cat((param1.data, dict_params2[name1].data[128:]))
+        elif 'fc1.bias' in name1:
+            new_data = torch.cat((param1.data, dict_params2[name1].data[128:]))
+        elif 'fc2.weight' in name1 or 'fc3.weight' in name1:
+            new_data0 = torch.cat((param1.data, dict_params2[name1].data[:128,128:]), 1)
+            new_data = torch.cat((new_data0, dict_params2[name1].data[128:]))
+            new_data[:128,128:] = 0.0
+        elif 'fc2.bias' in name1 or 'fc3.bias' in name1:
+            new_data = torch.cat((param1.data, dict_params2[name1].data[128:]))
+        elif 'fc4.weight' in name1:
+            new_data0 = torch.cat((param1.data, dict_params2[name1].data[:2,128:]), 1)
+            new_data = torch.cat((new_data0, dict_params2[name1].data[2:]))
+            new_data[:2,128:] = 0.0
+        elif 'fc4.bias' in name1:
+            new_data = torch.cat((param1.data, dict_params2[name1].data[2:]))
+            
+        dict_params2[name1].data.copy_(new_data)
+    
+    model2.load_state_dict(dict_params2)
+
+
 def get_layers(model):
     layers, params = list(), list(model.named_parameters())
 
@@ -105,6 +136,124 @@ def train(model, dataloader, loss_fn, optimizer, device):
         if batch % 100 == 0:
             loss, current = loss.item(), batch * len(x)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+
+
+def train_mnist(model, dataloader, loss_fn, optimizer, device):
+    size = len(dataloader.dataset)
+    model.train()
+
+    for batch, (x, y) in enumerate(dataloader):
+        x, y = x.to(device), y.to(device)
+
+        # Compute prediction error
+        pred = model(x)
+        loss = loss_fn(pred, y)
+
+        # Backpropagation
+        optimizer.zero_grad()
+        loss.backward()
+
+        params = model.named_parameters()
+        for name, param in params:
+            if 'weight' in name:
+                if 'fc4' in name:
+                    param.grad.data[:2,128:] = 0.0
+                elif 'fc1' not in name:
+                    param.grad.data[:128,128:] = 0.0
+
+        optimizer.step()
+
+        if batch % 100 == 0:
+            loss, current = loss.item(), batch * len(x)
+            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+
+
+def train_robust(model, dataloader, loss_fn, optimizer, device, lst_poly_lst):
+    model.fc1.register_forward_hook(get_activation('fc1'))
+    model.fc2.register_forward_hook(get_activation('fc2'))
+    model.fc3.register_forward_hook(get_activation('fc3'))
+    model.fc4.register_forward_hook(get_activation('fc4'))
+
+    size = len(dataloader.dataset)
+    model.train()
+
+    for i in range(4):
+        # print('Train layer {}'.format(i))
+        # print_model(model)
+
+        for batch, (x, y) in enumerate(dataloader):
+            lst_poly = lst_poly_lst[batch]
+            x, y = x.to(device), y.to(device)
+
+            # Compute prediction error
+            pred = model(x)
+
+            k = i + 1
+            layer = 'fc' + str(k)
+
+            if i < 3:
+                layer_tensor = activation[layer][:,:128]
+            else:
+                layer_tensor = activation[layer][:,:2]
+
+            lower_tensor = torch.Tensor(lst_poly[2 * k - 1].lw)
+            upper_tensor = torch.Tensor(lst_poly[2 * k - 1].up)
+            mean_tensor = (lower_tensor + upper_tensor) / 2
+
+            mask_lower = layer_tensor < lower_tensor
+            mask_upper = layer_tensor > upper_tensor
+
+            # abs
+            # sum_lower = (abs(layer_tensor - lower_tensor))[mask_lower].sum()
+            # sum_upper = (abs(layer_tensor - upper_tensor))[mask_upper].sum()
+
+            # square
+            sum_lower = ((layer_tensor - mean_tensor) ** 2)[mask_lower].sum()
+            sum_upper = ((layer_tensor - mean_tensor) ** 2)[mask_upper].sum()
+
+            # all layers
+            loss = (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
+
+            # Backpropagation
+            optimizer.zero_grad()
+            loss.backward()
+
+            # modify grad here
+            params = model.named_parameters()
+            for name, param in params:
+                if i == 0:
+                    if name == 'fc1.weight':
+                        param.grad.data[128:] = 0.0
+                    elif name == 'fc1.bias':
+                        param.grad.data[128:] = 0.0
+                    else:
+                        param.grad.data[:] = 0.0
+                elif i == 3:
+                    if name == 'fc4.weight':
+                        param.grad.data[2:] = 0.0
+                        param.grad.data[:2,128:] = 0.0
+                    elif name == 'fc4.bias':
+                        param.grad.data[2:] = 0.0
+                    else:
+                        param.grad.data[:] = 0.0
+                else:
+                    w_name = 'fc' + str(i + 1) + '.weight'
+                    b_name = 'fc' + str(i + 1) + '.bias'
+                    if name == w_name:
+                        param.grad.data[128:] = 0.0
+                        param.grad.data[:128,128:] = 0.0
+                    elif name == b_name:
+                        param.grad.data[128:] = 0.0
+                    else:
+                        param.grad.data[:] = 0.0
+
+            optimizer.step()
+
+            if batch % 100 == 0:
+                loss, current = loss.item(), batch * len(x)
+                print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+
+        # print_model(model)
 
 
 ########################################################################
@@ -528,7 +677,7 @@ class ContinualImpl1():
                 train_y = np.concatenate((train_y0, train_y3), axis=0)
                 
                 file_name1 = "acasxu/acasxu1/acasxu1_200_" + str(x1) + "_" + str(x2) + ".pt"
-                # self.__train_new_model(model0, train_x, train_y, test_x, test_y, file_name1)
+                # self.__train_new_model(model1, train_x, train_y, test_x, test_y, file_name1)
 
                 model1 = load_model(ACASXuNet, file_name1)
                 print('finish model 1')
@@ -569,10 +718,9 @@ class ContinualImpl1():
                 train_x = np.concatenate((train_x, aux_train_x0), axis=0)
                 train_y = np.concatenate((train_y, aux_train_y0), axis=0)
 
-                file_name2 = "acasxu2_200_" + str(x1) + "_" + str(x2) + ".pt"
-                self.__train_new_model(model1, train_x, train_y, test_x, test_y, file_name2,
-                        aux_train_x3, aux_train_y3, lst_poly)
-                # self.__train_new_model(model1, train_x, train_y, test_x, test_y, file_name2)
+                file_name2 = "acasxu/acasxu8/acasxu2_200_" + str(x1) + "_" + str(x2) + ".pt"
+                # self.__train_new_model(model1, train_x, train_y, test_x, test_y, file_name2,
+                #         aux_train_x3, aux_train_y3, lst_poly)
 
                 model2 = load_model(ACASXuNet, file_name2)
                 print('finish model 2')
@@ -587,14 +735,21 @@ class ContinualImpl1():
                 except:
                     print("Error with x1 = {}, x2 = {}".format(x1, x2))
 
+                formal_lower4, formal_upper4 = list(lower4.copy()), list(upper4.copy())
+
+                try:
+                    self.__verify(formal_model2, np.array(formal_lower4), np.array(formal_upper4))
+                except:
+                    print("Error with x1 = {}, x2 = {}".format(x1, x2))
+
 
 class MNISTNet(nn.Module):
     def __init__(self, lbl):
         super().__init__()
-        self.fc1 = nn.Linear(784, 128)
-        self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, 128)
-        self.fc4 = nn.Linear(128, lbl)
+        self.fc1 = nn.Linear(784, 128 * lbl // 2)
+        self.fc2 = nn.Linear(128 * lbl // 2, 128 * lbl // 2)
+        self.fc3 = nn.Linear(128 * lbl // 2, 128 * lbl // 2)
+        self.fc4 = nn.Linear(128 * lbl // 2, lbl)
 
     def forward(self, x):
         x = torch.flatten(x, 1)
@@ -633,7 +788,8 @@ class ContinualImpl2():
 
         for i in range(len(target_lst)):
             img = robust_lst[i]
-            lower_i, upper_i = (img - self.eps).reshape(-1), (img + self.eps).reshape(-1)
+            lower_i = (img - self.eps).clip(0, 1).reshape(-1)
+            upper_i = (img + self.eps).clip(0, 1).reshape(-1)
 
             for j in range(20):
                 aux_img = generate_x(784, lower_i, upper_i)
@@ -645,9 +801,9 @@ class ContinualImpl2():
 
     def __train_iteration(self):
         masked_index_lst = []
-        robust_lst, target_lst = [], []
+        robust_lst, target_lst, lst_poly_lst = [], [], []
 
-        for lbl in range(2, 11, 2):
+        for lbl in range(2, 5, 2):
             print(lbl)
 
             train_dataset = datasets.MNIST('../data', train=True, download=True, transform=self.transform)
@@ -671,49 +827,56 @@ class ContinualImpl2():
             train_dataset.data, train_dataset.targets = train_dataset.data[train_index], train_dataset.targets[train_index]
             test_dataset.data, test_dataset.targets = test_dataset.data[test_index], test_dataset.targets[test_index]
 
-            train_loader = torch.utils.data.DataLoader(train_dataset, **self.train_kwargs)
-            test_loader = torch.utils.data.DataLoader(test_dataset, **self.test1000_kwargs)
+            train_dataloader = torch.utils.data.DataLoader(train_dataset, **self.train_kwargs)
+            test_dataloader = torch.utils.data.DataLoader(test_dataset, **self.test1000_kwargs)
 
             if lbl > 2: old_model = model
             model = MNISTNet(lbl).to(self.device)
-            if lbl > 2: transfer_model(old_model, model, ['fc4.weight', 'fc4.bias'])
+            if lbl > 2: transfer_model(old_model, model)
 
             optimizer = optim.SGD(model.parameters(), lr=1e-3)
             num_of_epochs = 10 * lbl
 
-            for epoch in range(num_of_epochs):
-                print('\n------------- Epoch {} -------------\n'.format(epoch))
-                train(model, train_loader, LossFn.cross_entropy_loss, optimizer, self.device)
+            if lbl == 2:
+                for epoch in range(num_of_epochs):
+                    print('\n------------- Epoch {} -------------\n'.format(epoch))
+                    train(model, train_dataloader, nn.CrossEntropyLoss(), optimizer, self.device)
+            else:
+                for epoch in range(num_of_epochs):
+                    print('\n------------- Epoch {} -------------\n'.format(epoch))
+                    train_mnist(model, train_dataloader, nn.CrossEntropyLoss(), optimizer, self.device)
 
                 if len(robust_lst) > 0:
-                    aux_robust_lst, aux_target_lst = self.__gen_more_data(robust_lst, target_lst)
-                    print('more train with len = {}'.format(len(aux_robust_lst)))
+                    for epoch in range(num_of_epochs):
+                        aux_robust_lst, aux_target_lst = self.__gen_more_data(robust_lst, target_lst)
+                        print('more train with len = {}'.format(len(aux_robust_lst)))
 
-                    robust_train_x = torch.Tensor(np.array(aux_robust_lst)) # transform to torch tensor
-                    robust_train_y = torch.Tensor(np.array(aux_target_lst)).type(torch.LongTensor)
+                        robust_train_x = torch.Tensor(np.array(aux_robust_lst)) # transform to torch tensor
+                        robust_train_y = torch.Tensor(np.array(aux_target_lst)).type(torch.LongTensor)
 
-                    robust_dataset = TensorDataset(robust_train_x, robust_train_y) # create dataset
-                    robust_dataloader = DataLoader(robust_dataset, batch_size=100, shuffle=True) # create dataloader
+                        robust_dataset = TensorDataset(robust_train_x, robust_train_y) # create dataset
+                        robust_dataloader = DataLoader(robust_dataset, batch_size=20, shuffle=True) # create dataloader
 
-                    train(model, robust_dataloader, LossFn.cross_entropy_loss, optimizer, self.device)
+                        # train_mnist(model, robust_dataloader, nn.CrossEntropyLoss(), optimizer, self.device)
+                        train_robust(model, robust_dataloader, nn.CrossEntropyLoss(), optimizer, self.device, lst_poly_lst)
                 
-                test(model, test_loader, LossFn.cross_entropy_loss, self.device)
+            test(model, test_dataloader, nn.CrossEntropyLoss(), self.device)
 
             if lbl == 2:
                 save_model(model, 'mnist1.pt')
-                self.__verify_iteration(robust_lst, target_lst, lbl)
+                self.__verify_iteration(robust_lst, target_lst, lst_poly_lst, lbl)
             elif lbl == 4:
                 save_model(model, 'mnist2.pt')
-                self.__verify_iteration(robust_lst, target_lst, lbl)
+                self.__verify_iteration(robust_lst, target_lst, lst_poly_lst, lbl)
             elif lbl == 6:
                 save_model(model, 'mnist3.pt')
-                self.__verify_iteration(robust_lst, target_lst, lbl)
+                self.__verify_iteration(robust_lst, target_lst, lst_poly_lst, lbl)
             elif lbl == 8:
                 save_model(model, 'mnist4.pt')
-                self.__verify_iteration(robust_lst, target_lst, lbl)
+                self.__verify_iteration(robust_lst, target_lst, lst_poly_lst, lbl)
             elif lbl == 10:
                 save_model(model, 'mnist5.pt')
-                self.__verify_iteration(robust_lst, target_lst, lbl)
+                self.__verify_iteration(robust_lst, target_lst, lst_poly_lst, lbl)
 
             self.__mask_off(mask_index)
             masked_index_lst.append(mask_index)
@@ -753,12 +916,12 @@ class ContinualImpl2():
                 if poly_res.lw[0] <= 0:
                     partial_output = partial(self.__write_constr_output_layer, y0, y)
                     if not verify_milp(model, lst_poly, partial_output, 784):
-                        return False
+                        return False, lst_poly
 
-        return True
+        return True, lst_poly
 
 
-    def __verify_iteration(self, robust_lst, target_lst, lbl):
+    def __verify_iteration(self, robust_lst, target_lst, lst_poly_lst, lbl):
         print(lbl)
 
         test_dataset = datasets.MNIST('../data', train=False, transform=self.transform)
@@ -770,7 +933,7 @@ class ContinualImpl2():
                 test_index = test_index | (test_dataset.targets == i)
 
         test_dataset.data, test_dataset.targets = test_dataset.data[test_index], test_dataset.targets[test_index]
-        test_loader = torch.utils.data.DataLoader(test_dataset, **self.test1000_kwargs)
+        test_dataloader = torch.utils.data.DataLoader(test_dataset, **self.test1000_kwargs)
 
         if lbl == 2:
             model = load_model(MNISTNet, 'mnist1.pt', lbl)
@@ -786,9 +949,9 @@ class ContinualImpl2():
         shape, lower, upper = (1,784), np.zeros(784), np.ones(784)
         formal_model = get_formal_model(model, shape, lower, upper)
 
-        test(model, test_loader, LossFn.cross_entropy_loss, self.device)
+        test(model, test_dataloader, nn.CrossEntropyLoss(), self.device)
 
-        test_loader = torch.utils.data.DataLoader(test_dataset, **self.test1_kwargs)
+        test_dataloader = torch.utils.data.DataLoader(test_dataset, **self.test1_kwargs)
 
         print('robust len = {}'.format(len(robust_lst)))
         pass_cnt, fail_cnt = 0, 0
@@ -808,7 +971,7 @@ class ContinualImpl2():
         print('pass_cnt = {}, fail_cnt = {}, percent = {}'.format(pass_cnt, fail_cnt,
             pass_cnt / len(robust_lst) if len(robust_lst) > 0 else 0))
 
-        for data, target in test_loader:
+        for data, target in test_dataloader:
             img = data.numpy().reshape(1, 784)
 
             lower_i, upper_i = (img - self.eps).reshape(-1), (img + self.eps).reshape(-1)
@@ -816,13 +979,16 @@ class ContinualImpl2():
             upper_i = np.minimum(upper_i, formal_model.upper)
             target = target.numpy()[0]
 
-            if target >= lbl - 2 and self.__verify(formal_model, lower_i, upper_i, target):
-                robust_lst.append(img)
-                target_lst.append(target)
+            if target >= lbl - 2:
+                res, lst_poly = self.__verify(formal_model, lower_i, upper_i, target)
+                if res:
+                    robust_lst.append(img)
+                    target_lst.append(target)
+                    lst_poly_lst.append(lst_poly)
 
-                if len(robust_lst) == lbl * 10:
-                    print('enough')
-                    break
+                    if len(robust_lst) == lbl * 10:
+                        print('enough')
+                        break
 
 
     def solve(self, models, assertion, display=None):
