@@ -45,35 +45,6 @@ def print_model(model):
         print(param.data)
 
 
-def transfer_model(model1, model2, size, lbls):
-    params1 = model1.named_parameters()
-    params2 = model2.named_parameters()
-
-    dict_params2 = dict(params2)
-
-    idx = lbls // 2 - 1 # idx = 1,2,3,4
-
-    for name1, param1 in params1:
-        if 'fc1' in name1:
-            new_data = torch.cat((param1.data, dict_params2[name1].data[size * idx:]))
-        elif 'fc2.weight' in name1 or 'fc3.weight' in name1:
-            new_data0 = torch.cat((param1.data, dict_params2[name1].data[:size * idx,size * idx:]), 1)
-            new_data = torch.cat((new_data0, dict_params2[name1].data[size * idx:]))
-            new_data[:size * idx,size * idx:] = 0.0
-        elif 'fc2.bias' in name1 or 'fc3.bias' in name1:
-            new_data = torch.cat((param1.data, dict_params2[name1].data[size * idx:]))
-        elif 'fc4.weight' in name1:
-            new_data0 = torch.cat((param1.data, dict_params2[name1].data[:2 * idx,size * idx:]), 1)
-            new_data = torch.cat((new_data0, dict_params2[name1].data[2 * idx:]))
-            new_data[:2 * idx,size * idx:] = 0.0
-        elif 'fc4.bias' in name1:
-            new_data = torch.cat((param1.data, dict_params2[name1].data[2 * idx:]))
-            
-        dict_params2[name1].data.copy_(new_data)
-    
-    model2.load_state_dict(dict_params2)
-
-
 def get_layers(model):
     layers, params = list(), list(model.named_parameters())
 
@@ -136,186 +107,6 @@ def train(model, dataloader, loss_fn, optimizer, device):
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 
-activation = {}
-def get_activation(name):
-    def hook(model, input, output):
-        activation[name] = output
-    return hook
-
-
-def train_mnist(model, dataloader, loss_fn, optimizer, device, old_params=None, robust_dataloader=None, lst_poly_lst=None):
-    size = len(dataloader.dataset)
-    model.train()
-
-    loss, loss1, loss2 = 0.0, 0.0, 0.0
-    lamdba1, lambda2 = 1e-3, 1.0
-
-    for batch, (x, y) in enumerate(dataloader):
-        x, y = x.to(device), y.to(device)
-
-        # Compute prediction error
-        pred = model(x)
-        loss = loss + loss_fn(pred, y)
-
-    model.fc1.register_forward_hook(get_activation('fc1'))
-    model.fc2.register_forward_hook(get_activation('fc2'))
-    model.fc3.register_forward_hook(get_activation('fc3'))
-    model.fc4.register_forward_hook(get_activation('fc4'))
-
-    for i in range(4):
-        for batch, (x, y) in enumerate(robust_dataloader):
-            lst_poly = lst_poly_lst[batch]
-            x, y = x.to(device), y.to(device)
-
-            # Compute prediction error
-            pred = model(x)
-
-            k = i + 1
-            layer = 'fc' + str(k)
-
-            if i < 3:
-                layer_tensor = activation[layer][:,:128]
-            else:
-                layer_tensor = activation[layer][:,:2]
-
-            lower_tensor = torch.Tensor(lst_poly[2 * k - 1].lw)
-            upper_tensor = torch.Tensor(lst_poly[2 * k - 1].up)
-            mean_tensor = (lower_tensor + upper_tensor) / 2
-
-            mask_lower = layer_tensor < lower_tensor
-            mask_upper = layer_tensor > upper_tensor
-
-            # square
-            sum_lower = ((layer_tensor - mean_tensor) ** 2)[mask_lower].sum()
-            sum_upper = ((layer_tensor - mean_tensor) ** 2)[mask_upper].sum()
-
-            # all layers
-            loss1 = loss1 + (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
-
-    params = model.named_parameters()
-    for name, param in params:
-        if 'weight' in name:
-            if 'fc4' in name:
-                loss2 = loss2 + ((param.data[:2,128:] - old_params[name]) ** 2).sum()
-            elif 'fc1' not in name:
-                loss2 = loss2 + ((param.data[:128,128:] - old_params[name]) ** 2).sum()
-            else:
-                loss2 = loss2 + ((param.data[:128] - old_params[name]) ** 2).sum()
-        elif 'bias' in name:
-            if 'fc4' in name:
-                loss2 = loss2 + ((param.data[:2] - old_params[name]) ** 2).sum()
-            else:
-                loss2 = loss2 + ((param.data[:128] - old_params[name]) ** 2).sum()
-
-    loss = loss + lamdba1 * loss1 + lambda2 * loss2
-
-    # Backpropagation
-    optimizer.zero_grad()
-    loss.backward()
-
-    params = model.named_parameters()
-    for name, param in params:
-        if 'weight' in name:
-            if 'fc4' in name:
-                param.grad.data[:2,128:] = 0.0
-            elif 'fc1' not in name:
-                param.grad.data[:128,128:] = 0.0
-
-    optimizer.step()
-
-    # if batch % 100 == 0:
-    loss, current = loss.item(), batch * len(x)
-    print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
-
-
-# def train_robust(model, dataloader, loss_fn, optimizer, device, lst_poly_lst):
-#     model.fc1.register_forward_hook(get_activation('fc1'))
-#     model.fc2.register_forward_hook(get_activation('fc2'))
-#     model.fc3.register_forward_hook(get_activation('fc3'))
-#     model.fc4.register_forward_hook(get_activation('fc4'))
-
-#     size = len(dataloader.dataset)
-#     model.train()
-
-#     for i in range(4):
-#         # print('Train layer {}'.format(i))
-#         # print_model(model)
-
-#         for batch, (x, y) in enumerate(dataloader):
-#             lst_poly = lst_poly_lst[batch]
-#             x, y = x.to(device), y.to(device)
-
-#             # Compute prediction error
-#             pred = model(x)
-
-#             k = i + 1
-#             layer = 'fc' + str(k)
-
-#             if i < 3:
-#                 layer_tensor = activation[layer][:,:128]
-#             else:
-#                 layer_tensor = activation[layer][:,:2]
-
-#             lower_tensor = torch.Tensor(lst_poly[2 * k - 1].lw)
-#             upper_tensor = torch.Tensor(lst_poly[2 * k - 1].up)
-#             mean_tensor = (lower_tensor + upper_tensor) / 2
-
-#             mask_lower = layer_tensor < lower_tensor
-#             mask_upper = layer_tensor > upper_tensor
-
-#             # abs
-#             # sum_lower = (abs(layer_tensor - lower_tensor))[mask_lower].sum()
-#             # sum_upper = (abs(layer_tensor - upper_tensor))[mask_upper].sum()
-
-#             # square
-#             sum_lower = ((layer_tensor - mean_tensor) ** 2)[mask_lower].sum()
-#             sum_upper = ((layer_tensor - mean_tensor) ** 2)[mask_upper].sum()
-
-#             # all layers
-#             loss = (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
-
-#             # Backpropagation
-#             optimizer.zero_grad()
-#             loss.backward()
-
-#             # modify grad here
-#             params = model.named_parameters()
-#             for name, param in params:
-#                 if i == 0:
-#                     if name == 'fc1.weight':
-#                         param.grad.data[128:] = 0.0
-#                     elif name == 'fc1.bias':
-#                         param.grad.data[128:] = 0.0
-#                     else:
-#                         param.grad.data[:] = 0.0
-#                 elif i == 3:
-#                     if name == 'fc4.weight':
-#                         param.grad.data[2:] = 0.0
-#                         param.grad.data[:2,128:] = 0.0
-#                     elif name == 'fc4.bias':
-#                         param.grad.data[2:] = 0.0
-#                     else:
-#                         param.grad.data[:] = 0.0
-#                 else:
-#                     w_name = 'fc' + str(i + 1) + '.weight'
-#                     b_name = 'fc' + str(i + 1) + '.bias'
-#                     if name == w_name:
-#                         param.grad.data[128:] = 0.0
-#                         param.grad.data[:128,128:] = 0.0
-#                     elif name == b_name:
-#                         param.grad.data[128:] = 0.0
-#                     else:
-#                         param.grad.data[:] = 0.0
-
-#             optimizer.step()
-
-#             if batch % 100 == 0:
-#                 loss, current = loss.item(), batch * len(x)
-#                 print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
-
-#         # print_model(model)
-
-
 def test(model, dataloader, loss_fn, device):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
@@ -336,6 +127,13 @@ def test(model, dataloader, loss_fn, device):
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
     return correct
+
+
+activation = {}
+def get_activation(name):
+    def hook(model, input, output):
+        activation[name] = output
+    return hook
 
 
 def write_constr_hidden_layers(prob, coefs, const, prev_var_idx, curr_var_idx):
@@ -819,12 +617,12 @@ class ContinualImpl1():
 
 
 class MNISTNet(nn.Module):
-    def __init__(self, lbl):
+    def __init__(self, size, lbl):
         super().__init__()
-        self.fc1 = nn.Linear(784, 128 * lbl // 2)
-        self.fc2 = nn.Linear(128 * lbl // 2, 128 * lbl // 2)
-        self.fc3 = nn.Linear(128 * lbl // 2, 128 * lbl // 2)
-        self.fc4 = nn.Linear(128 * lbl // 2, lbl)
+        self.fc1 = nn.Linear(784, size * lbl // 2)
+        self.fc2 = nn.Linear(size * lbl // 2, size * lbl // 2)
+        self.fc3 = nn.Linear(size * lbl // 2, size * lbl // 2)
+        self.fc4 = nn.Linear(size * lbl // 2, lbl)
 
     def forward(self, x):
         x = torch.flatten(x, 1)
@@ -840,33 +638,15 @@ class MNISTNet(nn.Module):
 
 
 class ContinualImpl2():
-    def __init__(self):
-        self.device = torch.device("cpu")
-
-        self.train_kwargs = {'batch_size': 100}
-        self.test1_kwargs = {'batch_size': 1}
-        self.test1000_kwargs = {'batch_size': 1000}
-
-        self.transform = transforms.ToTensor()
-        self.eps = 0.01
-
-
-    def __mask_off(self, train_index):
-        for index in range(len(train_index)):
-            if train_index[index]:
-                if random.random() > 0.2:
-                    train_index[index] = False
-
-
-    def __gen_more_data(self, robust_lst, target_lst):
+    def __gen_more_data(self, robust_lst, target_lst, eps):
         aux_robust_lst, aux_target_lst = [], []
 
         for i in range(len(target_lst)):
             img = robust_lst[i]
-            lower_i = (img - self.eps).clip(0, 1).reshape(-1)
-            upper_i = (img + self.eps).clip(0, 1).reshape(-1)
+            lower_i = (img - eps).clip(0, 1).reshape(-1)
+            upper_i = (img + eps).clip(0, 1).reshape(-1)
 
-            for j in range(20):
+            for j in range(100):
                 aux_img = generate_x(784, lower_i, upper_i)
                 aux_robust_lst.append(aux_img)
                 # aux_robust_lst.append(img.copy())
@@ -875,46 +655,193 @@ class ContinualImpl2():
         return aux_robust_lst, aux_target_lst
 
 
-    def __train_iteration(self):
-        masked_index_lst = []
-        robust_lst, target_lst, lst_poly_lst = [], [], []
+    def __train_mnist(self, model, train_dataloader, loss_fn, optimizer, device, size, lbl, 
+        old_params=None, robust_dataloader=None, lst_poly_lst=None):
+        
+        model.train()
 
-        for lbl in range(2, 5, 2):
+        loss, loss1, loss2 = 0.0, 0.0, 0.0
+        lamdba1, lambda2 = 1e-3, 1.0
+
+        idx = lbl // 2 - 1 # idx = 1,2,3,4
+
+        for batch1, (x, y) in enumerate(train_dataloader):
+            x, y = x.to(device), y.to(device)
+
+            # Compute prediction error
+            pred = model(x)
+            loss = loss_fn(pred, y)
+
+            optimizer.zero_grad()
+            loss.backward()
+
+            # params = model.named_parameters()
+            # for name, param in params:
+            #     if 'weight' in name:
+            #         if 'fc4' in name:
+            #             for i in range(idx):
+            #                 param.grad.data[2*i:2*(i+1),size*(i+1):] = 0.0
+            #         elif 'fc1' not in name:
+            #             for i in range(idx):
+            #                 param.grad.data[size*i:size*(i+1),size*(i+1):] = 0.0
+
+            optimizer.step()
+
+        for batch2, (x, y) in enumerate(robust_dataloader):
+            x, y = x.to(device), y.to(device)
+
+            # Compute prediction error
+            pred = model(x)
+            loss = loss_fn(pred, y)
+
+            optimizer.zero_grad()
+            loss.backward()
+
+            # params = model.named_parameters()
+            # for name, param in params:
+            #     if 'weight' in name:
+            #         if 'fc4' in name:
+            #             for i in range(idx):
+            #                 param.grad.data[2*i:2*(i+1),size*(i+1):] = 0.0
+            #         elif 'fc1' not in name:
+            #             for i in range(idx):
+            #                 param.grad.data[size*i:size*(i+1),size*(i+1):] = 0.0
+
+            optimizer.step()
+
+        # model.fc1.register_forward_hook(get_activation('fc1'))
+        # model.fc2.register_forward_hook(get_activation('fc2'))
+        # model.fc3.register_forward_hook(get_activation('fc3'))
+        # model.fc4.register_forward_hook(get_activation('fc4'))
+
+        # for batch3, (x, y) in enumerate(robust_dataloader):
+        #     x, y = x.to(device), y.to(device)
+        #     lst_poly = lst_poly_lst[batch3]
+
+        #     # Compute prediction error
+        #     pred = model(x)
+
+        #     for i in range(4):
+        #         layer = 'fc' + str(i + 1)
+
+        #         if i < 3:
+        #             layer_tensor = activation[layer][:,:size * idx]
+        #         else:
+        #             layer_tensor = activation[layer][:,:2 * idx]
+
+        #         lower_tensor = torch.Tensor(lst_poly[2 * i + 1].lw)
+        #         upper_tensor = torch.Tensor(lst_poly[2 * i + 1].up)
+        #         mean_tensor = (lower_tensor + upper_tensor) / 2
+
+        #         mask_lower = layer_tensor < lower_tensor
+        #         mask_upper = layer_tensor > upper_tensor
+
+        #         # square
+        #         sum_lower = ((layer_tensor - mean_tensor) ** 2)[mask_lower].sum()
+        #         sum_upper = ((layer_tensor - mean_tensor) ** 2)[mask_upper].sum()
+
+        #         # all layers
+        #         loss1 = loss1 + (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
+
+        # params = model.named_parameters()
+        # for name, param in params:
+        #     if 'weight' in name:
+        #         if 'fc4' in name:
+        #             loss2 = loss2 + ((param.data[:2 * idx,:size * idx] - old_params[name]) ** 2).sum()
+        #         elif 'fc1' not in name:
+        #             loss2 = loss2 + ((param.data[:size * idx,:size * idx] - old_params[name]) ** 2).sum()
+        #         else:
+        #             loss2 = loss2 + ((param.data[:size * idx] - old_params[name]) ** 2).sum()
+        #     elif 'bias' in name:
+        #         if 'fc4' in name:
+        #             loss2 = loss2 + ((param.data[:2 * idx] - old_params[name]) ** 2).sum()
+        #         else:
+        #             loss2 = loss2 + ((param.data[:size * idx] - old_params[name]) ** 2).sum()
+
+        # loss = lamdba1 * loss1 + lambda2 * loss2
+
+        # # Backpropagation
+        # optimizer.zero_grad()
+        # loss.backward()
+
+        # params = model.named_parameters()
+        # for name, param in params:
+        #     if 'weight' in name:
+        #         if 'fc4' in name:
+        #             for i in range(idx):
+        #                 param.grad.data[2*i:2*(i+1),size*(i+1):] = 0.0
+        #         elif 'fc1' not in name:
+        #             for i in range(idx):
+        #                 param.grad.data[size*i:size*(i+1),size*(i+1):] = 0.0
+
+        # optimizer.step()
+
+
+    def __transfer_model(self, model1, model2, size, lbl):
+        params1 = model1.named_parameters()
+        params2 = model2.named_parameters()
+
+        dict_params2 = dict(params2)
+
+        idx = lbl // 2 - 1 # idx = 1,2,3,4
+
+        for name1, param1 in params1:
+            if 'fc1' in name1:
+                new_data = torch.cat((param1.data, dict_params2[name1].data[size * idx:]))
+            elif 'fc2.weight' in name1 or 'fc3.weight' in name1:
+                new_data0 = torch.cat((param1.data, dict_params2[name1].data[:size * idx,size * idx:]), 1)
+                new_data = torch.cat((new_data0, dict_params2[name1].data[size * idx:]))
+                new_data[:size * idx,size * idx:] = 0.0
+            elif 'fc2.bias' in name1 or 'fc3.bias' in name1:
+                new_data = torch.cat((param1.data, dict_params2[name1].data[size * idx:]))
+            elif 'fc4.weight' in name1:
+                new_data0 = torch.cat((param1.data, dict_params2[name1].data[:2 * idx,size * idx:]), 1)
+                new_data = torch.cat((new_data0, dict_params2[name1].data[2 * idx:]))
+                new_data[:2 * idx,size * idx:] = 0.0
+            elif 'fc4.bias' in name1:
+                new_data = torch.cat((param1.data, dict_params2[name1].data[2 * idx:]))
+                
+            dict_params2[name1].data.copy_(new_data)
+        
+        model2.load_state_dict(dict_params2)
+
+
+    def __train_iteration(self):
+        robust_lst, target_lst, lst_poly_lst = [], [], []
+        size, eps, device = 10, 0.01, 'cpu'
+
+        for lbl in range(2, 11, 2):
             print(lbl)
 
-            train_dataset = datasets.MNIST('../data', train=True, download=True, transform=self.transform)
-            test_dataset = datasets.MNIST('../data', train=False, transform=self.transform)
+            train_dataset = datasets.MNIST('../data', train=True, download=True, transform=transforms.ToTensor())
+            test_dataset = datasets.MNIST('../data', train=False, transform=transforms.ToTensor())
 
             for i in range(lbl - 2, lbl):
                 if i % 2 == 0:
-                    train_index, mask_index = train_dataset.targets == i, train_dataset.targets == i
+                    train_index = train_dataset.targets == i
                 else:
                     train_index = train_index | (train_dataset.targets == i)
-                    mask_index = mask_index | (train_dataset.targets == i)
 
                 if i == 0:
                     test_index = test_dataset.targets == 0
                 else:
                     test_index = test_index | (test_dataset.targets == i)
 
-            for masked_index in masked_index_lst:
-                train_index = train_index | masked_index
-
             train_dataset.data, train_dataset.targets = train_dataset.data[train_index], train_dataset.targets[train_index]
             test_dataset.data, test_dataset.targets = test_dataset.data[test_index], test_dataset.targets[test_index]
 
-            train_dataloader = torch.utils.data.DataLoader(train_dataset, **self.train_kwargs)
-            test_dataloader = torch.utils.data.DataLoader(test_dataset, **self.test1000_kwargs)
+            train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=100, shuffle=True)
+            test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=100)
 
             if lbl > 2: old_model = model
-            model = MNISTNet(lbl).to(self.device)
-            if lbl > 2: transfer_model(old_model, model)
+            model = MNISTNet(size, lbl).to(device)
+            if lbl > 2: self.__transfer_model(old_model, model, size, lbl)
 
-            optimizer = optim.SGD(model.parameters(), lr=1e-3)
-            num_of_epochs = 10 * lbl
+            optimizer = optim.SGD(model.parameters(), lr=1e-2)
+            num_of_epochs = 10 # 10 * lbl
 
             if lbl == 2:
-                model = load_model(MNISTNet, 'mnist1.pt', lbl)
+                model = load_model(MNISTNet, 'mnist1.pt', size, lbl)
                 # best_acc = 0.0
 
                 # for epoch in range(num_of_epochs):
@@ -926,9 +853,8 @@ class ContinualImpl2():
                 #         best_acc = test_acc
                 #         save_model(model, 'mnist1.pt')
             else:
-                # model = load_model(MNISTNet, 'mnist2_robust.pt', lbl)
                 if len(robust_lst) > 0:
-                    aux_robust_lst, aux_target_lst = self.__gen_more_data(robust_lst, target_lst)
+                    aux_robust_lst, aux_target_lst = self.__gen_more_data(robust_lst, target_lst, eps)
                     print('more train with len = {}'.format(len(aux_robust_lst)))
 
                     robust_train_x = torch.Tensor(np.array(aux_robust_lst)) # transform to torch tensor
@@ -942,10 +868,13 @@ class ContinualImpl2():
                 for name, param in old_model.named_parameters():
                     old_params[name] = param.data.clone()
 
+                print(len(train_dataset.data))
+
                 for epoch in range(num_of_epochs):
                     print('\n------------- Epoch {} -------------\n'.format(epoch))
-                    train_mnist(model, train_dataloader, nn.CrossEntropyLoss(), optimizer, self.device, old_params, robust_dataloader, lst_poly_lst)
-                    test_acc = test(model, test_dataloader, nn.CrossEntropyLoss(), self.device)
+                    self.__train_mnist(model, train_dataloader, nn.CrossEntropyLoss(), optimizer, device, size, lbl,
+                        old_params, robust_dataloader, lst_poly_lst)
+                    test_acc = test(model, test_dataloader, nn.CrossEntropyLoss(), device)
 
                     if test_acc > best_acc:
                         best_acc = test_acc
@@ -958,13 +887,7 @@ class ContinualImpl2():
                         elif lbl == 10:
                             save_model(model, 'mnist5.pt')
                 
-                    # if len(robust_lst) > 0:
-                    #     # train_mnist(model, robust_dataloader, nn.CrossEntropyLoss(), optimizer, self.device)
-                    #     train_robust(model, robust_dataloader, nn.CrossEntropyLoss(), optimizer, self.device, lst_poly_lst)
-                
-            self.__verify_iteration(robust_lst, target_lst, lst_poly_lst, lbl)
-            self.__mask_off(mask_index)
-            masked_index_lst.append(mask_index)
+            self.__verify_iteration(robust_lst, target_lst, lst_poly_lst, size, lbl, device, eps)
 
 
     def __write_constr_output_layer(self, y0, y, prob, prev_var_idx):
@@ -1006,10 +929,10 @@ class ContinualImpl2():
         return True, lst_poly
 
 
-    def __verify_iteration(self, robust_lst, target_lst, lst_poly_lst, lbl):
+    def __verify_iteration(self, robust_lst, target_lst, lst_poly_lst, size, lbl, device, eps):
         print(lbl)
 
-        test_dataset = datasets.MNIST('../data', train=False, transform=self.transform)
+        test_dataset = datasets.MNIST('../data', train=False, transform=transforms.ToTensor())
 
         for i in range(0, lbl):
             if i == 0:
@@ -1018,25 +941,25 @@ class ContinualImpl2():
                 test_index = test_index | (test_dataset.targets == i)
 
         test_dataset.data, test_dataset.targets = test_dataset.data[test_index], test_dataset.targets[test_index]
-        test_dataloader = torch.utils.data.DataLoader(test_dataset, **self.test1000_kwargs)
+        test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=100)
 
         if lbl == 2:
-            model = load_model(MNISTNet, 'mnist1.pt', lbl)
+            model = load_model(MNISTNet, 'mnist1.pt', size, lbl)
         elif lbl == 4:
-            model = load_model(MNISTNet, 'mnist2.pt', lbl)
+            model = load_model(MNISTNet, 'mnist2.pt', size, lbl)
         elif lbl == 6:
-            model = load_model(MNISTNet, 'mnist3.pt', lbl)
+            model = load_model(MNISTNet, 'mnist3.pt', size, lbl)
         elif lbl == 8:
-            model = load_model(MNISTNet, 'mnist4.pt', lbl)
+            model = load_model(MNISTNet, 'mnist4.pt', size, lbl)
         elif lbl == 10:
-            model = load_model(MNISTNet, 'mnist5.pt', lbl)
+            model = load_model(MNISTNet, 'mnist5.pt', size, lbl)
 
         shape, lower, upper = (1,784), np.zeros(784), np.ones(784)
         formal_model = get_formal_model(model, shape, lower, upper)
 
-        test(model, test_dataloader, nn.CrossEntropyLoss(), self.device)
+        test(model, test_dataloader, nn.CrossEntropyLoss(), device)
 
-        test_dataloader = torch.utils.data.DataLoader(test_dataset, **self.test1_kwargs)
+        test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=1)
 
         print('robust len = {}'.format(len(robust_lst)))
         pass_cnt, fail_cnt = 0, 0
@@ -1044,38 +967,41 @@ class ContinualImpl2():
         for i in range(len(robust_lst)):
             img, target = robust_lst[i], target_lst[i]
 
-            lower_i, upper_i = (img - self.eps).reshape(-1), (img + self.eps).reshape(-1)
+            lower_i, upper_i = (img - eps).reshape(-1), (img + eps).reshape(-1)
             lower_i = np.maximum(lower_i, formal_model.lower)
             upper_i = np.minimum(upper_i, formal_model.upper)
 
-            if self.__verify(formal_model, lower_i, upper_i, target):
+            res, lst_poly = self.__verify(formal_model, lower_i, upper_i, target)
+            if res:
                 pass_cnt += 1
             else:
                 fail_cnt += 1
+            lst_poly_lst[i] = lst_poly
 
         print('pass_cnt = {}, fail_cnt = {}, percent = {}'.format(pass_cnt, fail_cnt,
             pass_cnt / len(robust_lst) if len(robust_lst) > 0 else 0))
 
-        for data, target in test_dataloader:
-            img = data.numpy().reshape(1, 784)
+        if lbl < 10:
+            for data, target in test_dataloader:
+                img = data.numpy().reshape(1, 784)
 
-            lower_i, upper_i = (img - self.eps).reshape(-1), (img + self.eps).reshape(-1)
-            lower_i = np.maximum(lower_i, formal_model.lower)
-            upper_i = np.minimum(upper_i, formal_model.upper)
-            target = target.numpy()[0]
+                lower_i, upper_i = (img - eps).reshape(-1), (img + eps).reshape(-1)
+                lower_i = np.maximum(lower_i, formal_model.lower)
+                upper_i = np.minimum(upper_i, formal_model.upper)
+                target = target.numpy()[0]
 
-            if target >= lbl - 2:
-                res, lst_poly = self.__verify(formal_model, lower_i, upper_i, target)
-                if res:
-                    robust_lst.append(img)
-                    target_lst.append(target)
-                    lst_poly_lst.append(lst_poly)
+                if target >= lbl - 2:
+                    res, lst_poly = self.__verify(formal_model, lower_i, upper_i, target)
+                    if res:
+                        robust_lst.append(img)
+                        target_lst.append(target)
+                        lst_poly_lst.append(lst_poly)
 
-                    if len(robust_lst) == lbl * 10:
-                        print('enough')
-                        break
+                        if len(robust_lst) == lbl * 5:
+                            print('enough')
+                            print(target_lst)
+                            break
 
 
     def solve(self, models, assertion, display=None):
         self.__train_iteration()
-        # self.__verify_iteration()
