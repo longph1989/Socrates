@@ -649,7 +649,6 @@ class ContinualImpl2():
             for j in range(100):
                 aux_img = generate_x(784, lower_i, upper_i)
                 aux_robust_lst.append(aux_img)
-                # aux_robust_lst.append(img.copy())
                 aux_target_lst.append(target_lst[i])
 
         return aux_robust_lst, aux_target_lst
@@ -661,7 +660,7 @@ class ContinualImpl2():
         model.train()
 
         loss, loss1, loss2 = 0.0, 0.0, 0.0
-        lamdba1, lambda2 = 1e-3, 1.0
+        lamdba1, lambda2 = 1e-9, 1e-9
 
         idx = lbl // 2 - 1 # idx = 1,2,3,4
 
@@ -675,15 +674,15 @@ class ContinualImpl2():
             optimizer.zero_grad()
             loss.backward()
 
-            # params = model.named_parameters()
-            # for name, param in params:
-            #     if 'weight' in name:
-            #         if 'fc4' in name:
-            #             for i in range(idx):
-            #                 param.grad.data[2*i:2*(i+1),size*(i+1):] = 0.0
-            #         elif 'fc1' not in name:
-            #             for i in range(idx):
-            #                 param.grad.data[size*i:size*(i+1),size*(i+1):] = 0.0
+            params = model.named_parameters()
+            for name, param in params:
+                if 'weight' in name:
+                    if 'fc4' in name:
+                        for i in range(idx):
+                            param.grad.data[2*i:2*(i+1),size*(i+1):] = 0.0
+                    elif 'fc1' not in name:
+                        for i in range(idx):
+                            param.grad.data[size*i:size*(i+1),size*(i+1):] = 0.0
 
             optimizer.step()
 
@@ -697,84 +696,84 @@ class ContinualImpl2():
             optimizer.zero_grad()
             loss.backward()
 
-            # params = model.named_parameters()
-            # for name, param in params:
-            #     if 'weight' in name:
-            #         if 'fc4' in name:
-            #             for i in range(idx):
-            #                 param.grad.data[2*i:2*(i+1),size*(i+1):] = 0.0
-            #         elif 'fc1' not in name:
-            #             for i in range(idx):
-            #                 param.grad.data[size*i:size*(i+1),size*(i+1):] = 0.0
+            params = model.named_parameters()
+            for name, param in params:
+                if 'weight' in name:
+                    if 'fc4' in name:
+                        for i in range(idx):
+                            param.grad.data[2*i:2*(i+1),size*(i+1):] = 0.0
+                    elif 'fc1' not in name:
+                        for i in range(idx):
+                            param.grad.data[size*i:size*(i+1),size*(i+1):] = 0.0
 
             optimizer.step()
 
-        # model.fc1.register_forward_hook(get_activation('fc1'))
-        # model.fc2.register_forward_hook(get_activation('fc2'))
-        # model.fc3.register_forward_hook(get_activation('fc3'))
-        # model.fc4.register_forward_hook(get_activation('fc4'))
+        model.fc1.register_forward_hook(get_activation('fc1'))
+        model.fc2.register_forward_hook(get_activation('fc2'))
+        model.fc3.register_forward_hook(get_activation('fc3'))
+        model.fc4.register_forward_hook(get_activation('fc4'))
 
-        # for batch3, (x, y) in enumerate(robust_dataloader):
-        #     x, y = x.to(device), y.to(device)
-        #     lst_poly = lst_poly_lst[batch3]
+        for batch3, (x, y) in enumerate(robust_dataloader):
+            x, y = x.to(device), y.to(device)
+            lst_poly = lst_poly_lst[int(batch3 / 5)]
 
-        #     # Compute prediction error
-        #     pred = model(x)
+            # Compute prediction error
+            pred = model(x)
 
-        #     for i in range(4):
-        #         layer = 'fc' + str(i + 1)
+            for i in range(4):
+                layer = 'fc' + str(i + 1)
 
-        #         if i < 3:
-        #             layer_tensor = activation[layer][:,:size * idx]
-        #         else:
-        #             layer_tensor = activation[layer][:,:2 * idx]
+                if i < 3:
+                    layer_tensor = activation[layer][:,:size * idx]
+                else:
+                    layer_tensor = activation[layer][:,:2 * idx]
 
-        #         lower_tensor = torch.Tensor(lst_poly[2 * i + 1].lw)
-        #         upper_tensor = torch.Tensor(lst_poly[2 * i + 1].up)
-        #         mean_tensor = (lower_tensor + upper_tensor) / 2
+                lower_tensor = torch.Tensor(lst_poly[2 * i + 1].lw)
+                upper_tensor = torch.Tensor(lst_poly[2 * i + 1].up)
+                mean_tensor = (lower_tensor + upper_tensor) / 2
 
-        #         mask_lower = layer_tensor < lower_tensor
-        #         mask_upper = layer_tensor > upper_tensor
+                mask_lower = layer_tensor < lower_tensor
+                mask_upper = layer_tensor > upper_tensor
 
-        #         # square
-        #         sum_lower = ((layer_tensor - mean_tensor) ** 2)[mask_lower].sum()
-        #         sum_upper = ((layer_tensor - mean_tensor) ** 2)[mask_upper].sum()
+                # square
+                sum_lower = ((layer_tensor - mean_tensor) ** 2)[mask_lower].sum()
+                sum_upper = ((layer_tensor - mean_tensor) ** 2)[mask_upper].sum()
 
-        #         # all layers
-        #         loss1 = loss1 + (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
+                # all layers
+                loss1 = loss1 + (sum_lower + sum_upper) / (len(layer_tensor) * len(layer_tensor[0]))
 
-        # params = model.named_parameters()
-        # for name, param in params:
-        #     if 'weight' in name:
-        #         if 'fc4' in name:
-        #             loss2 = loss2 + ((param.data[:2 * idx,:size * idx] - old_params[name]) ** 2).sum()
-        #         elif 'fc1' not in name:
-        #             loss2 = loss2 + ((param.data[:size * idx,:size * idx] - old_params[name]) ** 2).sum()
-        #         else:
-        #             loss2 = loss2 + ((param.data[:size * idx] - old_params[name]) ** 2).sum()
-        #     elif 'bias' in name:
-        #         if 'fc4' in name:
-        #             loss2 = loss2 + ((param.data[:2 * idx] - old_params[name]) ** 2).sum()
-        #         else:
-        #             loss2 = loss2 + ((param.data[:size * idx] - old_params[name]) ** 2).sum()
+        params = model.named_parameters()
+        for name, param in params:
+            if 'weight' in name:
+                if 'fc4' in name:
+                    loss2 = loss2 + ((param.data[:2 * idx,:size * idx] - old_params[name]) ** 2).sum()
+                elif 'fc1' not in name:
+                    loss2 = loss2 + ((param.data[:size * idx,:size * idx] - old_params[name]) ** 2).sum()
+                else:
+                    loss2 = loss2 + ((param.data[:size * idx] - old_params[name]) ** 2).sum()
+            elif 'bias' in name:
+                if 'fc4' in name:
+                    loss2 = loss2 + ((param.data[:2 * idx] - old_params[name]) ** 2).sum()
+                else:
+                    loss2 = loss2 + ((param.data[:size * idx] - old_params[name]) ** 2).sum()
 
-        # loss = lamdba1 * loss1 + lambda2 * loss2
+        loss = lamdba1 * loss1 + lambda2 * loss2
 
-        # # Backpropagation
-        # optimizer.zero_grad()
-        # loss.backward()
+        # Backpropagation
+        optimizer.zero_grad()
+        loss.backward()
 
-        # params = model.named_parameters()
-        # for name, param in params:
-        #     if 'weight' in name:
-        #         if 'fc4' in name:
-        #             for i in range(idx):
-        #                 param.grad.data[2*i:2*(i+1),size*(i+1):] = 0.0
-        #         elif 'fc1' not in name:
-        #             for i in range(idx):
-        #                 param.grad.data[size*i:size*(i+1),size*(i+1):] = 0.0
+        params = model.named_parameters()
+        for name, param in params:
+            if 'weight' in name:
+                if 'fc4' in name:
+                    for i in range(idx):
+                        param.grad.data[2*i:2*(i+1),size*(i+1):] = 0.0
+                elif 'fc1' not in name:
+                    for i in range(idx):
+                        param.grad.data[size*i:size*(i+1),size*(i+1):] = 0.0
 
-        # optimizer.step()
+        optimizer.step()
 
 
     def __transfer_model(self, model1, model2, size, lbl):
@@ -838,7 +837,7 @@ class ContinualImpl2():
             if lbl > 2: self.__transfer_model(old_model, model, size, lbl)
 
             optimizer = optim.SGD(model.parameters(), lr=1e-2)
-            num_of_epochs = 10 # 10 * lbl
+            num_of_epochs = 20
 
             if lbl == 2:
                 model = load_model(MNISTNet, 'mnist1.pt', size, lbl)
@@ -981,8 +980,10 @@ class ContinualImpl2():
         print('pass_cnt = {}, fail_cnt = {}, percent = {}'.format(pass_cnt, fail_cnt,
             pass_cnt / len(robust_lst) if len(robust_lst) > 0 else 0))
 
+        cnt = 0
         if lbl < 10:
             for data, target in test_dataloader:
+                cnt += 1
                 img = data.numpy().reshape(1, 784)
 
                 lower_i, upper_i = (img - eps).reshape(-1), (img + eps).reshape(-1)
@@ -1001,6 +1002,9 @@ class ContinualImpl2():
                             print('enough')
                             print(target_lst)
                             break
+                    
+                    if cnt >= lbl * 100:
+                        assert False
 
 
     def solve(self, models, assertion, display=None):
