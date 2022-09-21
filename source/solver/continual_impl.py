@@ -310,12 +310,15 @@ class ContinualImpl1():
             print('DeepPoly Failed!!! Use MILP!!!')
             if verify_milp(model, lst_poly, self.__write_constr_output_layer, 5):
                 print('Verified!!!')
+                res = True
             else:
                 print('Failed!!!')
+                res = False
         else:
             print('Verified!!!')
+            res = True
 
-        return lst_poly
+        return res, lst_poly
 
 
     def __gen_train_data(self, model, lower, upper, num=3000, aux=False, is_min=True):
@@ -378,7 +381,7 @@ class ContinualImpl1():
         model.train()
 
         loss, loss1 = 0.0, 0.0
-        lamdba1 = 1e-3
+        lamdba1 = 1e-9
 
         for batch1, (x, y) in enumerate(train_dataloader):
             x, y = x.to(device), y.to(device)
@@ -459,9 +462,9 @@ class ContinualImpl1():
             prop_dataset = TensorDataset(tensor_prop_x, tensor_prop_y) # create dataset
             prop_dataloader = DataLoader(prop_dataset, batch_size=100, shuffle=True) # create dataloader
 
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
 
-        num_of_epochs = 200
+        num_of_epochs = 50
         best_acc = 0.0
             
         for epoch in range(num_of_epochs):
@@ -476,6 +479,134 @@ class ContinualImpl1():
             if best_acc < test_acc:
                 best_acc = test_acc
                 save_model(model, file_name)
+
+
+    def __find_layer(self, new_lst_poly, lst_poly):
+        for i in range(len(lst_poly)):
+            if i % 2 == 1:
+                if np.any(new_lst_poly[i].lw < lst_poly[i].lw) or \
+                np.any(new_lst_poly[i].up > lst_poly[i].up):
+                    return i
+
+
+    def __write_objective(self, prob, old_weights, old_bias):
+        d0, d1 = old_weights.shape[0], old_weights.shape[1]
+
+        for i in range(d0):
+            for j in range(d1):
+                if i == 0 and j == 0:
+                    prob.write('  [ w_{}_{} ^ 2'.format(i, j))
+                else:
+                    prob.write(' + w_{}_{} ^ 2'.format(i, j))
+
+        for j in range(d1):
+            prob.write(' + b_{} ^ 2'.format(j))
+        prob.write(' ]')
+
+        for i in range(d0):
+            for j in range(d1):
+                old_weight = old_weights[i][j]
+                if old_weight > 0.0:
+                    prob.write(' - {} w_{}_{}'.format(2 * old_weight, i, j))
+                elif old_weight < 0.0:
+                    prob.write(' + {} w_{}_{}'.format(2 * abs(old_weight), i, j))
+
+        for j in range(d1):
+            if old_bias[0][j] > 0.0:
+                prob.write(' - {} b_{}'.format(2 * old_bias[0][j], j))
+            elif old_bias[0][j] < 0.0:
+                prob.write(' + {} b_{}'.format(2 * abs(old_bias[0][j]), j))
+        prob.write('\n')
+
+        prob.flush()
+
+
+    def __write_constr(self, prob, old_weights, old_bias, lst_poly_i):
+        d0, d1 = old_weights.shape[0], old_weights.shape[1]
+
+        for j in range(d1):
+            for i in range(d0):
+                if i == 0:
+                    prob.write('  [ w_{}_{} * x_{}'.format(i, j, i))
+                else:
+                    prob.write(' + w_{}_{} * x_{}'.format(i, j, i))
+            prob.write(' ] + b_{} <= {}\n'.format(j, lst_poly_i.up[j]))
+
+        for j in range(d1):
+            for i in range(d0):
+                if i == 0:
+                    prob.write('  [ w_{}_{} * x_{}'.format(i, j, i))
+                else:
+                    prob.write(' + w_{}_{} * x_{}'.format(i, j, i))
+            prob.write(' ] + b_{} >= {}\n'.format(j, lst_poly_i.lw[j]))
+
+        prob.flush()
+
+
+    def __write_bounds(self, prob, old_weights, old_bias, lst_poly_i):
+        d0, d1 = old_weights.shape[0], old_weights.shape[1]
+
+        for i in range(d0):
+            for j in range(d1):
+                old_weight = old_weights[i][j]
+                prob.write('  {} <= w_{}_{} <= {}\n'.format(old_weight - 0.5, i, j, old_weight + 0.5))
+
+        for j in range(d1):
+            prob.write('  {} <= b_{} <= {}\n'.format(old_bias[0][j] - 0.5, j, old_bias[0][j] + 0.5))
+
+        for i in range(len(lst_poly_i.lw)):
+            prob.write('  {} <= x_{} <= {}\n'.format(lst_poly_i.lw[i], i, lst_poly_i.up[i]))
+
+        prob.flush()
+
+
+    def __clip(self, model, new_lst_poly, lst_poly):
+        layer = self.__find_layer(new_lst_poly, lst_poly)
+
+        old_weights = model.layers[layer - 1].weights
+        old_bias = model.layers[layer - 1].bias
+
+        print(old_weights.shape)
+        print(old_bias.shape)
+
+        filename = 'prob.lp'
+        prob = open(filename, 'w')
+
+        prob.write('Minimize\n')
+        self.__write_objective(prob, old_weights, old_bias)
+
+        prob.write('Subject To\n')
+        self.__write_constr(prob, old_weights, old_bias, lst_poly[layer])
+
+        prob.write('Bounds\n')
+        self.__write_bounds(prob, old_weights, old_bias, lst_poly[layer - 1])
+
+        prob.write('End\n')
+        prob.flush()
+        prob.close()
+
+        opt = gp.read(filename)
+        opt.setParam(GRB.Param.DualReductions, 0)
+        opt.setParam(GRB.Param.NonConvex, 2)
+        opt.setParam(GRB.Param.TimeLimit, 600)
+
+        opt.optimize()
+        print('status = {}'.format(opt.status))
+
+        if opt.status == GRB.TIME_LIMIT:
+            print('Timeout')
+        elif opt.status == GRB.INFEASIBLE:
+            print('Infeasible')
+        elif opt.status == GRB.OPTIMAL:
+            print('Optimal')
+            d0, d1 = old_weights.shape[0], old_weights.shape[1]
+
+            for j in range(d1):
+                for i in range(d0):
+                    var = opt.getVarByName('w_' + str(i) + '_' + str(j))
+                    model.layers[layer - 1].weights[i][j] = var.x
+                var = opt.getVarByName('b_' + str(j))
+                model.layers[layer - 1].bias[0][j] = var.x
 
 
     def solve(self, models, assertion, display=None):
@@ -548,13 +679,13 @@ class ContinualImpl1():
 
         #         formal_model1 = get_formal_model(model1, (1,5), np.array(formal_lower0), np.array(formal_upper0))
         #         try:
-        #             lst_poly = self.__verify(formal_model1, np.array(formal_lower3), np.array(formal_upper3))
+        #             res, lst_poly = self.__verify(formal_model1, np.array(formal_lower3), np.array(formal_upper3))
         #         except:
         #             print("Error with x1 = {}, x2 = {}".format(x1, x2))
 
         ###################### Train model2 ##############################
-        for x1 in range(len1):
-            for x2 in range(len2):
+        for x1 in range(1):
+            for x2 in range(1):
                 print('\n=============================================\n')
                 print('x1 = {}, x2 = {}'.format(x1, x2))
 
@@ -570,11 +701,15 @@ class ContinualImpl1():
                 formal_model1 = get_formal_model(model1, (1,5), np.array(formal_lower0), np.array(formal_upper0))
                 try:
                     print('prop3 model1')
-                    lst_poly = self.__verify(formal_model1, np.array(formal_lower3), np.array(formal_upper3))
+                    res, lst_poly = self.__verify(formal_model1, np.array(formal_lower3), np.array(formal_upper3))
                     print('prop4 model1')
                     self.__verify(formal_model1, np.array(formal_lower4), np.array(formal_upper4))
                 except:
                     print("Error with x1 = {}, x2 = {}".format(x1, x2))
+
+                if not res:
+                    print('Model 1 is not verified!!! Skip!!!')
+                    continue
 
                 # data from prop 3 bounds, generate based on model1
                 aux_train_x3, aux_train_y3 = self.__gen_train_data(formal_model1, lower3, upper3, num=300, is_min=False)
@@ -596,8 +731,8 @@ class ContinualImpl1():
                 ###############################################################################
                 
                 file_name2 = "acasxu2_200_" + str(x1) + "_" + str(x2) + ".pt"
-                self.__train_new_model(model1, device, train_x4, train_y4, test_x, test_y, file_name2,
-                        aux_train_x3, aux_train_y3, lst_poly)
+                # self.__train_new_model(model1, device, train_x4, train_y4, test_x, test_y, file_name2,
+                #         aux_train_x3, aux_train_y3, lst_poly)
 
                 model2 = load_model(ACASXuNet, file_name2)
                 print('finish model 2')
@@ -609,9 +744,13 @@ class ContinualImpl1():
                 formal_model2 = get_formal_model(model2, (1,5), np.array(formal_lower0), np.array(formal_upper0))
                 try:
                     print('prop3 model2')
-                    self.__verify(formal_model2, np.array(formal_lower3), np.array(formal_upper3))
+                    res, new_lst_poly = self.__verify(formal_model2, np.array(formal_lower3), np.array(formal_upper3))
                     print('prop4 model2')
                     self.__verify(formal_model2, np.array(formal_lower4), np.array(formal_upper4))
+
+                    if not res:
+                        self.__clip(formal_model2, new_lst_poly, lst_poly)
+                        res, new_lst_poly = self.__verify(formal_model2, np.array(formal_lower3), np.array(formal_upper3))
                 except:
                     print("Error with x1 = {}, x2 = {}".format(x1, x2))
 
@@ -638,6 +777,169 @@ class MNISTNet(nn.Module):
 
 
 class ContinualImpl2():
+    def __find_layer(self, new_lst_poly, lst_poly):
+        for i in range(len(lst_poly)):
+            if i % 2 == 1:
+                old_len = len(lst_poly[i].lw)
+                if np.any(new_lst_poly[i].lw[:old_len] < lst_poly[i].lw) or \
+                np.any(new_lst_poly[i].up[:old_len] > lst_poly[i].up):
+                    return i
+
+
+    def __write_objective(self, prob, old_weights, old_bias):
+        d0, d1 = old_weights.shape[0], old_weights.shape[1]
+
+        for i in range(d0):
+            for j in range(d1):
+                if i == 0 and j == 0:
+                    prob.write('  [ w_{}_{} ^ 2'.format(i, j))
+                else:
+                    prob.write(' + w_{}_{} ^ 2'.format(i, j))
+
+        for j in range(d1):
+            prob.write(' + b_{} ^ 2'.format(j))
+        prob.write(' ]')
+
+        for i in range(d0):
+            for j in range(d1):
+                old_weight = old_weights[i][j]
+                if old_weight > 0.0:
+                    prob.write(' - {} w_{}_{}'.format(2 * old_weight, i, j))
+                elif old_weight < 0.0:
+                    prob.write(' + {} w_{}_{}'.format(2 * abs(old_weight), i, j))
+
+        for j in range(d1):
+            if old_bias[0][j] > 0.0:
+                prob.write(' - {} b_{}'.format(2 * old_bias[0][j], j))
+            elif old_bias[0][j] < 0.0:
+                prob.write(' + {} b_{}'.format(2 * abs(old_bias[0][j]), j))
+        prob.write('\n')
+
+        prob.flush()
+
+
+    def __write_constr(self, prob, old_weights, old_bias, lst_poly_i, index):
+        # old_weights.shape = (784, 20) or (20, 20)
+        # lst_poly_i.le.shape = (10, 785) or (10, 11)
+        d0, d1 = lst_poly_i.le.shape[1] - 1, lst_poly_i.le.shape[0]
+
+        for j in range(d1): # 10
+            for i in range(d0): # 784
+                if i == 0:
+                    prob.write('  [ w_{}_{} * x_{}_{}'.format(i, j, i, index))
+                else:
+                    prob.write(' + w_{}_{} * x_{}_{}'.format(i, j, i, index))
+            prob.write(' ] + b_{} <= {}\n'.format(j, lst_poly_i.up[j]))
+
+        for j in range(d1):
+            for i in range(d0):
+                if i == 0:
+                    prob.write('  [ w_{}_{} * x_{}_{}'.format(i, j, i, index))
+                else:
+                    prob.write(' + w_{}_{} * x_{}_{}'.format(i, j, i, index))
+            prob.write(' ] + b_{} >= {}\n'.format(j, lst_poly_i.lw[j]))
+
+        prob.flush()
+
+
+    def __write_bounds(self, prob, old_weights, old_bias, lst_poly_i, index):
+        d0, d1 = old_weights.shape[0], old_weights.shape[1]
+
+        if index == 0:
+            for i in range(d0):
+                for j in range(d1):
+                    old_weight = old_weights[i][j]
+                    if old_weight == 0.0: # heuristic
+                        prob.write('  w_{}_{} = {}\n'.format(i, j, 0.0))
+                    else:
+                        prob.write('  {} <= w_{}_{} <= {}\n'.format(old_weight - 0.5, i, j, old_weight + 0.5))
+
+        if index == 0:
+            for j in range(d1):
+                prob.write('  {} <= b_{} <= {}\n'.format(old_bias[0][j] - 0.5, j, old_bias[0][j] + 0.5))
+
+        for i in range(len(lst_poly_i.lw)):
+            prob.write('  {} <= x_{}_{} <= {}\n'.format(lst_poly_i.lw[i], i, index, lst_poly_i.up[i]))
+
+        prob.flush()
+
+
+    def __clip(self, model, fmodel, new_lst_poly_lst, lst_poly_lst):
+        layer = 100
+
+        for i in range(len(lst_poly_lst)):
+            new_lst_poly = new_lst_poly_lst[i]
+            lst_poly = lst_poly_lst[i]
+            layer_i = self.__find_layer(new_lst_poly, lst_poly)
+            if layer_i < layer:
+                layer = layer_i
+
+        old_weights = fmodel.layers[layer - 1].weights
+        old_bias = fmodel.layers[layer - 1].bias
+
+        filename = 'prob.lp'
+        prob = open(filename, 'w')
+
+        prob.write('Minimize\n')
+        self.__write_objective(prob, old_weights, old_bias)
+
+        prob.write('Subject To\n')
+        for i in range(len(lst_poly_lst)):
+            lst_poly = lst_poly_lst[i]
+            self.__write_constr(prob, old_weights, old_bias, lst_poly[layer], i)
+
+        prob.write('Bounds\n')
+        for i in range(len(lst_poly_lst)):
+            lst_poly = lst_poly_lst[i]
+            self.__write_bounds(prob, old_weights, old_bias, lst_poly[layer - 1], i)
+
+        prob.write('End\n')
+        prob.flush()
+        prob.close()
+
+        opt = gp.read(filename)
+        opt.setParam(GRB.Param.DualReductions, 0)
+        opt.setParam(GRB.Param.NonConvex, 2)
+        opt.setParam(GRB.Param.TimeLimit, 60)
+
+        opt.optimize()
+        print('status = {}'.format(opt.status))
+
+        if opt.status == GRB.TIME_LIMIT:
+            print('Timeout')
+            return False
+        elif opt.status == GRB.INFEASIBLE:
+            print('Infeasible')
+            return False
+        elif opt.status == GRB.OPTIMAL:
+            print('Optimal')
+            
+            d0, d1 = old_weights.shape[0], old_weights.shape[1]
+
+            for j in range(d1):
+                for i in range(d0):
+                    var = opt.getVarByName('w_' + str(i) + '_' + str(j))
+                    fmodel.layers[layer - 1].weights[i][j] = var.x
+                var = opt.getVarByName('b_' + str(j))
+                fmodel.layers[layer - 1].bias[0][j] = var.x
+
+            idx = layer // 2 + 1
+            params = model.named_parameters()
+            for name, param in params:
+                if name == ('fc' + str(idx) + '.weight'):
+                    for j in range(d1):
+                        for i in range(d0):
+                            var = opt.getVarByName('w_' + str(i) + '_' + str(j))
+                            param.data[j][i] = var.x 
+                elif name == ('fc' + str(idx) + '.bias'):
+                    for j in range(d1):
+                        var = opt.getVarByName('b_' + str(j))
+                        param.data[j] = var.x
+                else: continue
+
+            return True
+
+
     def __gen_more_data(self, robust_lst, target_lst, eps):
         aux_robust_lst, aux_target_lst = [], []
 
@@ -652,6 +954,13 @@ class ContinualImpl2():
                 aux_target_lst.append(target_lst[i])
 
         return aux_robust_lst, aux_target_lst
+
+
+    def __mask_off(self, train_index):
+        for index in range(len(train_index)):
+            if train_index[index]:
+                if random.random() > 0.2:
+                    train_index[index] = False
 
 
     def __train_mnist(self, model, train_dataloader, loss_fn, optimizer, device, size, lbl, 
@@ -806,11 +1115,12 @@ class ContinualImpl2():
 
 
     def __train_iteration(self):
+        masked_index_lst = []
         robust_lst, target_lst, lst_poly_lst = [], [], []
         size, eps, device = 10, 0.01, 'cpu'
 
         for lbl in range(2, 11, 2):
-            print(lbl)
+            print('lbl = {}'.format(lbl))
 
             train_dataset = datasets.MNIST('../data', train=True, download=True, transform=transforms.ToTensor())
             test_dataset = datasets.MNIST('../data', train=False, transform=transforms.ToTensor())
@@ -818,13 +1128,18 @@ class ContinualImpl2():
             for i in range(lbl - 2, lbl):
                 if i % 2 == 0:
                     train_index = train_dataset.targets == i
+                    mask_index = train_dataset.targets == i
                 else:
                     train_index = train_index | (train_dataset.targets == i)
+                    mask_index = mask_index | (train_dataset.targets == i)
 
                 if i == 0:
                     test_index = test_dataset.targets == 0
                 else:
                     test_index = test_index | (test_dataset.targets == i)
+
+            for masked_index in masked_index_lst:
+                train_index = train_index | masked_index
 
             train_dataset.data, train_dataset.targets = train_dataset.data[train_index], train_dataset.targets[train_index]
             test_dataset.data, test_dataset.targets = test_dataset.data[test_index], test_dataset.targets[test_index]
@@ -888,6 +1203,17 @@ class ContinualImpl2():
                 
             self.__verify_iteration(robust_lst, target_lst, lst_poly_lst, size, lbl, device, eps)
 
+            # incase the model is modified
+            if lbl == 4:
+                model = load_model(MNISTNet, 'mnist2.pt', size, lbl)
+            elif lbl == 6:
+                model = load_model(MNISTNet, 'mnist3.pt', size, lbl)
+            elif lbl == 8:
+                model = load_model(MNISTNet, 'mnist4.pt', size, lbl)
+
+            self.__mask_off(mask_index)
+            masked_index_lst.append(mask_index)
+
 
     def __write_constr_output_layer(self, y0, y, prob, prev_var_idx):
         prob.write('  x{} - x{} > 0.0\n'.format(prev_var_idx + y, prev_var_idx + y0))
@@ -929,8 +1255,7 @@ class ContinualImpl2():
 
 
     def __verify_iteration(self, robust_lst, target_lst, lst_poly_lst, size, lbl, device, eps):
-        print(lbl)
-
+        new_lst_poly_lst = []
         test_dataset = datasets.MNIST('../data', train=False, transform=transforms.ToTensor())
 
         for i in range(0, lbl):
@@ -975,10 +1300,43 @@ class ContinualImpl2():
                 pass_cnt += 1
             else:
                 fail_cnt += 1
-            lst_poly_lst[i] = lst_poly
+            new_lst_poly_lst.append(lst_poly)
 
         print('pass_cnt = {}, fail_cnt = {}, percent = {}'.format(pass_cnt, fail_cnt,
             pass_cnt / len(robust_lst) if len(robust_lst) > 0 else 0))
+
+        if pass_cnt < len(robust_lst):
+            if self.__clip(model, formal_model, new_lst_poly_lst, lst_poly_lst):
+                pass_cnt, fail_cnt = 0, 0
+
+                for i in range(len(robust_lst)):
+                    img, target = robust_lst[i], target_lst[i]
+
+                    lower_i, upper_i = (img - eps).reshape(-1), (img + eps).reshape(-1)
+                    lower_i = np.maximum(lower_i, formal_model.lower)
+                    upper_i = np.minimum(upper_i, formal_model.upper)
+
+                    res, lst_poly = self.__verify(formal_model, lower_i, upper_i, target)
+                    if res:
+                        pass_cnt += 1
+                    else:
+                        fail_cnt += 1
+                    new_lst_poly_lst[i] = lst_poly
+
+                print('pass_cnt = {}, fail_cnt = {}, percent = {}'.format(pass_cnt, fail_cnt,
+                    pass_cnt / len(robust_lst) if len(robust_lst) > 0 else 0))
+
+                if lbl == 4:
+                    save_model(model, 'mnist2.pt')
+                elif lbl == 6:
+                    save_model(model, 'mnist3.pt')
+                elif lbl == 8:
+                    save_model(model, 'mnist4.pt')
+                elif lbl == 10:
+                    save_model(model, 'mnist5.pt')
+
+        for i in range(len(robust_lst)):
+            lst_poly_lst[i] = new_lst_poly_lst[i]
 
         cnt = 0
         if lbl < 10:
