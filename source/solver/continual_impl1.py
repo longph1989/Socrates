@@ -233,6 +233,59 @@ class ContinualImpl1():
                 save_model(model, file_name)
 
 
+    def __clip(self, model, fmodel, new_lst_poly, lst_poly):
+        layer = 12 # the last layer
+
+        old_weights = fmodel.layers[layer].weights
+        old_bias = fmodel.layers[layer].bias
+
+        print(old_weights.shape)
+        print(old_bias.shape)
+
+        d0, d1 = old_weights.shape[0], old_weights.shape[1]
+        to_clip = [0, 2]
+
+        min_b_lst, max_b_lst = [], []
+        
+        for j in range(d1):
+            min_wx, max_wx = 0.0, 0.0
+            for i in range(d0):
+                old_weight = old_weights[i][j]
+                if old_weight < 0.0:
+                    max_wx += old_weight * new_lst_poly[layer].lw[i]
+                    min_wx += old_weight * new_lst_poly[layer].up[i]
+                elif old_weight > 0.0:
+                    max_wx += old_weight * new_lst_poly[layer].up[i]
+                    min_wx += old_weight * new_lst_poly[layer].lw[i]
+            min_b = lst_poly[layer + 1].lw[j] - min_wx
+            max_b = lst_poly[layer + 1].up[j] - max_wx
+
+            if j == 0:
+                min_b += lst_poly[layer + 1].lw[j]
+            elif j == 2:
+                max_b += lst_poly[layer + 1].up[j]
+            
+            min_b_lst.append(min_b)
+            max_b_lst.append(max_b)
+
+        print('min_b_lst = {}'.format(min_b_lst))
+        print('max_b_lst = {}'.format(max_b_lst))
+
+        for j in to_clip:
+            if min_b_lst[j] <= max_b_lst[j]:
+                fmodel.layers[layer].bias[0][j] = (min_b_lst[j] + max_b_lst[j]) / 2
+                print(fmodel.layers[layer].bias[0][j])
+            else:
+                print('Can\'t find b!!!')
+                return
+
+        params = model.named_parameters()
+        for name, param in params:
+            if name == 'fc7.bias':
+                for j in to_clip:
+                    param.data[j] = (min_b_lst[j] + max_b_lst[j]) / 2
+
+
     def solve(self, models, assertion, display=None):
         # input bounds
         lower0 = np.array([-0.3284, -0.5, -0.5, -0.5, -0.5])
@@ -295,6 +348,8 @@ class ContinualImpl1():
         ###################### Train model2 ##############################
         for x1 in range(len1):
             for x2 in range(len2):
+                if x1 != 2 or x2 != 1: continue
+
                 print('\n=============================================\n')
                 print('x1 = {}, x2 = {}'.format(x1, x2))
 
@@ -335,43 +390,44 @@ class ContinualImpl1():
                     print('Model 1 is not verified!!! Skip!!!')
                     continue
 
-                file_name2 = "acasxu2_200_" + str(x1) + "_" + str(x2) + ".pt"
+                # file_name2 = "acasxu2_200_" + str(x1) + "_" + str(x2) + ".pt"
+                file_name2 = "acasxu/model2_cn_05/acasxu2_200_" + str(x1) + "_" + str(x2) + ".pt"
                 training_mode = 'continual'
 
-                if training_mode == 'none':
-                    # data from prop 10 bounds, generate based on original model
-                    print('\nTrain with new data only!!!\n')
+                # if training_mode == 'none':
+                #     # data from prop 10 bounds, generate based on original model
+                #     print('\nTrain with new data only!!!\n')
 
-                    train_x10, train_y10 = self.__gen_data(model, lower10, upper10)
-                    self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2)
-                elif training_mode == 'data_syn':
-                    print('\nTrain with data synthesis!!!\n')
+                #     train_x10, train_y10 = self.__gen_data(model, lower10, upper10)
+                #     self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2)
+                # elif training_mode == 'data_syn':
+                #     print('\nTrain with data synthesis!!!\n')
 
-                    # data from prop 3 bounds, generate based on model1
-                    aux_train_x3, aux_train_y3 = self.__gen_data(formal_model1, lower3, upper3, num=1, is_min=False)
-                    # data from prop 10 bounds, generate based on original model
-                    train_x10, train_y10 = self.__gen_data(model, lower10, upper10)
+                #     # data from prop 3 bounds, generate based on model1
+                #     aux_train_x3, aux_train_y3 = self.__gen_data(formal_model1, lower3, upper3, num=1, is_min=False)
+                #     # data from prop 10 bounds, generate based on original model
+                #     train_x10, train_y10 = self.__gen_data(model, lower10, upper10)
 
-                    train_x10 = np.concatenate((train_x10, aux_train_x3), axis=0)
-                    train_y10 = np.concatenate((train_y10, aux_train_y3), axis=0)
+                #     train_x10 = np.concatenate((train_x10, aux_train_x3), axis=0)
+                #     train_y10 = np.concatenate((train_y10, aux_train_y3), axis=0)
 
-                    self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2)
-                elif training_mode == 'continual':
-                    print('\nTrain with continual certificate!!!\n')
+                #     self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2)
+                # elif training_mode == 'continual':
+                #     print('\nTrain with continual certificate!!!\n')
 
-                    # data from prop 3 bounds, generate based on model1
-                    aux_train_x3, aux_train_y3 = self.__gen_data(formal_model1, lower3, upper3, num=1, is_min=False)
-                    prop_x, prop_y = aux_train_x3.copy(), aux_train_y3.copy()
-                    # data from prop 10 bounds, generate based on original model
-                    train_x10, train_y10 = self.__gen_data(model, lower10, upper10)
+                #     # data from prop 3 bounds, generate based on model1
+                #     aux_train_x3, aux_train_y3 = self.__gen_data(formal_model1, lower3, upper3, num=1, is_min=False)
+                #     prop_x, prop_y = aux_train_x3.copy(), aux_train_y3.copy()
+                #     # data from prop 10 bounds, generate based on original model
+                #     train_x10, train_y10 = self.__gen_data(model, lower10, upper10)
 
-                    train_x10 = np.concatenate((train_x10, aux_train_x3), axis=0)
-                    train_y10 = np.concatenate((train_y10, aux_train_y3), axis=0)
+                #     train_x10 = np.concatenate((train_x10, aux_train_x3), axis=0)
+                #     train_y10 = np.concatenate((train_y10, aux_train_y3), axis=0)
 
-                    self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2,
-                        prop_x, prop_y, lst_poly)
-                else:
-                    assert False
+                #     self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2,
+                #         prop_x, prop_y, lst_poly)
+                # else:
+                #     assert False
 
                 model2 = load_model(ACASXuNet, file_name2)
                 print('finish model 2')
@@ -383,6 +439,12 @@ class ContinualImpl1():
                 formal_model2 = get_formal_model(model2, (1,5), np.array(formal_lower0), np.array(formal_upper0))
                 try:
                     print('prop3 model2')
+                    res, new_lst_poly = self.__verify(formal_model2, np.array(formal_lower3), np.array(formal_upper3))
+
+                    self.__clip(model2, formal_model2, new_lst_poly, lst_poly)
+
+                    test(model2, test_dataloader, nn.CrossEntropyLoss(), device)
+                    formal_model2 = get_formal_model(model2, (1,5), np.array(formal_lower0), np.array(formal_upper0))
                     res, new_lst_poly = self.__verify(formal_model2, np.array(formal_lower3), np.array(formal_upper3))
                 except:
                     print("Error with x1 = {}, x2 = {}".format(x1, x2))
