@@ -79,7 +79,7 @@ class ContinualImpl3():
             lower_i, upper_i = data.copy().reshape(-1), data.copy().reshape(-1)
             lower_i[gender_idx], upper_i[gender_idx] = 0.0, 1.0
 
-            for j in range(1):
+            for j in range(10):
                 x = generate_x(num_of_features, lower_i, upper_i)
 
                 xs.append(x)
@@ -334,7 +334,7 @@ class ContinualImpl3():
 
 
     def solve(self, models, assertion, display=None):
-        training_mode = 'continual'
+        training_mode = 'continual_ext'
 
         device = 'cpu'
         train_kwargs = {'batch_size': 100}
@@ -368,33 +368,66 @@ class ContinualImpl3():
         if training_mode == 'none':
             print('\nTrain with new data only!!!\n')
 
-            # new_x, new_y = self.__get_data('train_data2/input.txt', 'train_data2/label.txt')
             new_x, new_y = self.__adf(model, train_x, train_y)
+            self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt')
+        elif training_mode == 'none_ext':
+            print('\nTrain with new and old data only!!!\n')
+
+            old_x, old_y = self.__get_data('train_data/input.txt', 'train_data/label.txt')
+            print(len(old_x))
+
+            sample_idx = random.sample(range(len(train_x)), 6500)
+            old_x, old_y = old_x[sample_idx], old_y[sample_idx]
+
+            new_x, new_y = self.__adf(model, train_x, train_y)
+
+            new_x = np.concatenate((new_x, old_x), axis=0)
+            new_y = np.concatenate((new_y, old_y), axis=0)
+
             self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt')
         elif training_mode == 'data_syn':
             print('\nTrain with data synthesis!!!\n')
 
-            # new_x, new_y = self.__get_data('train_data2/input.txt', 'train_data2/label.txt')
             new_x, new_y = self.__adf(model, train_x, train_y)
             aux_x, aux_y = self.__gen_data(fair_lst, target_lst, num_of_features, gender_idx)
 
             print('aux samples = {}'.format(len(aux_x)))
 
-            np.concatenate((new_x, aux_x), axis=0)
-            np.concatenate((new_y, aux_y), axis=0)
+            new_x = np.concatenate((new_x, aux_x), axis=0)
+            new_y = np.concatenate((new_y, aux_y), axis=0)
 
             self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt')
         elif training_mode == 'continual':
             print('\nTrain with continual certificate!!!\n')
 
-            # new_x, new_y = self.__get_data('train_data2/input.txt', 'train_data2/label.txt')
             new_x, new_y = self.__adf(model, train_x, train_y)
             aux_x, aux_y = self.__gen_data(fair_lst, target_lst, num_of_features, gender_idx)
 
             print('aux samples = {}'.format(len(aux_x)))
 
-            np.concatenate((new_x, aux_x.copy()), axis=0)
-            np.concatenate((new_y, aux_y.copy()), axis=0)
+            new_x = np.concatenate((new_x, aux_x.copy()), axis=0)
+            new_y = np.concatenate((new_y, aux_y.copy()), axis=0)
+
+            self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt', aux_x, aux_y, lst_poly_lst)
+        elif training_mode == 'continual_ext':
+            print('\nTrain with continual certificate and extra data!!!\n')
+
+            old_x, old_y = self.__get_data('train_data/input.txt', 'train_data/label.txt')
+            print(len(old_x))
+
+            sample_idx = random.sample(range(len(train_x)), 6500)
+            old_x, old_y = old_x[sample_idx], old_y[sample_idx]
+
+            new_x, new_y = self.__adf(model, train_x, train_y)
+            aux_x, aux_y = self.__gen_data(fair_lst, target_lst, num_of_features, gender_idx)
+
+            print('aux samples = {}'.format(len(aux_x)))
+
+            new_x = np.concatenate((new_x, old_x), axis=0)
+            new_y = np.concatenate((new_y, old_y), axis=0)
+
+            new_x = np.concatenate((new_x, aux_x.copy()), axis=0)
+            new_y = np.concatenate((new_y, aux_y.copy()), axis=0)
 
             self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt', aux_x, aux_y, lst_poly_lst)
         else:

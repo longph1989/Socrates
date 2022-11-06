@@ -109,7 +109,7 @@ class ContinualImpl2():
         model.train()
 
         loss, loss1, loss2 = 0.0, 0.0, 0.0
-        lamdba1, lambda2 = 1e-9, 1e-9
+        lamdba1, lambda2 = 1e-3, 1e-3
 
         idx = group_idx # idx = 1,2,3,4
         size = size * output_size // 2 # size = 10,25
@@ -401,13 +401,13 @@ class ContinualImpl2():
         masked_index_lst = []
         robust_lst, target_lst, lst_poly_lst = [], [], []
         size, device = 10, 'cpu'
-        dataset = 'cifar10'
-        training_mode = 'continual_ext'
+        dataset = 'mnist'
+        training_mode = 'none_ext'
         already_init = True
 
         if dataset == 'mnist':
-            # groups = [[0,1],[2,3],[4,5],[6,7],[8,9]]
-            groups = [[0,1,2,3,4],[5,6,7,8,9]]
+            groups = [[0,1],[2,3],[4,5],[6,7],[8,9]]
+            # groups = [[0,1,2,3,4],[5,6,7,8,9]]
             eps = 0.01
         elif dataset == 'cifar10':
             # groups = [[0,1],[2,3],[4,5],[6,7],[8,9]]
@@ -434,12 +434,12 @@ class ContinualImpl2():
                 test_dataset.targets = torch.Tensor(test_dataset.targets).type(torch.LongTensor)
 
             train_index = train_dataset.targets == -1
-            if training_mode == 'continual_ext':
+            if training_mode == 'continual_ext' or training_mode == 'none_ext':
                 mask_index = train_dataset.targets == -1
 
             for idx in group:
                 train_index = train_index | (train_dataset.targets == idx)
-                if training_mode == 'continual_ext':
+                if training_mode == 'continual_ext' or training_mode == 'none_ext':
                     mask_index = mask_index | (train_dataset.targets == idx)
 
                 if idx == 0:
@@ -447,7 +447,7 @@ class ContinualImpl2():
                 else:
                     test_index = test_index | (test_dataset.targets == idx)
 
-            if training_mode == 'continual_ext':
+            if training_mode == 'continual_ext' or training_mode == 'none_ext':
                 for masked_index in masked_index_lst:
                     train_index = train_index | masked_index
 
@@ -495,13 +495,13 @@ class ContinualImpl2():
                                 assert False
             else:
                 if dataset == 'mnist':
-                    num_samples = 1
+                    num_samples = 10
                 elif dataset == 'cifar10':
-                    num_samples = 1
+                    num_samples = 10
                 else:
                     assert False
 
-                if len(robust_lst) > 0 and training_mode != 'none':
+                if len(robust_lst) > 0 and training_mode != 'none' and training_mode != 'none_ext':
                     aux_robust_lst, aux_target_lst = self.__gen_data(dataset, robust_lst, target_lst, eps, num_samples)
                     print('more train with len = {}'.format(len(aux_robust_lst)))
 
@@ -525,6 +525,8 @@ class ContinualImpl2():
 
                 if training_mode == 'none':
                     print('\nTrain with new data only!!!\n')
+                elif training_mode == 'none_ext':
+                    print('\nTrain with new and old data only!!!\n')
                 elif training_mode == 'data_syn':
                     print('\nTrain with data synthesis!!!\n')
                 elif training_mode == 'continual':
@@ -553,7 +555,7 @@ class ContinualImpl2():
             
             if group_idx == 0 and already_init:
                 if dataset == 'mnist':
-                    model = load_model(MNISTNet, 'mnist/mnist1.pt', size, num_of_lbls)
+                    model = load_model(MNISTNet, 'mnist2/mnist1.pt', size, num_of_lbls)
                 elif dataset == 'cifar10':
                     model = load_model(CIFAR10Net, 'cifar/cifar1.pt', size, num_of_lbls)
                 else:
@@ -570,6 +572,6 @@ class ContinualImpl2():
 
             self.__verify_iteration(model, dataset, robust_lst, target_lst, lst_poly_lst, size, num_of_lbls, group_idx, group, device, eps)
 
-            if training_mode == 'continual_ext':
+            if training_mode == 'continual_ext' or training_mode == 'none_ext':
                 self.__mask_off(mask_index)
                 masked_index_lst.append(mask_index)
