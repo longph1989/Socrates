@@ -111,11 +111,9 @@ def train(model, dataloader, loss_fn, optimizer, device):
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 
-def test(model, dataloader, loss_fn, device, debug=False):
+def test(model, dataloader, loss_fn, device):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
-
-    print(size)
     
     model.eval()
     test_loss, correct = 0, 0

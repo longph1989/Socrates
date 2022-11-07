@@ -29,6 +29,8 @@ import ast
 
 from nn_utils import *
 
+import time
+
 
 
 class CensusNet(nn.Module):
@@ -265,6 +267,8 @@ class ContinualImpl3():
             fair_dataloader = DataLoader(fair_dataset, batch_size=10, shuffle=False) # create dataloader
 
         best_acc = 0.0
+
+        start = time.time()
         for epoch in range(num_of_epochs):
             print('\n------------- Epoch {} -------------\n'.format(epoch))
             if fair_x is None:
@@ -278,6 +282,9 @@ class ContinualImpl3():
             if best_acc < test_acc:
                 best_acc = test_acc
                 save_model(model, file_name)
+        end = time.time()
+
+        return end - start
 
 
     def __is_discriminative(self, model, x):
@@ -364,12 +371,13 @@ class ContinualImpl3():
         ##################################################################
 
         fair_lst, target_lst, lst_poly_lst = self.__verify_iteration(model, num_of_features, gender_idx)
+        total_time = 0.0
 
         if training_mode == 'none':
             print('\nTrain with new data only!!!\n')
 
             new_x, new_y = self.__adf(model, train_x, train_y)
-            self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt')
+            total_time += self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt')
         elif training_mode == 'none_ext':
             print('\nTrain with new and old data only!!!\n')
 
@@ -384,7 +392,7 @@ class ContinualImpl3():
             new_x = np.concatenate((new_x, old_x), axis=0)
             new_y = np.concatenate((new_y, old_y), axis=0)
 
-            self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt')
+            total_time += self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt')
         elif training_mode == 'data_syn':
             print('\nTrain with data synthesis!!!\n')
 
@@ -396,7 +404,7 @@ class ContinualImpl3():
             new_x = np.concatenate((new_x, aux_x), axis=0)
             new_y = np.concatenate((new_y, aux_y), axis=0)
 
-            self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt')
+            total_time += self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt')
         elif training_mode == 'continual':
             print('\nTrain with continual certificate!!!\n')
 
@@ -408,7 +416,7 @@ class ContinualImpl3():
             new_x = np.concatenate((new_x, aux_x.copy()), axis=0)
             new_y = np.concatenate((new_y, aux_y.copy()), axis=0)
 
-            self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt', aux_x, aux_y, lst_poly_lst)
+            total_time += self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt', aux_x, aux_y, lst_poly_lst)
         elif training_mode == 'continual_ext':
             print('\nTrain with continual certificate and extra data!!!\n')
 
@@ -429,9 +437,15 @@ class ContinualImpl3():
             new_x = np.concatenate((new_x, aux_x.copy()), axis=0)
             new_y = np.concatenate((new_y, aux_y.copy()), axis=0)
 
-            self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt', aux_x, aux_y, lst_poly_lst)
+            total_time += self.__train_model(model, new_x, new_y, test_x, test_y, device, 'census2.pt', aux_x, aux_y, lst_poly_lst)
         else:
             assert False
+
+        total_time = round(total_time)
+        minute = total_time // 60
+        second = total_time - 60 * minute
+
+        print('Time = {}m{}s'.format(minute, second))
 
         model = load_model(CensusNet, 'census2.pt', num_of_features)
 

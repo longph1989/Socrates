@@ -29,6 +29,8 @@ import ast
 
 from nn_utils import *
 
+import time
+
 
 
 class MNISTNet(nn.Module):
@@ -388,7 +390,7 @@ class ContinualImpl2():
                         target_lst.append(target)
                         lst_poly_lst.append(lst_poly)
 
-                        if len(robust_lst) == num_of_lbls * 5:
+                        if len(robust_lst) == 25:
                             print('Enough robust samples')
                             print(target_lst)
                             break
@@ -400,21 +402,23 @@ class ContinualImpl2():
     def solve(self, models, assertion, display=None):
         masked_index_lst = []
         robust_lst, target_lst, lst_poly_lst = [], [], []
-        size, device = 10, 'cpu'
-        dataset = 'mnist'
-        training_mode = 'none_ext'
+        device = 'cpu'
+        dataset = 'cifar10'
+        training_mode = 'continual_ext'
         already_init = True
 
         if dataset == 'mnist':
-            groups = [[0,1],[2,3],[4,5],[6,7],[8,9]]
-            # groups = [[0,1,2,3,4],[5,6,7,8,9]]
-            eps = 0.01
+            # groups = [[0,1],[2,3],[4,5],[6,7],[8,9]]
+            groups = [[0,1,2,3,4],[5,6,7,8,9]]
+            size, eps = 10, 0.01
         elif dataset == 'cifar10':
             # groups = [[0,1],[2,3],[4,5],[6,7],[8,9]]
             groups = [[0,1,2,3,4],[5,6,7,8,9]]
-            eps = 0.001
+            size, eps = 10, 0.001
         else:
             assert False
+
+        total_time = 0.0
 
         for group_idx, group in enumerate(groups):
             print('group = {}'.format(group))
@@ -536,6 +540,7 @@ class ContinualImpl2():
                 else:
                     assert False
 
+                start = time.time()
                 for epoch in range(num_of_epochs):
                     print('\n------------- Epoch {} -------------\n'.format(epoch))
                     self.__train_robust(model, training_mode, train_dataloader, nn.CrossEntropyLoss(), optimizer, device,
@@ -552,10 +557,12 @@ class ContinualImpl2():
                             save_model(model, file_name)
                         else:
                             assert False
+                end = time.time()
+                total_time += end - start
             
             if group_idx == 0 and already_init:
                 if dataset == 'mnist':
-                    model = load_model(MNISTNet, 'mnist2/mnist1.pt', size, num_of_lbls)
+                    model = load_model(MNISTNet, 'mnist/mnist1.pt', size, num_of_lbls)
                 elif dataset == 'cifar10':
                     model = load_model(CIFAR10Net, 'cifar/cifar1.pt', size, num_of_lbls)
                 else:
@@ -575,3 +582,9 @@ class ContinualImpl2():
             if training_mode == 'continual_ext' or training_mode == 'none_ext':
                 self.__mask_off(mask_index)
                 masked_index_lst.append(mask_index)
+
+        total_time = round(total_time)
+        minute = total_time // 60
+        second = total_time - 60 * minute
+
+        print('Time = {}m{}s'.format(minute, second))

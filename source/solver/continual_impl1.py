@@ -29,6 +29,8 @@ import ast
 
 from nn_utils import *
 
+import time
+
 
 
 class ACASXuNet(nn.Module):
@@ -218,6 +220,7 @@ class ContinualImpl1():
         num_of_epochs = 20
         best_acc = 0.0
             
+        start = time.time()
         for epoch in range(num_of_epochs):
             print('\n------------- Epoch {} -------------\n'.format(epoch))
             if prop_x is None:
@@ -231,6 +234,9 @@ class ContinualImpl1():
             if best_acc < test_acc:
                 best_acc = test_acc
                 save_model(model, file_name)
+        end = time.time()
+
+        return end - start
 
 
     def __clip(self, model, fmodel, new_lst_poly, lst_poly):
@@ -347,6 +353,8 @@ class ContinualImpl1():
                 ###############################################################################
 
         ###################### Train model2 ##############################
+        total_time = 0.0
+
         for x1 in range(len1):
             for x2 in range(len2):
                 print('\n=============================================\n')
@@ -391,7 +399,7 @@ class ContinualImpl1():
 
                 file_name2 = "acasxu2_200_" + str(x1) + "_" + str(x2) + ".pt"
 
-                training_mode = 'none_ext'
+                training_mode = 'continual'
 
                 if training_mode == 'none':
                     print('\nTrain with new data only!!!\n')
@@ -399,7 +407,7 @@ class ContinualImpl1():
                     # data from prop 10 bounds, generate based on original model
                     train_x10, train_y10 = self.__gen_data(model, lower10, upper10)
 
-                    self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2)
+                    total_time += self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2)
                 elif training_mode == 'none_ext':
                     print('\nTrain with new and old data only!!!\n')
 
@@ -411,7 +419,7 @@ class ContinualImpl1():
                     train_x10 = np.concatenate((train_x10, aux_train_x0), axis=0)
                     train_y10 = np.concatenate((train_y10, aux_train_y0), axis=0)
 
-                    self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2)
+                    total_time += self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2)
                 elif training_mode == 'data_syn':
                     print('\nTrain with data synthesis!!!\n')
 
@@ -423,7 +431,7 @@ class ContinualImpl1():
                     train_x10 = np.concatenate((train_x10, aux_train_x3), axis=0)
                     train_y10 = np.concatenate((train_y10, aux_train_y3), axis=0)
 
-                    self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2)
+                    total_time += self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2)
                 elif training_mode == 'continual':
                     print('\nTrain with continual certificate!!!\n')
 
@@ -436,7 +444,7 @@ class ContinualImpl1():
                     train_x10 = np.concatenate((train_x10, aux_train_x3), axis=0)
                     train_y10 = np.concatenate((train_y10, aux_train_y3), axis=0)
 
-                    self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2,
+                    total_time += self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2,
                         prop_x, prop_y, lst_poly)
                 elif training_mode == 'continual_ext':
                     print('\nTrain with continual certificate and extra data!!!\n')
@@ -456,7 +464,7 @@ class ContinualImpl1():
                     train_x10 = np.concatenate((train_x10, aux_train_x3), axis=0)
                     train_y10 = np.concatenate((train_y10, aux_train_y3), axis=0)
 
-                    self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2,
+                    total_time += self.__train_new_model(model1, device, train_x10, train_y10, test_x, test_y, file_name2,
                         prop_x, prop_y, lst_poly)
                 else:
                     assert False
@@ -480,3 +488,9 @@ class ContinualImpl1():
                     # res, new_lst_poly = self.__verify(formal_model2, np.array(formal_lower3), np.array(formal_upper3))
                 except:
                     print("Error with x1 = {}, x2 = {}".format(x1, x2))
+
+        total_time = round(total_time)
+        minute = total_time // 60
+        second = total_time - 60 * minute
+
+        print('Time = {}m{}s'.format(minute, second))
