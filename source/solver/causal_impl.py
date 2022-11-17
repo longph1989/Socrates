@@ -22,6 +22,10 @@ class CausalImpl():
         self.datapath = None    # path to di data
         self.datalen = 0        # len of di data to sample at each iteration
         self.datalen_tot = 0     # len of total di data
+        self.pso_dipath = None  # path to pso data
+        self.pso_dilen = 0
+        self.pso_datapath = None  # path to pso data
+        self.pso_datalen = 0
         self.acc_datapath = None    # path to accuracy test data
         self.acc_datalen = 0        # len of existing data
         self.acc_datalen_tot = 0
@@ -45,6 +49,7 @@ class CausalImpl():
         self.delta = 0.1   # confidence
         self.plot = False   # plot figures?
         self.dbgmsg = False
+        self.mode = 'test'  # 'test' or 'repair'
 
     def gaussian(self, mu, sigma):
         return np.random.normal(mu, np.sqrt(sigma))
@@ -103,6 +108,18 @@ class CausalImpl():
 
         if 'datapath' in spec:
             self.datapath = spec['datapath']
+
+        if 'pso_dipath' in spec:
+            self.pso_dipath = spec['pso_dipath']
+
+        if 'pso_dilen' in spec:
+            self.pso_dilen = spec['pso_dilen']
+
+        if 'pso_datapath' in spec:
+            self.pso_datapath = spec['pso_datapath']
+
+        if 'pso_datalen' in spec:
+            self.pso_datalen = spec['pso_datalen']
 
         if 'acc_datalen' in spec:
             self.acc_datalen = spec['acc_datalen']
@@ -266,7 +283,7 @@ class CausalImpl():
         #print('Network Accuracy before repair: {}'.format(ori_accuracy))
         #return
         # analyze fairness
-        dtmc = DTMCImpl()
+        #dtmc = DTMCImpl()
         #dtmc.analyze_fairness_causal(model, self.sensitive, self.sens_cluster, self.timeout, self.criteria, self.error,
         #                             self.delta, self.acc_datapath, self.resultpath, [], [], [], self.sens_threshold)
 
@@ -408,7 +425,6 @@ class CausalImpl():
 
         # start repair
         best_pos = self.repair()
-        #best_pos =
 
         self.acc_datalen = self.acc_datalen_tot
         # verify prob diff and model accuracy after repair , weight, layer, neuron, sens_idx, sens_value, class_n
@@ -1222,18 +1238,26 @@ class CausalImpl():
         return ie, -1.0, 1.0
 
     def net_accuracy_test(self, r_neuron=0, r_weight=0, r_layer=0):
-        pathX = self.acc_datapath + '/'
-        pathY = self.acc_datapath + '/labels.txt'
+        if self.mode == 'test':
+            pathX = self.acc_datapath + '/'
+            pathY = self.acc_datapath + '/labels.txt'
+            num_sample = self.acc_datalen
+            num_total = self.acc_datalen
+        elif self.mode =='repair':
+            pathX = self.pso_datapath + '/'
+            pathY = self.pso_datapath + '/labels.txt'
+            num_sample = self.pso_datalen
+            num_total = self.pso_datalen
 
         y0s = np.array(ast.literal_eval(read(pathY)))
 
         l_pass = 0
         l_fail = 0
 
-        for idx in range(self.acc_datalen):
+        for idx in range(num_sample):
             
             # random index
-            i = int(np.random.rand() * self.acc_datalen_tot)
+            i = int(np.random.rand() * num_total)
             
             x0_file = pathX + 'data' + str(i) + '.txt'
             x0 = np.array(ast.literal_eval(read(x0_file)))
@@ -1296,8 +1320,16 @@ class CausalImpl():
     # def get_dy_do_h(self, do_layer, do_neuron, do_value, class_n, sens_idx, sens_range):
 
     def net_fairness_test(self, weight, layer, neuron, class_n, sens_idx, sens_range):
-        pathX = self.datapath + '/'
-        pathY = self.datapath + '/labels.txt'
+        if self.mode == 'test':
+            pathX = self.datapath + '/'
+            pathY = self.datapath + '/labels.txt'
+            num_sample = self.datalen
+            num_total = self.datalen_tot
+        elif self.mode == 'repair':
+            pathX = self.pso_dipath + '/'
+            pathY = self.pso_dipath + '/labels.txt'
+            num_sample = self.pso_dilen
+            num_total = num_sample
 
         # y0s = np.array(ast.literal_eval(read(pathY)))
 
@@ -1307,10 +1339,10 @@ class CausalImpl():
         y_same = 0
         y_diff = 0
 
-        for idx in range(self.datalen):
+        for idx in range(num_sample):
 
             # random index
-            i = int(np.random.rand() * self.datalen_tot)
+            i = int(np.random.rand() * num_total)
 
             x0_file = pathX + 'data' + str(i) + '.txt'
             x0 = np.array(ast.literal_eval(read(x0_file)))
@@ -1378,6 +1410,7 @@ class CausalImpl():
     def repair(self):
         # repair
         print('Start reparing...')
+        self.mode = 'repair'
         options = {'c1': 0.41, 'c2': 0.41, 'w': 0.8}
         #'''# original
         optimizer = ps.single.GlobalBestPSO(n_particles=20, dimensions=self.repair_num, options=options,
@@ -1398,6 +1431,7 @@ class CausalImpl():
         #print('neuron to repair: {} at layter: {}'.format(self.r_neuron, self.r_layer))
         #print('best cost: {}'.format(best_cost))
         #print('best pos: {}'.format(best_pos))
+        self.mode = 'test'
         return best_pos
 
     def detail_print(self, x):
