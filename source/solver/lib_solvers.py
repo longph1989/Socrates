@@ -7,6 +7,9 @@ from solver.dtmc_impl import DTMCImpl
 from solver.dtmc_rnn import DTMCImpl_rnn
 from solver.verifair_impl import VeriFairimpl
 from solver.causal_impl import CausalImpl
+from solver.continual_impl1 import ContinualImpl1
+from solver.continual_impl2 import ContinualImpl2
+from solver.continual_impl3 import ContinualImpl3
 
 class Optimize():
     def solve(self, model, assertion, display=None):
@@ -76,4 +79,11 @@ class Causal():
         pass
     def solve(self, model, assertion, display=None):
         impl = CausalImpl()
+        impl.solve(model, assertion, display)
+
+class Continual():
+    def __init__(self):
+        pass
+    def solve(self, model, assertion, display=None):
+        impl = ContinualImpl1()
         impl.solve(model, assertion, display)

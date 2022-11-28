@@ -49,9 +49,9 @@ class Model:
         shape_i = [1, *self.shape[1:]]
         size_i = np.prod(shape_i)
 
-        len = int(x.size / size_i)
+        len_x = int(x.size / size_i)
 
-        for i in range(len):
+        for i in range(len_x):
             x_i = x[size_i * i : size_i * (i + 1)].reshape(shape_i)
             output = x_i
             for layer in self.layers:
