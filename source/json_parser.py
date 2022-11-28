@@ -241,6 +241,8 @@ def parse_solver(spec):
         solver = Causal()
     elif algorithm == 'continual':
         solver = Continual()
+    elif algorithm == 'backdoor_detect':
+        solver = BackdoorDetect()
     return solver
 
 

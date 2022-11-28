@@ -10,6 +10,7 @@ from solver.causal_impl import CausalImpl
 from solver.continual_impl1 import ContinualImpl1
 from solver.continual_impl2 import ContinualImpl2
 from solver.continual_impl3 import ContinualImpl3
+from solver.backdoor_detect_impl import BackdoorDetectImpl
 
 class Optimize():
     def solve(self, model, assertion, display=None):
@@ -95,3 +96,10 @@ class Continual():
             assert False
 
         impl.solve(models, assertion, display)
+
+class BackdoorDetect():
+    def __init__(self):
+        pass
+    def solve(self, model, assertion, display=None):
+        impl = BackdoorDetectImpl()
+        impl.solve(model, assertion, display)
