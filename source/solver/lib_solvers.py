@@ -84,6 +84,14 @@ class Causal():
 class Continual():
     def __init__(self):
         pass
-    def solve(self, model, assertion, display=None):
-        impl = ContinualImpl1()
-        impl.solve(model, assertion, display)
+    def solve(self, models, assertion, display=None):
+        if assertion['dataset'] == 'acasxu':
+            impl = ContinualImpl1()
+        elif assertion['dataset'] == 'mnist' or assertion['dataset'] == 'cifar10':
+            impl = ContinualImpl2()
+        elif assertion['dataset'] == 'census':
+            impl = ContinualImpl3()
+        else:
+            assert False
+
+        impl.solve(models, assertion, display)

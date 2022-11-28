@@ -255,7 +255,7 @@ def parse_display(spec):
 
 
 def parse(spec):
-    model = parse_model(spec['model'])
+    model = parse_model(spec['model']) if 'model' in spec else None
     assertion = parse_assertion(spec['assert'])
     solver = parse_solver(spec['solver'])
     display = parse_display(spec['display']) if 'display' in spec else None

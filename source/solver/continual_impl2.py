@@ -403,7 +403,7 @@ class ContinualImpl2():
         masked_index_lst = []
         robust_lst, target_lst, lst_poly_lst = [], [], []
         device = 'cpu'
-        dataset = 'cifar10'
+        dataset = assertion['dataset']
         training_mode = 'continual_ext'
         already_init = True
 
