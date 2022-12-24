@@ -30,6 +30,8 @@ import ast
 from nn_utils import *
 
 import time
+import statistics
+
 
 
 class MNISTNet(nn.Module):
@@ -122,26 +124,25 @@ class BackdoorDetectImpl():
             model(x)
             last_layer_test_dataset.extend(F.relu(activation['fc3']).detach().numpy())
 
-        # last_layer_test_dataset = TensorDataset(torch.Tensor(np.array(last_layer_test_dataset)), test_dataset.targets) # create dataset
-        # last_layer_test_dataloader = DataLoader(last_layer_test_dataset, **test_kwargs) # create dataloader
+        last_layer_test_dataset = TensorDataset(torch.Tensor(np.array(last_layer_test_dataset)), test_dataset.targets) # create dataset
+        last_layer_test_dataloader = DataLoader(last_layer_test_dataset, **test_kwargs) # create dataloader
 
-        aa = np.array(last_layer_test_dataset)
-        print(aa.shape)
-        print(type(aa))
-        for i in range(0, 10):
-            idx = test_dataset.targets == i
-            cc = aa[idx.numpy()]
-            print(type(cc))
-            print(cc.shape)
-            print('i = {}, cc = {}'.format(i, np.average(cc, axis=0)))
-
-        assert False
-
-        num_of_epochs = 100
+        num_of_epochs = 20
+        dist_lst = []
 
         for i in range(0, 10):
-            # delta = self.__generate_trigger(model, test_dataloader, num_of_epochs, (28, 28), i, 0.0, 1.0)
-            delta = self.__generate_trigger(sub_model, last_layer_test_dataloader, num_of_epochs, 10, i, 0.0)
-            print('i = {}, delta = {}, d = {}'.format(i, delta, torch.norm(delta, 2)))
+            delta = self.__generate_trigger(model, test_dataloader, num_of_epochs, (28, 28), i, 0.0, 1.0)
+            # delta = self.__generate_trigger(sub_model, last_layer_test_dataloader, num_of_epochs, 10, i, 0.0)
+            dist = torch.norm(delta, 2)
+            print('i = {}, delta = {}, d = {}'.format(i, delta, dist))
+            dist_lst.append(dist.detach().item())
 
-        # assert False
+        dist_lst = np.array(dist_lst)
+        print(dist_lst)
+        med = statistics.median(dist_lst)
+        print(med)
+        dev_lst = abs(dist_lst - med)
+        print(dev_lst)
+        mad = statistics.median(dev_lst)
+        print(mad)
+        print((dist_lst - med) / mad)
