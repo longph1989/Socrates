@@ -35,7 +35,11 @@ def save_model(model, name):
 
 def load_model(model_class, name, *args):
     model = model_class(*args)
-    model.load_state_dict(torch.load(name))
+
+    if torch.cuda.is_available():
+        model.load_state_dict(torch.load(name))
+    else:
+        model.load_state_dict(torch.load(name, map_location=torch.device('cpu')))
 
     return model
 
