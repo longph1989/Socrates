@@ -139,7 +139,8 @@ class BackdoorDetectImpl():
         for name, param in params:
             if dataset == 'mnist' and ('fc4.weight' in name or 'fc4.bias' in name):
                 dict_params[name].data.copy_(param.data)
-            elif dataset == 'cifar10' and ('fc3.weight' in name or 'fc3.bias' in name):
+            elif (dataset == 'cifar10_inv' or dataset == 'cifar10_sem' or dataset == 'cifar10_tro') \
+                and ('fc3.weight' in name or 'fc3.bias' in name):
                 dict_params[name].data.copy_(param.data)
         
         sub_model.load_state_dict(dict_params)
@@ -170,70 +171,67 @@ class BackdoorDetectImpl():
         train_kwargs, test_kwargs = {'batch_size': 100}, {'batch_size': 1000}
         transform = transforms.ToTensor()
 
-        dataset = 'cifar10'
+        dataset = 'cifar10_tro'
+        num_of_epochs = 20
+        dist_lst = []
+
+        print('dataset =', dataset)
 
         if dataset == 'mnist':
             file_name = './backdoor_models/mnist_bd.pt'
+            last_layer = 'fc3'
+
             model = load_model(MNISTNet, file_name)
-            model.fc3.register_forward_hook(get_activation('fc3'))
+            model.fc3.register_forward_hook(get_activation(last_layer))
         
             sub_model = SubMNISTNet()
-            self.__transfer_model(model, sub_model, dataset)
-
+            
             train_dataset = datasets.MNIST('./data', train=True, download=True, transform=transform)
             test_dataset = datasets.MNIST('./data', train=False, transform=transform)
 
-            train_dataloader = torch.utils.data.DataLoader(train_dataset, **train_kwargs)
-            test_dataloader = torch.utils.data.DataLoader(test_dataset, **test_kwargs)
+            size_input, size_last = (28, 28), 10
 
-            last_layer_test_dataset = []
-            for batch, (x, y) in enumerate(test_dataloader):
-                model(x)
-                last_layer_test_dataset.extend(F.relu(activation['fc3']).detach().numpy())
+        elif dataset == 'cifar10_inv' or dataset == 'cifar10_sem' or dataset == 'cifar10_tro':
+            if dataset == 'cifar10_inv':
+                file_name = './backdoor_models/cifar10_bd_inv.pt'
+            elif dataset == 'cifar10_sem':
+                file_name = './backdoor_models/cifar10_bd_sem.pt'
+            elif dataset == 'cifar10_tro':
+                file_name = './backdoor_models/cifar10_bd_tro.pt'
 
-            last_layer_test_dataset = TensorDataset(torch.Tensor(np.array(last_layer_test_dataset)), torch.Tensor(np.array(test_dataset.targets))) # create dataset
-            last_layer_test_dataloader = DataLoader(last_layer_test_dataset, **test_kwargs) # create dataloader
+            last_layer = 'fc2'
 
-            num_of_epochs = 20
-            dist_lst = []
-
-            for i in range(0, 10):
-                delta = self.__generate_trigger(model, test_dataloader, num_of_epochs, (28, 28), i, 0.0, 1.0)
-                # delta = self.__generate_trigger(sub_model, last_layer_test_dataloader, num_of_epochs, 10, i, 0.0)
-                dist = torch.norm(delta, 2)
-                print('i = {}, delta = {}, d = {}'.format(i, delta, dist))
-                dist_lst.append(dist.detach().item())
-        elif dataset == 'cifar10':
-            file_name = './backdoor_models/cifar10_bd.pt'
             model = load_model(CIFAR10Net, file_name)
-            model.fc2.register_forward_hook(get_activation('fc2'))
+            model.fc2.register_forward_hook(get_activation(last_layer))
         
             sub_model = SubCIFAR10Net()
-            self.__transfer_model(model, sub_model, dataset)
 
             train_dataset = datasets.CIFAR10('./data', train=True, download=True, transform=transform)
             test_dataset = datasets.CIFAR10('./data', train=False, transform=transform)
 
-            train_dataloader = torch.utils.data.DataLoader(train_dataset, **train_kwargs)
-            test_dataloader = torch.utils.data.DataLoader(test_dataset, **test_kwargs)
+            size_input, size_last = (3, 32, 32), 512
+        else:
+            assert False
 
-            last_layer_test_dataset = []
-            for batch, (x, y) in enumerate(test_dataloader):
-                model(x)
-                last_layer_test_dataset.extend(F.relu(activation['fc2']).detach().numpy())
+        self.__transfer_model(model, sub_model, dataset)
 
-            last_layer_test_dataset = TensorDataset(torch.Tensor(np.array(last_layer_test_dataset)), torch.Tensor(np.array(test_dataset.targets))) # create dataset
-            last_layer_test_dataloader = DataLoader(last_layer_test_dataset, **test_kwargs) # create dataloader
+        train_dataloader = torch.utils.data.DataLoader(train_dataset, **train_kwargs)
+        test_dataloader = torch.utils.data.DataLoader(test_dataset, **test_kwargs)
 
-            num_of_epochs = 1
-            dist_lst = []
+        last_layer_test_dataset = []
+        for batch, (x, y) in enumerate(test_dataloader):
+            model(x)
+            last_layer_test_dataset.extend(F.relu(activation[last_layer]).detach().numpy())
 
-            for i in range(0, 10):
-                delta = self.__generate_trigger(model, test_dataloader, num_of_epochs, (3, 32, 32), i, 0.0, 1.0)
-                # delta = self.__generate_trigger(sub_model, last_layer_test_dataloader, num_of_epochs, 512, i, 0.0)
-                dist = torch.norm(delta, 2)
-                print('i = {}, delta = {}, d = {}'.format(i, delta, dist))
-                dist_lst.append(dist.detach().item())
+        last_layer_test_dataset = TensorDataset(torch.Tensor(np.array(last_layer_test_dataset)), torch.Tensor(np.array(test_dataset.targets))) # create dataset
+        last_layer_test_dataloader = DataLoader(last_layer_test_dataset, **test_kwargs) # create dataloader
+
+        for i in range(0, 10):
+            # delta = self.__generate_trigger(model, test_dataloader, num_of_epochs, size_input, i, 0.0, 1.0)
+            delta = self.__generate_trigger(sub_model, last_layer_test_dataloader, num_of_epochs, size_last, i, 0.0)
+            dist = torch.norm(delta, 2)
+            print('i = {}, delta = {}, d = {}'.format(i, delta, dist))
+            dist_lst.append(dist.detach().item())
 
         dist_lst = np.array(dist_lst)
         print('dist_lst = {}'.format(dist_lst))
