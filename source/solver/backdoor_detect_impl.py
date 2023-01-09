@@ -146,8 +146,8 @@ class BackdoorDetectImpl():
         sub_model.load_state_dict(dict_params)
 
 
-    def __generate_trigger(self, model, dataloader, num_of_epochs, size, target, minx = None, maxx = None):
-        delta, eps, lamb = torch.zeros(size), 0.01, 1
+    def __generate_trigger(self, model, dataloader, num_of_epochs, size, target, norm, minx = None, maxx = None):
+        delta, eps, lamb = torch.zeros(size), 0.001, 1
 
         for epoch in range(num_of_epochs):
             for batch, (x, y) in enumerate(dataloader):
@@ -156,7 +156,7 @@ class BackdoorDetectImpl():
                 target_tensor = torch.full(y.size(), target)
 
                 pred = model(x_adv)
-                loss = F.cross_entropy(pred, target_tensor) + lamb * torch.norm(delta, 2)
+                loss = F.cross_entropy(pred, target_tensor) + lamb * torch.norm(delta, norm)
 
                 loss.backward()
 
@@ -166,14 +166,35 @@ class BackdoorDetectImpl():
         return delta
 
 
+    def __check(self, model, dataloader, delta, target):
+        size = len(dataloader.dataset)
+        correct = 0
+
+        for batch, (x, y) in enumerate(dataloader):
+            x_adv = torch.clamp(torch.add(x, delta), 0.0)
+            target_tensor = torch.full(y.size(), target)
+
+            pred = model(x_adv)
+
+            correct += (pred.argmax(1) == target_tensor).type(torch.int).sum().item()
+
+        correct = correct / size * 100
+        print('target = {}, test accuracy = {}'.format(target, correct))
+
+        return correct
+
+
     def solve(self, model, assertion, display=None):
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         train_kwargs, test_kwargs = {'batch_size': 100}, {'batch_size': 1000}
         transform = transforms.ToTensor()
 
-        dataset = 'cifar10_tro'
-        num_of_epochs = 20
-        dist_lst = []
+        acc_th, ano_th = 40.0, -1.5
+
+        dataset = 'cifar10_inv'
+        num_of_epochs = 200
+        dist_lst, acc_lst = [], []
+        norm = 2
 
         print('dataset =', dataset)
 
@@ -210,6 +231,7 @@ class BackdoorDetectImpl():
             test_dataset = datasets.CIFAR10('./data', train=False, transform=transform)
 
             size_input, size_last = (3, 32, 32), 512
+        
         else:
             assert False
 
@@ -226,19 +248,48 @@ class BackdoorDetectImpl():
         last_layer_test_dataset = TensorDataset(torch.Tensor(np.array(last_layer_test_dataset)), torch.Tensor(np.array(test_dataset.targets))) # create dataset
         last_layer_test_dataloader = DataLoader(last_layer_test_dataset, **test_kwargs) # create dataloader
 
-        for i in range(0, 10):
-            # delta = self.__generate_trigger(model, test_dataloader, num_of_epochs, size_input, i, 0.0, 1.0)
-            delta = self.__generate_trigger(sub_model, last_layer_test_dataloader, num_of_epochs, size_last, i, 0.0)
-            dist = torch.norm(delta, 2)
-            print('i = {}, delta = {}, d = {}'.format(i, delta, dist))
+        # dataloader = test_dataloader
+        dataloader = last_layer_test_dataloader
+
+        for target in range(10):
+            # delta = self.__generate_trigger(model, dataloader, num_of_epochs, size_input, target, norm, 0.0, 1.0)
+            delta = self.__generate_trigger(sub_model, dataloader, num_of_epochs, size_last, target, norm, 0.0)
+
+            for i in range(len(delta)):
+                if abs(delta[i]) < 0.1: delta[i] = 0.0
+
+            print('\n###############################\n')
+
+            # self.__check(model, dataloader, delta, target)
+            acc = self.__check(sub_model, dataloader, delta, target)
+            dist = torch.norm(delta, 0)
+            print('\ntarget = {}, delta = {}, dist = {}\n'.format(target, delta[:10], dist))
+
+            acc_lst.append(acc)
             dist_lst.append(dist.detach().item())
+
+        print('\n###############################\n')
+
+        acc_lst = np.array(acc_lst)
+        print('acc_lst = {}'.format(acc_lst))
 
         dist_lst = np.array(dist_lst)
         print('dist_lst = {}'.format(dist_lst))
+
         med = statistics.median(dist_lst)
         print('med = {}'.format(med))
+        
         dev_lst = abs(dist_lst - med)
         print('dev_lst = {}'.format(dev_lst))
+        
         mad = statistics.median(dev_lst)
         print('mad = {}'.format(mad))
-        print('res = {}'.format((dist_lst - med) / mad))
+        
+        ano_lst = (dist_lst - med) / mad
+        print('ano_lst = {}'.format(ano_lst))
+
+        print('\n###############################\n')
+
+        for target in range(10):
+            if acc_lst[target] >= acc_th and ano_lst[target] <= ano_th:
+                print('Detect backdoor at target = {}'.format(target))
